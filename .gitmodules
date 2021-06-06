@@ -1,0 +1,7 @@
+[submodule "libs/gmod-module-base"]
+	path = libs/gmod-module-base
+	url = https://github.com/Facepunch/gmod-module-base.git
+	branch = development
+[submodule "libs/bvh"]
+	path = libs/bvh
+	url = https://github.com/madmann91/bvh.git

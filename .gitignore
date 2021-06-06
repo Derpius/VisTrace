@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+
+# Visual Studio Directory
+.vs
+
+# Build Directories
+Debug
+Release
+VisTrace/Debug
+VisTrace/Release
