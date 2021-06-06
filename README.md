@@ -23,7 +23,7 @@ The return value of this function is a [`TraceResult`](https://wiki.facepunch.co
 Note that if a mesh was hit, the majority of the `TraceResult` struct returned will not differ from the default values present in a miss struct, like `FractionLeftSolid`.  
 
 ## Example Code
-This will load the module, build accel from all `prop_physics` entities, get an entity to use as a hit marker, and traverse the scene each frame placing the hit marker at the trace hit position if applicable:
+This will load the module, build the acceleration structure from all `prop_physics` entities, get an entity to use as a hit marker, and traverse the scene each frame placing the hit marker at the trace hit position if applicable:
 ```lua
 if SERVER then error("VisTrace can only be used on the client!") end
 require("VisTrace")
