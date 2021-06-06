@@ -170,7 +170,7 @@ LUA_FUNCTION(RebuildAccel)
 			// Iterate over tris
 			LUA->GetField(-1, "triangles");
 			LUA->CheckType(-1, Type::Table);
-			unsigned int numVerts = LUA->ObjLen(-1);
+			size_t numVerts = LUA->ObjLen();
 			if (numVerts % 3Ui64 != 0Ui64) LUA->ThrowError("Number of triangles is not a multiple of 3");
 
 			Vector3 tri[3];
@@ -190,7 +190,6 @@ LUA_FUNCTION(RebuildAccel)
 					pos.x * transform[1][0] + pos.y * transform[1][1] + pos.z * transform[1][2] + transform[1][3],
 					pos.x * transform[2][0] + pos.y * transform[2][1] + pos.z * transform[2][2] + transform[2][3]
 				);
-				if (triIndex == 2Ui64) triangles.emplace_back(tri[0], tri[1], tri[2]);
 
 				// Get and transform normal, tangent, and binormal
 				LUA->GetField(-1, "normal");
@@ -247,6 +246,22 @@ LUA_FUNCTION(RebuildAccel)
 
 				// Pop MeshVertex
 				LUA->Pop();
+
+				// If this was the last vert in the tri, emplace back
+				if (triIndex == 2Ui64) {
+					Triangle tri(tri[0], tri[1], tri[2]);
+					triangles.push_back(tri);
+
+					// in the unlikely event a mesh has no vertex normals, the normal at this point would be 0, 0, 0
+					// if so, replace it with the tri's geometric normal (inverted as source uses anti-clockwise winding and from the looks of it the bvh uses CW, likely to match the "standard" winding)
+					size_t numNorms = normals.size();
+					Vector3 n0 = normals[numNorms - 2Ui64], n1 = normals[numNorms - 1Ui64], n2 = normals[numNorms];
+					if (
+						n0[0] == 0.f || n0[1] == 0.f || n0[2] == 0.f ||
+						n1[0] == 0.f || n1[1] == 0.f || n1[2] == 0.f ||
+						n2[0] == 0.f || n2[1] == 0.f || n2[2] == 0.f
+					) normals[numNorms - 2Ui64] = normals[numNorms - 1Ui64] = normals[numNorms] = -tri.n;
+				}
 			}
 
 			// Pop triangle and mesh tables
