@@ -27,6 +27,8 @@ static std::shared_ptr<Traverser> pTraverser;
 
 static std::vector<Triangle> triangles;
 static std::vector<Vector3> normals;
+static std::vector<Vector3> tangents;
+static std::vector<Vector3> binormals;
 static std::vector<std::pair<float ,float>> uvs;
 static std::vector<std::pair<unsigned int, unsigned int>> ids; // first: entity id, second: submesh id
 
@@ -85,14 +87,11 @@ void dumpStack(ILuaBase* inst)
 }
 
 /*
-	table[] meshes
-		uint entId
-		uint submeshId
-		VMatrix transform
-		MeshVertex[] triangles
+	table[Entity] entities = {}
 */
 LUA_FUNCTION(RebuildAccel)
 {
+	if (LUA->Top() == 0) LUA->CreateTable();
 	LUA->CheckType(1, Type::Table);
 	LUA->Pop(LUA->Top() - 1); // Pop all but the table
 
@@ -105,31 +104,36 @@ LUA_FUNCTION(RebuildAccel)
 	// Redefine vectors
 	triangles = std::vector<Triangle>();
 	normals = std::vector<Vector3>();
+	tangents = std::vector<Vector3>();
+	binormals = std::vector<Vector3>();
 	uvs = std::vector<std::pair<float, float>>();
 	ids = std::vector<std::pair<unsigned int, unsigned int>>();
 
-	// Iterate over meshes
-	for (size_t i = 1; i <= LUA->ObjLen(1); i++) {
-		// Get mesh
+	// Iterate over entities
+	size_t numEntities = LUA->ObjLen();
+	for (size_t i = 1; i <= numEntities; i++) {
+		// Get entity
 		LUA->PushNumber(i);
 		LUA->GetTable(1);
+		LUA->CheckType(-1, Type::Entity);
 
-		// Get entity and submesh ids and push back to ids
+		// Get entity id
 		std::pair<unsigned int, unsigned int> id;
 		{
-			LUA->GetField(-1, "entityId");
-			LUA->GetField(-2, "submeshId");
-			double entId = LUA->GetNumber(-2), submeshId = LUA->GetNumber(); // Get as doubles so after we check they're positive a static cast to unsigned int wont overflow rather than using int
-			LUA->Pop(2);
+			LUA->GetField(-1, "EntIndex");
+			LUA->Push(-2);
+			LUA->Call(1, 1);
+			double entId = LUA->GetNumber(); // Get as a double so after we check it's positive a static cast to unsigned int wont overflow rather than using int
+			LUA->Pop();
 
 			if (entId < 0.0) LUA->ThrowError("Entity ID is less than 0");
-			if (submeshId < 0.0) LUA->ThrowError("Submesh ID is less than 0");
-			id = std::make_pair(static_cast<unsigned int>(entId), static_cast<unsigned int>(submeshId));
+			id.first = entId;
 		}
 
 		// Get transform VMatrix
-		LUA->GetField(-1, "transform");
-		LUA->CheckType(-1, Type::Matrix);
+		LUA->GetField(-1, "GetWorldTransformMatrix");
+		LUA->Push(-2);
+		LUA->Call(1, 1);
 		float transform[3][4];
 		for (unsigned char row = 0; row < 3; row++) {
 			for (unsigned char col = 0; col < 4; col++) {
@@ -145,57 +149,111 @@ LUA_FUNCTION(RebuildAccel)
 		}
 		LUA->Pop();
 
-		// Iterate over tris
-		LUA->GetField(-1, "triangles");
-		LUA->CheckType(-1, Type::Table);
-		unsigned int numVerts = LUA->ObjLen(-1);
-		if (numVerts % 3U != 0U) LUA->ThrowError("Number of triangles is not a multiple of 3");
+		// Iterate over meshes
+		LUA->PushSpecial(SPECIAL_GLOB);
+		LUA->GetField(-1, "util");
+		LUA->GetField(-1, "GetModelMeshes");
+			LUA->GetField(-4, "GetModel");
+			LUA->Push(-5);
+			LUA->Call(1, 1);
+		LUA->Call(1, 1);
 
-		Vector3 tri[3];
-		for (size_t j = 0; j < numVerts; j++) {
-			// Get vertex
-			LUA->PushNumber(j + 1U);
+		size_t numSubmeshes = LUA->ObjLen();
+		for (size_t j = 1; j <= numSubmeshes; j++) {
+			// Get mesh
+			LUA->PushNumber(j);
 			LUA->GetTable(-2);
 
-			// Get and transform position
-			LUA->GetField(-1, "pos");
-			Vector pos = LUA->GetVector();
-			LUA->Pop();
+			// Set submesh id
+			id.second = j - 1Ui64;
 
-			size_t triIndex = j % 3U;
-			tri[triIndex] = Vector3(
-				pos.x * transform[0][0] + pos.y * transform[0][1] + pos.z * transform[0][2] + transform[0][3],
-				pos.x * transform[1][0] + pos.y * transform[1][1] + pos.z * transform[1][2] + transform[1][3],
-				pos.x * transform[2][0] + pos.y * transform[2][1] + pos.z * transform[2][2] + transform[2][3]
-			);
-			if (triIndex == 2U) triangles.emplace_back(tri[0], tri[1], tri[2]);
+			// Iterate over tris
+			LUA->GetField(-1, "triangles");
+			LUA->CheckType(-1, Type::Table);
+			unsigned int numVerts = LUA->ObjLen(-1);
+			if (numVerts % 3Ui64 != 0Ui64) LUA->ThrowError("Number of triangles is not a multiple of 3");
 
-			// Get and transform normal
-			LUA->GetField(-1, "normal");
-			Vector normal = LUA->GetVector();
-			LUA->Pop();
-			normals.push_back(Vector3(
-				normal.x * transform[0][0] + normal.y * transform[0][1] + normal.z * transform[0][2],
-				normal.x * transform[1][0] + normal.y * transform[1][1] + normal.z * transform[1][2],
-				normal.x * transform[2][0] + normal.y * transform[2][1] + normal.z * transform[2][2]
-			));
+			Vector3 tri[3];
+			for (size_t j = 0; j < numVerts; j++) {
+				// Get vertex
+				LUA->PushNumber(j + 1Ui64);
+				LUA->GetTable(-2);
 
-			// Get uvs
-			LUA->GetField(-1, "u");
-			LUA->GetField(-2, "v");
-			float u = LUA->GetNumber(-2), v = LUA->GetNumber();
+				// Get and transform position
+				LUA->GetField(-1, "pos");
+				Vector pos = LUA->GetVector();
+				LUA->Pop();
+
+				size_t triIndex = j % 3Ui64;
+				tri[triIndex] = Vector3(
+					pos.x * transform[0][0] + pos.y * transform[0][1] + pos.z * transform[0][2] + transform[0][3],
+					pos.x * transform[1][0] + pos.y * transform[1][1] + pos.z * transform[1][2] + transform[1][3],
+					pos.x * transform[2][0] + pos.y * transform[2][1] + pos.z * transform[2][2] + transform[2][3]
+				);
+				if (triIndex == 2Ui64) triangles.emplace_back(tri[0], tri[1], tri[2]);
+
+				// Get and transform normal, tangent, and binormal
+				LUA->GetField(-1, "normal");
+				Vector normal;
+				if (!LUA->IsType(-1, Type::Nil)) {
+					normal = LUA->GetVector();
+				} else {
+					normal.x = normal.y = normal.z = 0.f;
+				}
+				LUA->Pop();
+				normals.push_back(Vector3(
+					normal.x * transform[0][0] + normal.y * transform[0][1] + normal.z * transform[0][2],
+					normal.x * transform[1][0] + normal.y * transform[1][1] + normal.z * transform[1][2],
+					normal.x * transform[2][0] + normal.y * transform[2][1] + normal.z * transform[2][2]
+				));
+
+				LUA->GetField(-1, "tangent");
+				Vector tangent;
+				if (!LUA->IsType(-1, Type::Nil)) {
+					tangent = LUA->GetVector();
+				} else {
+					tangent.x = tangent.y = tangent.z = 0.f;
+				}
+				LUA->Pop();
+				tangents.push_back(Vector3(
+					tangent.x * transform[0][0] + tangent.y * transform[0][1] + tangent.z * transform[0][2],
+					tangent.x * transform[1][0] + tangent.y * transform[1][1] + tangent.z * transform[1][2],
+					tangent.x * transform[2][0] + tangent.y * transform[2][1] + tangent.z * transform[2][2]
+				));
+
+				LUA->GetField(-1, "binormal");
+				Vector binormal;
+				if (!LUA->IsType(-1, Type::Nil)) {
+					binormal = LUA->GetVector();
+				} else {
+					binormal.x = binormal.y = binormal.z = 0.f;
+				}
+				LUA->Pop();
+				binormals.push_back(Vector3(
+					binormal.x * transform[0][0] + binormal.y * transform[0][1] + binormal.z * transform[0][2],
+					binormal.x * transform[1][0] + binormal.y * transform[1][1] + binormal.z * transform[1][2],
+					binormal.x * transform[2][0] + binormal.y * transform[2][1] + binormal.z * transform[2][2]
+				));
+
+				// Get uvs
+				LUA->GetField(-1, "u");
+				LUA->GetField(-2, "v");
+				float u = LUA->GetNumber(-2), v = LUA->GetNumber();
+				LUA->Pop(2);
+				uvs.emplace_back(u, v);
+
+				// Push back copy of ids
+				ids.push_back(id);
+
+				// Pop MeshVertex
+				LUA->Pop();
+			}
+
+			// Pop triangle and mesh tables
 			LUA->Pop(2);
-			uvs.emplace_back(u, v);
-
-			// Push back copy of ids
-			ids.push_back(id);
-
-			// Pop MeshVertex
-			LUA->Pop();
 		}
 
-		// Pop triangle and mesh tables
-		LUA->Pop(2);
+		LUA->Pop(3);
 	}
 	LUA->Pop(); // Pop entity table
 
@@ -459,7 +517,7 @@ LUA_FUNCTION(TraverseScene)
 
 		float u = intersection.u, v = intersection.v, w = (1.f - u - v);
 		{
-			Vector3 normal = w * normals[vertIndex] + u * normals[vertIndex + 1U] + v * normals[vertIndex + 2U];
+			Vector3 normal = w * normals[vertIndex] + u * normals[vertIndex + 1Ui64] + v * normals[vertIndex + 2Ui64];
 			Vector v;
 			v.x = normal[0];
 			v.y = normal[1];
@@ -468,9 +526,28 @@ LUA_FUNCTION(TraverseScene)
 			LUA->SetField(1, "HitNormal");
 		}
 
+		// Push custom hitdata values for tangent and binormal
+		{
+			Vector3 tangent = w * tangents[vertIndex] + u * tangents[vertIndex + 1Ui64] + v * tangents[vertIndex + 2Ui64];
+			Vector3 binormal = w * binormals[vertIndex] + u * binormals[vertIndex + 1Ui64] + v * binormals[vertIndex + 2Ui64];
+			Vector v;
+
+			v.x = tangent[0];
+			v.y = tangent[1];
+			v.z = tangent[2];
+			LUA->PushVector(v);
+			LUA->SetField(1, "HitTangent");
+
+			v.x = binormal[0];
+			v.y = binormal[1];
+			v.z = binormal[2];
+			LUA->PushVector(v);
+			LUA->SetField(1, "HitBinormal");
+		}
+
 		// Push custom hitdata values for U and V
-		float texU = w * uvs[vertIndex].first + u * uvs[vertIndex + 1U].first + v * uvs[vertIndex + 2U].first;
-		float texV = w * uvs[vertIndex].second + u * uvs[vertIndex + 1U].second + v * uvs[vertIndex + 2U].second;
+		float texU = w * uvs[vertIndex].first + u * uvs[vertIndex + 1Ui64].first + v * uvs[vertIndex + 2Ui64].first;
+		float texV = w * uvs[vertIndex].second + u * uvs[vertIndex + 1Ui64].second + v * uvs[vertIndex + 2Ui64].second;
 
 		LUA->PushNumber(texU);
 		LUA->SetField(1, "U");
