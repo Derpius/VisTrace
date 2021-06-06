@@ -278,7 +278,7 @@ LUA_FUNCTION(RebuildAccel)
 	float tMax = FLT_MAX
 	bool hitWorld = true
 
-	returns TraceResult struct (https://wiki.facepunch.com/gmod/Structures/TraceResult)
+	returns modified TraceResult struct (https://wiki.facepunch.com/gmod/Structures/TraceResult)
 */
 LUA_FUNCTION(TraverseScene)
 {
@@ -412,10 +412,20 @@ LUA_FUNCTION(TraverseScene)
 
 	// Custom members for uvs
 	LUA->PushNumber(0);
-	LUA->SetField(1, "U");
+	LUA->SetField(1, "HitU");
 
 	LUA->PushNumber(0);
-	LUA->SetField(1, "V");
+	LUA->SetField(1, "HitV");
+
+	// Custom members for tangent and binormal
+	{
+		Vector v;
+		v.x = v.y = v.z = 0.f;
+		LUA->PushVector(v);
+		LUA->SetField(1, "HitTangent");
+		LUA->PushVector(v);
+		LUA->SetField(1, "HitBinormal");
+	}
 #pragma endregion
 
 	// Perform source trace for world hit
@@ -473,10 +483,20 @@ LUA_FUNCTION(TraverseScene)
 
 		// Even though we have no world uvs, set the parameters to 0 anyway to avoid erroring code that would normally use them
 		LUA->PushNumber(0);
-		LUA->SetField(-2, "U");
+		LUA->SetField(-2, "HitU");
 
 		LUA->PushNumber(0);
-		LUA->SetField(-2, "V");
+		LUA->SetField(-2, "HitV");
+
+		// And same for the other custom members
+		{
+			Vector v;
+			v.x = v.y = v.z = 0.f;
+			LUA->PushVector(v);
+			LUA->SetField(-2, "HitTangent");
+			LUA->PushVector(v);
+			LUA->SetField(-2, "HitBinormal");
+		}
 	}
 
 	// Perform BVH traversal for mesh hit
@@ -550,10 +570,10 @@ LUA_FUNCTION(TraverseScene)
 		float texV = w * uvs[vertIndex].second + u * uvs[vertIndex + 1Ui64].second + v * uvs[vertIndex + 2Ui64].second;
 
 		LUA->PushNumber(texU);
-		LUA->SetField(1, "U");
+		LUA->SetField(1, "HitU");
 
 		LUA->PushNumber(texV);
-		LUA->SetField(1, "V");
+		LUA->SetField(1, "HitV");
 	}
 
 	return 1; // Return the table at the top of the stack (this will either be a default TraceResult, a TraceResult populated by BVH intersection, or a TraceResult populated by world intersection)
