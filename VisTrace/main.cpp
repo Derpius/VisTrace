@@ -708,8 +708,9 @@ GMOD_MODULE_OPEN()
 				"			if hitWorld then checkLuaType(hitWorld, TYPE_BOOL) end\n"
 
 				"			local hitData = vistrace.TraverseScene(uwrapVec(origin), uwrapVec(direction), tMin, tMax, hitWorld)\n"
-				"			for k, v in pairs(hitData) do // Note that vistrace returns tables, not actual TraceResult structs, so we can just enumerate and wrap rather than using SF.StructWrapper\n"
-				"				hitData[k] = wrapObj(v)\n"
+				"			for k, v in pairs(hitData) do -- Note that vistrace returns tables, not actual TraceResult structs, so we can just enumerate and wrap rather than using SF.StructWrapper\n"
+				"				if k == \"HitTexCoord\" or k == \"HitBarycentric\" then hitData[k] = v\n"
+				"				else hitData[k] = wrapObj(v) end\n"
 				"			end\n"
 				"			return hitData\n"
 				"		end\n"
