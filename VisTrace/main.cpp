@@ -618,6 +618,8 @@ LUA_FUNCTION(TraverseScene)
 		// Push custom hitdata values for U and V (texture and barycentric)
 		float texU = w * uvs[vertIndex].first + u * uvs[vertIndex + 1Ui64].first + v * uvs[vertIndex + 2Ui64].first;
 		float texV = w * uvs[vertIndex].second + u * uvs[vertIndex + 1Ui64].second + v * uvs[vertIndex + 2Ui64].second;
+		texU -= floor(texU);
+		texV -= floor(texV);
 
 		LUA->CreateTable();
 			LUA->PushNumber(texU);
