@@ -313,16 +313,10 @@ LUA_FUNCTION(TraverseScene)
 	Vector direction = LUA->GetVector(2);
 
 	float tMin = 0.f;
-	if (numArgs > 2 && !LUA->IsType(3, Type::Nil)) {
-		LUA->CheckType(3, Type::Number);
-		tMin = static_cast<float>(LUA->GetNumber(3));
-	}
+	if (numArgs > 2 && !LUA->IsType(3, Type::Nil)) tMin = static_cast<float>(LUA->CheckNumber(3));
 	
 	float tMax = FLT_MAX;
-	if (numArgs > 3 && !LUA->IsType(4, Type::Nil)) {
-		LUA->CheckType(4, Type::Number);
-		tMax = static_cast<float>(LUA->GetNumber(4));
-	}
+	if (numArgs > 3 && !LUA->IsType(4, Type::Nil)) tMax = static_cast<float>(LUA->CheckNumber(4));
 
 	if (tMin < 0.f) LUA->ArgError(3, "tMin cannot be less than 0");
 	if (tMax <= tMin) LUA->ArgError(4, "tMax must be greater than tMin");
@@ -616,11 +610,80 @@ GMOD_MODULE_OPEN()
 {
 	LUA->PushSpecial(SPECIAL_GLOB);
 		LUA->CreateTable();
-		LUA->PushCFunction(RebuildAccel);
-		LUA->SetField(-2, "RebuildAccel");
-		LUA->PushCFunction(TraverseScene);
-		LUA->SetField(-2, "TraverseScene");
-	LUA->SetField(-2, "vistrace");
+			LUA->PushCFunction(RebuildAccel);
+			LUA->SetField(-2, "RebuildAccel");
+			LUA->PushCFunction(TraverseScene);
+			LUA->SetField(-2, "TraverseScene");
+		LUA->SetField(-2, "vistrace");
+
+		// Check if Starfall is present, and if so sideload vistrace into the running instance
+		LUA->GetField(-1, "SF");
+		bool sf = LUA->IsType(-1, Type::Table);
+		LUA->Pop();
+
+		if (sf) {
+			LUA->GetField(-1, "RunString");
+			LUA->PushString(
+				"local inf = math.huge\n"
+				"local function validateVector(v)\n"
+				"	if (\n"
+				"		v[1] ~= v[1] or v[1] == inf or v[1] == -inf or\n"
+				"		v[2] ~= v[2] or v[2] == inf or v[2] == -inf or\n"
+				"		v[3] ~= v[3] or v[3] == inf or v[3] == -inf\n"
+				"	) then SF.Throw(\"Invalid vector, inf or NaN present in function traverseScene\", 3) end\n"
+				"end\n"
+
+				"local checkLuaType, checkPermission = SF.CheckLuaType, SF.Permissions.check\n"
+				"local debug_getmetatable = debug.getmetatable\n"
+
+				"SF.Permissions.registerPrivilege(\"vistrace\", \"VisTrace\", \"Allows the user to build acceleration structures and traverse scenes\", { client = {default = 1} })\n"
+				"SF.Permissions.loadPermissionOptions()\n"
+
+				"SF.Modules.vistrace = {injected = {init = function(instance)\n"
+				"	local env, uwrapEnt, uwrapVec, wrapObj = instance.env, instance.Types.Entity.Unwrap, instance.Types.Vector.Unwrap, instance.WrapObject\n"
+				"	local entMetaTable, vecMetaTbl = instance.Types.Entity, instance.Types.Vector\n"
+				"	env.vistrace = {\n"
+				"		rebuildAccel = function(entities)\n"
+				"			checkPermission(instance, nil, \"vistrace\")\n"
+
+				"			if entities then\n"
+				"				checkLuaType(entities, TYPE_TABLE)\n"
+				"				local unwrapped = {}\n"
+				"				for k, v in pairs(entities) do\n"
+				"					if debug_getmetatable(v) ~= entMetaTable then SF.ThrowTypeError(\"Entity\", SF.GetType(v), 2, \"Entity table entry not an entity.\") end\n"
+				"					unwrapped[k] = uwrapEnt(v)\n"
+				"				end\n"
+				"				entities = unwrapped\n"
+				"			end\n"
+
+				"			vistrace.RebuildAccel(entities)\n"
+				"		end,\n"
+				"		traverseScene = function(origin, direction, tMin, tMax, hitWorld)\n"
+				"			checkPermission(instance, nil, \"vistrace\")\n"
+
+				"			if debug_getmetatable(origin) ~= vecMetaTbl then SF.ThrowTypeError(\"Entity\", SF.GetType(origin), 2) end\n"
+				"			validateVector(origin)\n"
+
+				"			if debug_getmetatable(direction) ~= vecMetaTbl then SF.ThrowTypeError(\"Entity\", SF.GetType(direction), 2) end\n"
+				"			validateVector(direction)\n"
+
+				"			if tMin then checkLuaType(tMin, TYPE_NUMBER) end\n"
+				"			if tMax then checkLuaType(tMax, TYPE_NUMBER) end\n"
+
+				"			if hitWorld then checkLuaType(hitWorld, TYPE_BOOL) end\n"
+
+				"			local hitData = vistrace.TraverseScene(uwrapVec(origin), uwrapVec(direction), tMin, tMax, hitWorld)\n"
+				"			for k, v in pairs(hitData) do // Note that vistrace returns tables, not actual TraceResult structs, so we can just enumerate and wrap rather than using SF.StructWrapper\n"
+				"				hitData[k] = wrapObj(v)\n"
+				"			end\n"
+				"			return hitData\n"
+				"		end\n"
+				"	}\n"
+				"end}}"
+			);
+			LUA->Call(1, 0);
+		}
+	LUA->Pop();
 
 	return 0;
 }
