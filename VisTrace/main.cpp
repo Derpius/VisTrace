@@ -93,11 +93,12 @@ LUA_FUNCTION(RebuildAccel)
 {
 	if (LUA->Top() == 0) LUA->CreateTable();
 	else if (LUA->IsType(1, Type::Nil)) {
-		LUA->Pop();
+		LUA->Pop(LUA->Top());
 		LUA->CreateTable();
+	} else {
+		LUA->CheckType(1, Type::Table);
+		LUA->Pop(LUA->Top() - 1); // Pop all but the table
 	}
-	LUA->CheckType(1, Type::Table);
-	LUA->Pop(LUA->Top() - 1); // Pop all but the table
 
 	// Delete accel
 	accelBuilt = false;
@@ -305,19 +306,32 @@ LUA_FUNCTION(TraverseScene)
 	int numArgs = LUA->Top();
 
 	// Parse arguments
+	LUA->CheckType(1, Type::Vector);
+	LUA->CheckType(2, Type::Vector);
+
 	Vector origin = LUA->GetVector(1);
 	Vector direction = LUA->GetVector(2);
 
 	float tMin = 0.f;
-	if (numArgs > 2 && !LUA->IsType(3, Type::Nil)) tMin = static_cast<float>(LUA->GetNumber(3));
+	if (numArgs > 2 && !LUA->IsType(3, Type::Nil)) {
+		LUA->CheckType(3, Type::Number);
+		tMin = static_cast<float>(LUA->GetNumber(3));
+	}
+	
 	float tMax = FLT_MAX;
-	if (numArgs > 3 && !LUA->IsType(4, Type::Nil)) tMax = static_cast<float>(LUA->GetNumber(4));
+	if (numArgs > 3 && !LUA->IsType(4, Type::Nil)) {
+		LUA->CheckType(4, Type::Number);
+		tMax = static_cast<float>(LUA->GetNumber(4));
+	}
 
 	if (tMin < 0.f) LUA->ArgError(3, "tMin cannot be less than 0");
 	if (tMax <= tMin) LUA->ArgError(4, "tMax must be greater than tMin");
 
 	bool hitWorld = true;
-	if (numArgs > 4 && !LUA->IsType(5, Type::Nil)) hitWorld = LUA->GetBool(5);
+	if (numArgs > 4 && !LUA->IsType(5, Type::Nil)) {
+		LUA->CheckType(5, Type::Bool);
+		hitWorld = LUA->GetBool(5);
+	}
 
 	LUA->Pop(LUA->Top()); // Clear the stack of any items
 
