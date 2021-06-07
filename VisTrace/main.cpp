@@ -438,11 +438,19 @@ LUA_FUNCTION(TraverseScene)
 	LUA->SetField(1, "Contents");
 
 	// Custom members for uvs
-	LUA->PushNumber(0);
-	LUA->SetField(1, "HitU");
+	LUA->CreateTable();
+		LUA->PushNumber(0);
+		LUA->SetField(-2, "u");
+		LUA->PushNumber(0);
+		LUA->SetField(-2, "v");
+	LUA->SetField(1, "HitTexCoord");
 
-	LUA->PushNumber(0);
-	LUA->SetField(1, "HitV");
+	LUA->CreateTable();
+		LUA->PushNumber(0);
+		LUA->SetField(-2, "u");
+		LUA->PushNumber(0);
+		LUA->SetField(-2, "v");
+	LUA->SetField(1, "HitBarycentric");
 
 	// Custom members for tangent and binormal
 	{
@@ -453,6 +461,10 @@ LUA_FUNCTION(TraverseScene)
 		LUA->PushVector(v);
 		LUA->SetField(1, "HitBinormal");
 	}
+
+	// Custom member for the submat id
+	LUA->PushNumber(0);
+	LUA->SetField(1, "SubmatIndex");
 #pragma endregion
 
 	// Perform source trace for world hit
@@ -509,11 +521,19 @@ LUA_FUNCTION(TraverseScene)
 		LUA->Pop();
 
 		// Even though we have no world uvs, set the parameters to 0 anyway to avoid erroring code that would normally use them
-		LUA->PushNumber(0);
-		LUA->SetField(-2, "HitU");
+		LUA->CreateTable();
+			LUA->PushNumber(0);
+			LUA->SetField(-2, "u");
+			LUA->PushNumber(0);
+			LUA->SetField(-2, "v");
+		LUA->SetField(-2, "HitTexCoord");
 
-		LUA->PushNumber(0);
-		LUA->SetField(-2, "HitV");
+		LUA->CreateTable();
+			LUA->PushNumber(0);
+			LUA->SetField(-2, "u");
+			LUA->PushNumber(0);
+			LUA->SetField(-2, "v");
+		LUA->SetField(-2, "HitBarycentric");
 
 		// And same for the other custom members
 		{
@@ -524,6 +544,9 @@ LUA_FUNCTION(TraverseScene)
 			LUA->PushVector(v);
 			LUA->SetField(-2, "HitBinormal");
 		}
+
+		LUA->PushNumber(0);
+		LUA->SetField(-2, "SubmatIndex");
 	}
 
 	// Perform BVH traversal for mesh hit
@@ -592,15 +615,27 @@ LUA_FUNCTION(TraverseScene)
 			LUA->SetField(1, "HitBinormal");
 		}
 
-		// Push custom hitdata values for U and V
+		// Push custom hitdata values for U and V (texture and barycentric)
 		float texU = w * uvs[vertIndex].first + u * uvs[vertIndex + 1Ui64].first + v * uvs[vertIndex + 2Ui64].first;
 		float texV = w * uvs[vertIndex].second + u * uvs[vertIndex + 1Ui64].second + v * uvs[vertIndex + 2Ui64].second;
 
-		LUA->PushNumber(texU);
-		LUA->SetField(1, "HitU");
+		LUA->CreateTable();
+			LUA->PushNumber(texU);
+			LUA->SetField(-2, "u");
+			LUA->PushNumber(texV);
+			LUA->SetField(-2, "v");
+		LUA->SetField(1, "HitTexCoord");
 
-		LUA->PushNumber(texV);
-		LUA->SetField(1, "HitV");
+		LUA->CreateTable();
+			LUA->PushNumber(u);
+			LUA->SetField(-2, "u");
+			LUA->PushNumber(v);
+			LUA->SetField(-2, "v");
+		LUA->SetField(1, "HitBarycentric");
+
+		// Push custom hidata values for submat id
+		LUA->PushNumber(ids[vertIndex].second);
+		LUA->SetField(1, "SubmatIndex");
 	}
 
 	return 1; // Return the table at the top of the stack (this will either be a default TraceResult, a TraceResult populated by BVH intersection, or a TraceResult populated by world intersection)

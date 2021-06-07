@@ -15,10 +15,11 @@ This should be called as **infrequently** as possible, due to the time required 
 `TraverseScene` takes at a minimum an origin and direction for the ray, with optional parameters to set the minimum and maximum hit distances, and whether or not to call `util.TraceLine` internally in order to hit the world (defaults to `true` as that's most likely the expected behaviour, however not hitting world is significantly faster).  
 Attempting to call `TraverseScene` before acceleration structures have been built will throw a Lua error.  
 The return value of this function is a [`TraceResult`](https://wiki.facepunch.com/gmod/Structures/TraceResult) struct, with the following additional contents:
-* `HitU` is the texture coord u at the hit point (always 0 if the world was hit)  
-* `HitV` is the texture coord v at the hit point (always 0 if the world was hit)  
+* `HitTexCoord` is a table representing the texture coord at the hit point (always `{u = 0, v = 0}` if the world was hit)  
+* `HitBarycentric` is a table representing the barycentric coord local to the tri at the hit point (always `{u = 0, v = 0}` if the world was hit)  
 * `HitTangent` is the tangent at the hit point (always Vector(0) if the world was hit, sometimes Vector(0) if not present in MeshVertex structs)  
 * `HitBinormal` is the binormal at the hit point (always Vector(0) if the world was hit, sometimes Vector(0) if not present in MeshVertex structs)  
+* `SubmatIndex` is the id of the submaterial hit (always 0 if world was hit, will be the 0 indexed id used with `Entity:GetSubMaterial`, so add 1 if needed for other uses)  
 
 Note that if a mesh was hit, the majority of the `TraceResult` struct returned will not differ from the default values present in a miss struct, like `FractionLeftSolid`.  
 
