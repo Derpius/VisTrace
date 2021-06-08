@@ -221,14 +221,14 @@ LUA_FUNCTION(RebuildAccel)
 					triangles.push_back(builtTri);
 
 					// in the unlikely event a mesh has no vertex normals, the normal at this point would be 0, 0, 0
-					// if so, replace it with the tri's geometric normal (inverted as source uses anti-clockwise winding and from the looks of it the bvh uses CW, likely to match the "standard" winding)
+					// if so, replace it with the tri's geometric normal
 					size_t numNorms = normals.size();
 					Vector3 n0 = normals[numNorms - 2U], n1 = normals[numNorms - 1U], n2 = normals[numNorms];
 					if (
-						(n0[0] == 0.f && n0[1] == 0.f && n0[2] == 0.f) ||
-						(n1[0] == 0.f && n1[1] == 0.f && n1[2] == 0.f) ||
-						(n2[0] == 0.f && n2[1] == 0.f && n2[2] == 0.f)
-					) normals[numNorms - 2U] = normals[numNorms - 1U] = normals[numNorms] = -builtTri.n;
+						n0[0] == 0.f && n0[1] == 0.f && n0[2] == 0.f &&
+						n1[0] == 0.f && n1[1] == 0.f && n1[2] == 0.f &&
+						n2[0] == 0.f && n2[1] == 0.f && n2[2] == 0.f
+					) normals[numNorms - 2U] = normals[numNorms - 1U] = normals[numNorms] = builtTri.n;
 				}
 			}
 
@@ -617,12 +617,13 @@ LUA_FUNCTION(TraverseScene)
 
 		// Push geometric normal of hit tri
 		{
-			Vector3 n = -triangles[hit->primitive_index].n; // Inverted for winding differences
+			Vector3 n = triangles[hit->primitive_index].n;
+			normalise(n);
+
 			Vector v;
 			v.x = n[0];
 			v.y = n[1];
 			v.z = n[2];
-
 			LUA->PushVector(v);
 			LUA->SetField(1, "HitNormalGeometric");
 		}
