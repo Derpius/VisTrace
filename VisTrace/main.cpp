@@ -41,49 +41,12 @@ void printLua(ILuaBase* inst, const char text[])
 	inst->Pop();
 }
 
-void dumpStack(ILuaBase* inst)
+void normalise(Vector3& v)
 {
-	std::string toPrint = "";
-
-	int max = inst->Top();
-	for (int i = 1; i <= max; i++) {
-		toPrint += "[" + std::to_string(i) + "] ";
-		switch (inst->GetType(i)) {
-		case Type::Angle:
-			toPrint += "Angle: (" + std::to_string((int)inst->GetAngle(i).x) + ", " + std::to_string((int)inst->GetAngle(i).y) + ", " + std::to_string((int)inst->GetAngle(i).z) + ")";
-			break;
-		case Type::Vector:
-			toPrint += "Vector: (" + std::to_string(inst->GetVector(i).x) + ", " + std::to_string(inst->GetVector(i).y) + ", " + std::to_string(inst->GetVector(i).z) + ")";
-			break;
-		case Type::Bool:
-			toPrint += "Bool: " + std::to_string(inst->GetBool(i));
-			break;
-		case Type::Function:
-			toPrint += "Function";
-			break;
-		case Type::Nil:
-			toPrint += "nil";
-			break;
-		case Type::Number:
-			toPrint += "Number: " + std::to_string(inst->GetNumber(i));
-			break;
-		case Type::String:
-			toPrint += "String: " + (std::string)inst->GetString(i);
-			break;
-		case Type::Table:
-			toPrint += "Table";
-			break;
-		case Type::Matrix:
-			toPrint += "VMatrix";
-			break;
-		default:
-			toPrint += "Unknown";
-			break;
-		}
-		toPrint += "\n";
-	}
-
-	printLua(inst, toPrint.c_str());
+	float length = sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+	v[0] /= length;
+	v[1] /= length;
+	v[2] /= length;
 }
 
 /*
@@ -596,6 +559,8 @@ LUA_FUNCTION(TraverseScene)
 		float u = intersection.u, v = intersection.v, w = (1.f - u - v);
 		{
 			Vector3 normal = w * normals[vertIndex] + u * normals[vertIndex + 1U] + v * normals[vertIndex + 2U];
+			normalise(normal);
+
 			Vector v;
 			v.x = normal[0];
 			v.y = normal[1];
@@ -608,6 +573,9 @@ LUA_FUNCTION(TraverseScene)
 		{
 			Vector3 tangent = w * tangents[vertIndex] + u * tangents[vertIndex + 1U] + v * tangents[vertIndex + 2U];
 			Vector3 binormal = w * binormals[vertIndex] + u * binormals[vertIndex + 1U] + v * binormals[vertIndex + 2U];
+			if (tangent[0] != 0.f || tangent[1] != 0.f || tangent[2] != 0.f) normalise(tangent);
+			if (binormal[0] != 0.f || binormal[1] != 0.f || binormal[2] != 0.f) normalise(binormal);
+
 			Vector v;
 
 			v.x = tangent[0];
