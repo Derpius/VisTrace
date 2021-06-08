@@ -170,18 +170,18 @@ LUA_FUNCTION(RebuildAccel)
 			LUA->GetTable(-2);
 
 			// Set submesh id
-			id.second = j - 1Ui64;
+			id.second = j - 1U;
 
 			// Iterate over tris
 			LUA->GetField(-1, "triangles");
 			LUA->CheckType(-1, Type::Table);
 			size_t numVerts = LUA->ObjLen();
-			if (numVerts % 3Ui64 != 0Ui64) LUA->ThrowError("Number of triangles is not a multiple of 3");
+			if (numVerts % 3U != 0U) LUA->ThrowError("Number of triangles is not a multiple of 3");
 
 			Vector3 tri[3];
 			for (size_t j = 0; j < numVerts; j++) {
 				// Get vertex
-				LUA->PushNumber(j + 1Ui64);
+				LUA->PushNumber(j + 1U);
 				LUA->GetTable(-2);
 
 				// Get and transform position
@@ -189,7 +189,7 @@ LUA_FUNCTION(RebuildAccel)
 				Vector pos = LUA->GetVector();
 				LUA->Pop();
 
-				size_t triIndex = j % 3Ui64;
+				size_t triIndex = j % 3U;
 				tri[triIndex] = Vector3(
 					pos.x * transform[0][0] + pos.y * transform[0][1] + pos.z * transform[0][2] + transform[0][3],
 					pos.x * transform[1][0] + pos.y * transform[1][1] + pos.z * transform[1][2] + transform[1][3],
@@ -253,19 +253,19 @@ LUA_FUNCTION(RebuildAccel)
 				LUA->Pop();
 
 				// If this was the last vert in the tri, emplace back
-				if (triIndex == 2Ui64) {
-					Triangle tri(tri[0], tri[1], tri[2]);
-					triangles.push_back(tri);
+				if (triIndex == 2U) {
+					Triangle builtTri(tri[0], tri[1], tri[2]);
+					triangles.push_back(builtTri);
 
 					// in the unlikely event a mesh has no vertex normals, the normal at this point would be 0, 0, 0
 					// if so, replace it with the tri's geometric normal (inverted as source uses anti-clockwise winding and from the looks of it the bvh uses CW, likely to match the "standard" winding)
 					size_t numNorms = normals.size();
-					Vector3 n0 = normals[numNorms - 2Ui64], n1 = normals[numNorms - 1Ui64], n2 = normals[numNorms];
+					Vector3 n0 = normals[numNorms - 2U], n1 = normals[numNorms - 1U], n2 = normals[numNorms];
 					if (
-						n0[0] == 0.f || n0[1] == 0.f || n0[2] == 0.f ||
-						n1[0] == 0.f || n1[1] == 0.f || n1[2] == 0.f ||
-						n2[0] == 0.f || n2[1] == 0.f || n2[2] == 0.f
-					) normals[numNorms - 2Ui64] = normals[numNorms - 1Ui64] = normals[numNorms] = -tri.n;
+						(n0[0] == 0.f && n0[1] == 0.f && n0[2] == 0.f) ||
+						(n1[0] == 0.f && n1[1] == 0.f && n1[2] == 0.f) ||
+						(n2[0] == 0.f && n2[1] == 0.f && n2[2] == 0.f)
+					) normals[numNorms - 2U] = normals[numNorms - 1U] = normals[numNorms] = -builtTri.n;
 				}
 			}
 
@@ -587,7 +587,7 @@ LUA_FUNCTION(TraverseScene)
 
 		float u = intersection.u, v = intersection.v, w = (1.f - u - v);
 		{
-			Vector3 normal = w * normals[vertIndex] + u * normals[vertIndex + 1Ui64] + v * normals[vertIndex + 2Ui64];
+			Vector3 normal = w * normals[vertIndex] + u * normals[vertIndex + 1U] + v * normals[vertIndex + 2U];
 			Vector v;
 			v.x = normal[0];
 			v.y = normal[1];
@@ -598,8 +598,8 @@ LUA_FUNCTION(TraverseScene)
 
 		// Push custom hitdata values for tangent and binormal
 		{
-			Vector3 tangent = w * tangents[vertIndex] + u * tangents[vertIndex + 1Ui64] + v * tangents[vertIndex + 2Ui64];
-			Vector3 binormal = w * binormals[vertIndex] + u * binormals[vertIndex + 1Ui64] + v * binormals[vertIndex + 2Ui64];
+			Vector3 tangent = w * tangents[vertIndex] + u * tangents[vertIndex + 1U] + v * tangents[vertIndex + 2U];
+			Vector3 binormal = w * binormals[vertIndex] + u * binormals[vertIndex + 1U] + v * binormals[vertIndex + 2U];
 			Vector v;
 
 			v.x = tangent[0];
@@ -616,8 +616,8 @@ LUA_FUNCTION(TraverseScene)
 		}
 
 		// Push custom hitdata values for U and V (texture and barycentric)
-		float texU = w * uvs[vertIndex].first + u * uvs[vertIndex + 1Ui64].first + v * uvs[vertIndex + 2Ui64].first;
-		float texV = w * uvs[vertIndex].second + u * uvs[vertIndex + 1Ui64].second + v * uvs[vertIndex + 2Ui64].second;
+		float texU = w * uvs[vertIndex].first + u * uvs[vertIndex + 1U].first + v * uvs[vertIndex + 2U].first;
+		float texV = w * uvs[vertIndex].second + u * uvs[vertIndex + 1U].second + v * uvs[vertIndex + 2U].second;
 		texU -= floor(texU);
 		texV -= floor(texV);
 
