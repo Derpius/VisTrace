@@ -19,6 +19,7 @@ The return value of this function is a [`TraceResult`](https://wiki.facepunch.co
 * `HitBarycentric` is a table representing the barycentric coord local to the tri at the hit point (always `{u = 0, v = 0}` if the world was hit)  
 * `HitTangent` is the tangent at the hit point (always Vector(0) if the world was hit, sometimes Vector(0) if not present in MeshVertex structs)  
 * `HitBinormal` is the binormal at the hit point (always Vector(0) if the world was hit, sometimes Vector(0) if not present in MeshVertex structs)  
+* `HitNormalGeometric` is the geometric normal of the hit (same as `HitNormal` if world was hit)  
 * `SubmatIndex` is the id of the submaterial hit (always 0 if world was hit, will be the 0 indexed id used with `Entity:GetSubMaterial`, so add 1 if needed for other uses)  
 
 Note that if a mesh was hit, the majority of the `TraceResult` struct returned will not differ from the default values present in a miss struct, like `FractionLeftSolid`.  

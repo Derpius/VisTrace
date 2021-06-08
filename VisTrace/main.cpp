@@ -452,7 +452,7 @@ LUA_FUNCTION(TraverseScene)
 		LUA->SetField(-2, "v");
 	LUA->SetField(1, "HitBarycentric");
 
-	// Custom members for tangent and binormal
+	// Custom members for tangent binormal, and geometric normal
 	{
 		Vector v;
 		v.x = v.y = v.z = 0.f;
@@ -460,6 +460,8 @@ LUA_FUNCTION(TraverseScene)
 		LUA->SetField(1, "HitTangent");
 		LUA->PushVector(v);
 		LUA->SetField(1, "HitBinormal");
+		LUA->PushVector(v);
+		LUA->SetField(1, "HitNormalGeometric");
 	}
 
 	// Custom member for the submat id
@@ -543,6 +545,12 @@ LUA_FUNCTION(TraverseScene)
 			LUA->SetField(-2, "HitTangent");
 			LUA->PushVector(v);
 			LUA->SetField(-2, "HitBinormal");
+		}
+
+		// Copy HitNormal to HitNormalGeometric
+		{
+			LUA->GetField(-1, "HitNormal");
+			LUA->SetField(-2, "HitNormalGeometric");
 		}
 
 		LUA->PushNumber(0);
@@ -638,6 +646,18 @@ LUA_FUNCTION(TraverseScene)
 		// Push custom hidata values for submat id
 		LUA->PushNumber(ids[vertIndex].second);
 		LUA->SetField(1, "SubmatIndex");
+
+		// Push geometric normal of hit tri
+		{
+			Vector3 n = -triangles[hit->primitive_index].n; // Inverted for winding differences
+			Vector v;
+			v.x = n[0];
+			v.y = n[1];
+			v.z = n[2];
+
+			LUA->PushVector(v);
+			LUA->SetField(1, "HitNormalGeometric");
+		}
 	}
 
 	return 1; // Return the table at the top of the stack (this will either be a default TraceResult, a TraceResult populated by BVH intersection, or a TraceResult populated by world intersection)
