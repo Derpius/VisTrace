@@ -3,13 +3,16 @@
 
 #include "GarrysMod/Lua/Interface.h"
 
-#include <bvh/bvh.hpp>
-#include <bvh/vector.hpp>
-#include <bvh/triangle.hpp>
-#include <bvh/ray.hpp>
-#include <bvh/sweep_sah_builder.hpp>
-#include <bvh/single_ray_traverser.hpp>
-#include <bvh/primitive_intersectors.hpp>
+#include "bvh/bvh.hpp"
+#include "bvh/vector.hpp"
+#include "bvh/triangle.hpp"
+#include "bvh/ray.hpp"
+#include "bvh/sweep_sah_builder.hpp"
+#include "bvh/single_ray_traverser.hpp"
+#include "bvh/primitive_intersectors.hpp"
+
+#include "glm/glm.hpp"
+#include "glm/gtc/quaternion.hpp"
 
 using namespace GarrysMod::Lua;
 using Vector3 = bvh::Vector3<float>;
@@ -49,6 +52,21 @@ void normalise(Vector3& v)
 	v[2] /= length;
 }
 
+// Skins a vertex to its bones
+Vector3 transformToBone(
+	const Vector& vec,
+	const std::vector<glm::mat4>& bones, const std::vector<glm::mat4>& binds,
+	const std::vector<std::pair<size_t, float>>& weights,
+	const bool angleOnly = false
+)
+{
+	glm::vec4 final(0.f);
+	for (size_t i = 0U; i < weights.size(); i++) {
+		final += bones[weights[i].first] * bones[weights[i].first] * glm::vec4(vec.x, vec.y, vec.z, angleOnly ? 0.f : 1.f) * weights[i].second;
+	}
+	return Vector3(final.x, final.y, final.z);
+}
+
 /*
 	table[Entity] entities = {}
 */
@@ -79,9 +97,9 @@ LUA_FUNCTION(RebuildAccel)
 
 	// Iterate over entities
 	size_t numEntities = LUA->ObjLen();
-	for (size_t i = 1; i <= numEntities; i++) {
+	for (size_t entIndex = 1; entIndex <= numEntities; entIndex++) {
 		// Get entity
-		LUA->PushNumber(i);
+		LUA->PushNumber(entIndex);
 		LUA->GetTable(1);
 		LUA->CheckType(-1, Type::Entity);
 
@@ -91,31 +109,52 @@ LUA_FUNCTION(RebuildAccel)
 			LUA->GetField(-1, "EntIndex");
 			LUA->Push(-2);
 			LUA->Call(1, 1);
-			double entId = LUA->GetNumber(); // Get as a double so after we check it's positive a static cast to unsigned int wont overflow rather than using int
+			double entId = LUA->CheckNumber(); // Get as a double so after we check it's positive a static cast to unsigned int wont overflow rather than using int
 			LUA->Pop();
 
 			if (entId < 0.0) LUA->ThrowError("Entity ID is less than 0");
 			id.first = entId;
 		}
 
-		// Get transform VMatrix
-		LUA->GetField(-1, "GetWorldTransformMatrix");
+		// Cache bone transforms
+		// Make sure the bone transforms are updated and the bones themselves are valid
+		LUA->GetField(-1, "SetupBones");
+		LUA->Push(-2);
+		LUA->Call(1, 0);
+
+		// Get number of bones and make sure the value is valid
+		LUA->GetField(-1, "GetBoneCount");
 		LUA->Push(-2);
 		LUA->Call(1, 1);
-		float transform[3][4];
-		for (unsigned char row = 0; row < 3; row++) {
-			for (unsigned char col = 0; col < 4; col++) {
-				LUA->GetField(-1, "GetField");
-				LUA->Push(-2);
-				LUA->PushNumber(row + 1);
-				LUA->PushNumber(col + 1);
-				LUA->Call(3, 1);
-
-				transform[row][col] = LUA->GetNumber();
-				LUA->Pop();
-			}
-		}
+		int numBones = LUA->CheckNumber();
 		LUA->Pop();
+		if (numBones < 1) LUA->ThrowError("Entity has invalid bones");
+
+		// For each bone, cache the transform
+		auto bones = std::vector<glm::mat4>(numBones);
+		for (int boneIndex = 0; boneIndex < numBones; boneIndex++) {
+			LUA->GetField(-1, "GetBoneMatrix");
+			LUA->Push(-2);
+			LUA->PushNumber(boneIndex);
+			LUA->Call(2, 1);
+
+			glm::mat4 transform = glm::mat4();
+			for (unsigned char row = 0; row < 4; row++) {
+				for (unsigned char col = 0; col < 4; col++) {
+					LUA->GetField(-1, "GetField");
+					LUA->Push(-2);
+					LUA->PushNumber(row + 1);
+					LUA->PushNumber(col + 1);
+					LUA->Call(3, 1);
+
+					transform[col][row] = LUA->CheckNumber();
+					LUA->Pop();
+				}
+			}
+			LUA->Pop();
+
+			bones[boneIndex] = transform;
+		}
 
 		// Iterate over meshes
 		LUA->PushSpecial(SPECIAL_GLOB);
@@ -124,16 +163,42 @@ LUA_FUNCTION(RebuildAccel)
 			LUA->GetField(-4, "GetModel");
 			LUA->Push(-5);
 			LUA->Call(1, 1);
-		LUA->Call(1, 1);
+		LUA->Call(1, 2);
+
+		// Cache bind pose
+		auto bindBones = std::vector<glm::mat4>(numBones);
+		for (int boneIndex = 0; boneIndex < numBones; boneIndex++) {
+			LUA->PushNumber(boneIndex);
+			LUA->GetTable(-2);
+			LUA->GetField(-1, "matrix");
+
+			glm::mat4 transform = glm::mat4();
+			for (unsigned char row = 0; row < 4; row++) {
+				for (unsigned char col = 0; col < 4; col++) {
+					LUA->GetField(-1, "GetField");
+					LUA->Push(-2);
+					LUA->PushNumber(row + 1);
+					LUA->PushNumber(col + 1);
+					LUA->Call(3, 1);
+
+					transform[col][row] = LUA->CheckNumber();
+					LUA->Pop();
+				}
+			}
+
+			bindBones[boneIndex] = transform;
+			LUA->Pop(2);
+		}
+		LUA->Pop();
 
 		size_t numSubmeshes = LUA->ObjLen();
-		for (size_t j = 1; j <= numSubmeshes; j++) {
+		for (size_t meshIndex = 1; meshIndex <= numSubmeshes; meshIndex++) {
 			// Get mesh
-			LUA->PushNumber(j);
+			LUA->PushNumber(meshIndex);
 			LUA->GetTable(-2);
 
 			// Set submesh id
-			id.second = j - 1U;
+			id.second = meshIndex - 1U;
 
 			// Iterate over tris
 			LUA->GetField(-1, "triangles");
@@ -142,22 +207,34 @@ LUA_FUNCTION(RebuildAccel)
 			if (numVerts % 3U != 0U) LUA->ThrowError("Number of triangles is not a multiple of 3");
 
 			Vector3 tri[3];
-			for (size_t j = 0; j < numVerts; j++) {
+			for (size_t vertIndex = 0; vertIndex < numVerts; vertIndex++) {
 				// Get vertex
-				LUA->PushNumber(j + 1U);
+				LUA->PushNumber(vertIndex + 1U);
 				LUA->GetTable(-2);
+
+				// Get weights
+				LUA->GetField(-1, "weights");
+				auto weights = std::vector<std::pair<size_t, float>>();
+				{
+					size_t numWeights = LUA->ObjLen();
+					for (size_t weightIndex = 1U; weightIndex <= numWeights; weightIndex++) {
+						LUA->PushNumber(weightIndex);
+						LUA->GetTable(-2);
+						LUA->GetField(-1, "bone");
+						LUA->GetField(-2, "weight");
+						weights.emplace_back(LUA->CheckNumber(-2), LUA->CheckNumber());
+						LUA->Pop(3);
+					}
+				}
+				LUA->Pop();
 
 				// Get and transform position
 				LUA->GetField(-1, "pos");
 				Vector pos = LUA->GetVector();
 				LUA->Pop();
 
-				size_t triIndex = j % 3U;
-				tri[triIndex] = Vector3(
-					pos.x * transform[0][0] + pos.y * transform[0][1] + pos.z * transform[0][2] + transform[0][3],
-					pos.x * transform[1][0] + pos.y * transform[1][1] + pos.z * transform[1][2] + transform[1][3],
-					pos.x * transform[2][0] + pos.y * transform[2][1] + pos.z * transform[2][2] + transform[2][3]
-				);
+				size_t triIndex = vertIndex % 3U;
+				tri[triIndex] = transformToBone(pos, bones, bindBones, weights);
 
 				// Get and transform normal, tangent, and binormal
 				LUA->GetField(-1, "normal");
@@ -168,11 +245,7 @@ LUA_FUNCTION(RebuildAccel)
 					normal.x = normal.y = normal.z = 0.f;
 				}
 				LUA->Pop();
-				normals.push_back(Vector3(
-					normal.x * transform[0][0] + normal.y * transform[0][1] + normal.z * transform[0][2],
-					normal.x * transform[1][0] + normal.y * transform[1][1] + normal.z * transform[1][2],
-					normal.x * transform[2][0] + normal.y * transform[2][1] + normal.z * transform[2][2]
-				));
+				normals.push_back(transformToBone(normal, bones, bindBones, weights, true));
 
 				LUA->GetField(-1, "tangent");
 				Vector tangent;
@@ -182,11 +255,7 @@ LUA_FUNCTION(RebuildAccel)
 					tangent.x = tangent.y = tangent.z = 0.f;
 				}
 				LUA->Pop();
-				tangents.push_back(Vector3(
-					tangent.x * transform[0][0] + tangent.y * transform[0][1] + tangent.z * transform[0][2],
-					tangent.x * transform[1][0] + tangent.y * transform[1][1] + tangent.z * transform[1][2],
-					tangent.x * transform[2][0] + tangent.y * transform[2][1] + tangent.z * transform[2][2]
-				));
+				tangents.push_back(transformToBone(normal, bones, bindBones, weights, true));
 
 				LUA->GetField(-1, "binormal");
 				Vector binormal;
@@ -196,11 +265,7 @@ LUA_FUNCTION(RebuildAccel)
 					binormal.x = binormal.y = binormal.z = 0.f;
 				}
 				LUA->Pop();
-				binormals.push_back(Vector3(
-					binormal.x * transform[0][0] + binormal.y * transform[0][1] + binormal.z * transform[0][2],
-					binormal.x * transform[1][0] + binormal.y * transform[1][1] + binormal.z * transform[1][2],
-					binormal.x * transform[2][0] + binormal.y * transform[2][1] + binormal.z * transform[2][2]
-				));
+				binormals.push_back(transformToBone(normal, bones, bindBones, weights, true));
 
 				// Get uvs
 				LUA->GetField(-1, "u");
@@ -687,10 +752,10 @@ GMOD_MODULE_OPEN()
 				"		traverseScene = function(origin, direction, tMin, tMax, hitWorld)\n"
 				"			checkPermission(instance, nil, \"vistrace\")\n"
 
-				"			if debug_getmetatable(origin) ~= vecMetaTbl then SF.ThrowTypeError(\"Entity\", SF.GetType(origin), 2) end\n"
+				"			if debug_getmetatable(origin) ~= vecMetaTbl then SF.ThrowTypeError(\"Vector\", SF.GetType(origin), 2) end\n"
 				"			validateVector(origin)\n"
 
-				"			if debug_getmetatable(direction) ~= vecMetaTbl then SF.ThrowTypeError(\"Entity\", SF.GetType(direction), 2) end\n"
+				"			if debug_getmetatable(direction) ~= vecMetaTbl then SF.ThrowTypeError(\"Vector\", SF.GetType(direction), 2) end\n"
 				"			validateVector(direction)\n"
 
 				"			if tMin then checkLuaType(tMin, TYPE_NUMBER) end\n"
