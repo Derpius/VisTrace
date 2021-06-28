@@ -52,6 +52,66 @@ void normalise(Vector3& v)
 	v[2] /= length;
 }
 
+/*
+
+local function transformToBone(vec, bones, weights, binds)
+	local final = Vector()
+	for _, v in pairs(weights) do
+		if not bones[v.bone] or not binds[v.bone] then continue end
+		final = final + bones[v.bone] * binds[v.bone].matrix * vec * v.weight
+	end
+	return final
+end
+
+local mat = material.load("phoenix_storms/stripes")
+local holos = {}
+
+for k, v in pairs(find.byClass("prop_ragdoll")) do
+	local bones = {}
+	for i = 0, v:getBoneCount() - 1 do
+		bones[i] = v:getBoneMatrix(i)// * v:getMatrix():getInverse()
+	end
+
+	local meshes, binds = mesh.getModelMeshes(v:getModel())
+	for _, submesh in pairs(meshes) do
+		for _, vert in pairs(submesh.triangles) do
+			vert.pos = transformToBone(vert.pos, bones, vert.weights, binds, v)
+			vert.weights = nil
+		end
+
+		local meshObj = mesh.createFromTable(submesh.triangles)
+		local i = #holos + 1
+		holos[i] = holograms.create(Vector(0), Angle(0), "models/hunter/misc/sphere025x025.mdl", Vector(1))
+		holos[i]:setRenderBounds(Vector(-30000), Vector(30000))
+		holos[i]:setMesh(meshObj)
+		holos[i]:setMeshMaterial(mat)
+	end
+end
+
+for k, v in pairs(find.byClass("prop_physics")) do
+	local bones = {}
+	for i = 0, v:getBoneCount() - 1 do
+		bones[i] = v:getBoneMatrix(i)// * v:getMatrix():getInverse()
+	end
+
+	local meshes, binds = mesh.getModelMeshes(v:getModel())
+	for _, submesh in pairs(meshes) do
+		for _, vert in pairs(submesh.triangles) do
+			vert.pos = transformToBone(vert.pos, bones, vert.weights, binds, v)
+			vert.weights = nil
+		end
+
+		local meshObj = mesh.createFromTable(submesh.triangles)
+		local i = #holos + 1
+		holos[i] = holograms.create(Vector(0), Angle(0), "models/hunter/misc/sphere025x025.mdl", Vector(1))
+		holos[i]:setRenderBounds(Vector(-30000), Vector(30000))
+		holos[i]:setMesh(meshObj)
+		holos[i]:setMeshMaterial(mat)
+	end
+end
+
+*/
+
 // Skins a vertex to its bones
 Vector3 transformToBone(
 	const Vector& vec,
@@ -62,7 +122,7 @@ Vector3 transformToBone(
 {
 	glm::vec4 final(0.f);
 	for (size_t i = 0U; i < weights.size(); i++) {
-		final += bones[weights[i].first] * bones[weights[i].first] * glm::vec4(vec.x, vec.y, vec.z, angleOnly ? 0.f : 1.f) * weights[i].second;
+		final += bones[weights[i].first] * binds[weights[i].first] * glm::vec4(vec.x, vec.y, vec.z, angleOnly ? 0.f : 1.f) * weights[i].second;
 	}
 	return Vector3(final.x, final.y, final.z);
 }
@@ -777,6 +837,7 @@ GMOD_MODULE_OPEN()
 		}
 	LUA->Pop();
 
+	printLua(LUA, "VisTrace Loaded!");
 	return 0;
 }
 
