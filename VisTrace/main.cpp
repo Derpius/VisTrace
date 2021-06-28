@@ -103,6 +103,13 @@ LUA_FUNCTION(RebuildAccel)
 		LUA->GetTable(1);
 		LUA->CheckType(-1, Type::Entity);
 
+		// Make sure entity is valid
+		LUA->GetField(-1, "IsValid");
+		LUA->Push(-2);
+		LUA->Call(1, 1);
+		if (!LUA->GetBool()) LUA->ThrowError("Attempted to build accel from an invalid entity");
+		LUA->Pop(); // Pop the bool
+
 		// Get entity id
 		std::pair<unsigned int, unsigned int> id;
 		{
@@ -164,6 +171,10 @@ LUA_FUNCTION(RebuildAccel)
 			LUA->Push(-5);
 			LUA->Call(1, 1);
 		LUA->Call(1, 2);
+
+		// Make sure both return values are present and valid
+		LUA->CheckType(-1, Type::Table);
+		LUA->CheckType(-2, Type::Table);
 
 		// Cache bind pose
 		auto bindBones = std::vector<glm::mat4>(numBones);
