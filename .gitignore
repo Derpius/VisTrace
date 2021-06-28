@@ -37,5 +37,5 @@
 # Build Directories
 Debug
 Release
-VisTrace/Debug
-VisTrace/Release
+Module/Debug
+Module/Release

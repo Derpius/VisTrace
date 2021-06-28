@@ -104,7 +104,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\glm;$(SolutionDir)libs\gmod-module-base\include;$(SolutionDir)libs\bvh\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Module\libs\glm;$(SolutionDir)Module\libs\gmod-module-base\include;$(SolutionDir)Module\libs\bvh\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -121,7 +121,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\glm;$(SolutionDir)libs\gmod-module-base\include;$(SolutionDir)libs\bvh\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Module\libs\glm;$(SolutionDir)Module\libs\gmod-module-base\include;$(SolutionDir)Module\libs\bvh\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -138,7 +138,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\glm;$(SolutionDir)libs\gmod-module-base\include;$(SolutionDir)libs\bvh\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Module\libs\glm;$(SolutionDir)Module\libs\gmod-module-base\include;$(SolutionDir)Module\libs\bvh\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -155,7 +155,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\glm;$(SolutionDir)libs\gmod-module-base\include;$(SolutionDir)libs\bvh\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Module\libs\glm;$(SolutionDir)Module\libs\gmod-module-base\include;$(SolutionDir)Module\libs\bvh\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
