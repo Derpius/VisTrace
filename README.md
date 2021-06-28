@@ -21,6 +21,7 @@ The return value of this function is a [`TraceResult`](https://wiki.facepunch.co
 * `HitBinormal` is the binormal at the hit point (always Vector(0) if the world was hit, sometimes Vector(0) if not present in MeshVertex structs)  
 * `HitNormalGeometric` is the geometric normal of the hit (same as `HitNormal` if world was hit)  
 * `SubmatIndex` is the id of the submaterial hit (always 0 if world was hit, will be the 0 indexed id used with `Entity:GetSubMaterial`, so add 1 if needed for other uses)  
+* `EntIndex` is the id of the entity hit (this is required as an entity can be built into the accel struct, deleted, and replaced with a new entity at the same id, which now correctly marks the ent as null in the `TraceResult`, but you can still get the original id to index a table of custom data you might have)  
 
 Note that if a mesh was hit, the majority of the `TraceResult` struct returned will not differ from the default values present in a miss struct, like `FractionLeftSolid`.  
 

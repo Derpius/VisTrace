@@ -312,7 +312,12 @@ LUA_FUNCTION(RebuildAccel)
 			LUA->Pop(2);
 		}
 
-		LUA->Pop(3);
+		LUA->Pop(3); // Pop meshes, util, and _G tables
+
+		// Mark the entity as present in accel (for ent id verification later)
+		LUA->PushBool(true);
+		LUA->SetField(-2, "vistrace_mark");
+		LUA->Pop(); // Pop entity
 	}
 	LUA->Pop(); // Pop entity table
 
@@ -506,6 +511,10 @@ LUA_FUNCTION(TraverseScene)
 	// Custom member for the submat id
 	LUA->PushNumber(0);
 	LUA->SetField(1, "SubmatIndex");
+
+	// EntIndex field allows the user to lookup entity data that they've cached themselves, even if the hit entity is now invalid
+	LUA->PushNumber(-1);
+	LUA->SetField(1, "EntIndex");
 #pragma endregion
 
 	// Perform source trace for world hit
@@ -594,6 +603,9 @@ LUA_FUNCTION(TraverseScene)
 
 		LUA->PushNumber(0);
 		LUA->SetField(-2, "SubmatIndex");
+
+		LUA->PushNumber(0);
+		LUA->SetField(-2, "EntIndex");
 	}
 
 	// Perform BVH traversal for mesh hit
@@ -606,12 +618,30 @@ LUA_FUNCTION(TraverseScene)
 		if (hitWorld) LUA->Pop(3);
 
 		// Populate TraceResult struct with what we can
-		LUA->PushSpecial(SPECIAL_GLOB);
-		LUA->GetField(-1, "Entity");
+		{
+			LUA->PushSpecial(SPECIAL_GLOB);
+			LUA->GetField(-1, "Entity");
+			LUA->PushNumber(ids[vertIndex].first);
+			LUA->Call(1, 1);
+
+			LUA->GetField(-1, "vistrace_mark");
+			bool markedEnt = LUA->GetBool();
+			LUA->Pop();
+
+			if (!markedEnt) {
+				LUA->Pop(); // Pop the invalid entity (not necessarily an invalid entity, but not the same as what was at that index when accel was built)
+				LUA->GetField(-1, "Entity");
+				LUA->PushNumber(-1);
+				LUA->Call(1, 1);
+			}
+
+			LUA->SetField(1, "Entity");
+
+			LUA->Pop(); // Pop _G
+		}
+
 		LUA->PushNumber(ids[vertIndex].first);
-		LUA->Call(1, 1);
-		LUA->SetField(1, "Entity");
-		LUA->Pop();
+		LUA->SetField(1, "EntIndex");
 
 		LUA->PushNumber(intersection.t / tMax);
 		LUA->SetField(1, "Fraction");
