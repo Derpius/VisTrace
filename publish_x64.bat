@@ -1,0 +1,1 @@
+"D:\Steam\steamapps\common\GarrysMod\bin\gmpublish.exe" create -addon "Release\x64\Addon.gma" -icon "Release\x64\Icon.jpg"
