@@ -341,6 +341,7 @@ LUA_FUNCTION(RebuildAccel)
 	float tMin = 0
 	float tMax = FLT_MAX
 	bool hitWorld = true
+	bool hitWater = false
 
 	returns modified TraceResult struct (https://wiki.facepunch.com/gmod/Structures/TraceResult)
 */
@@ -369,6 +370,12 @@ LUA_FUNCTION(TraverseScene)
 	if (numArgs > 4 && !LUA->IsType(5, Type::Nil)) {
 		LUA->CheckType(5, Type::Bool);
 		hitWorld = LUA->GetBool(5);
+	}
+
+	bool hitWater = false;
+	if (numArgs > 5 && !LUA->IsType(6, Type::Nil)) {
+		LUA->CheckType(6, Type::Bool);
+		hitWater = LUA->GetBool(6);
 	}
 
 	LUA->Pop(LUA->Top()); // Clear the stack of any items
@@ -518,7 +525,7 @@ LUA_FUNCTION(TraverseScene)
 #pragma endregion
 
 	// Perform source trace for world hit
-	if (hitWorld) {
+	if (hitWorld || hitWater) {
 		// Get TraceLine function
 		LUA->PushSpecial(SPECIAL_GLOB);
 		LUA->GetField(-1, "util");
@@ -550,7 +557,7 @@ LUA_FUNCTION(TraverseScene)
 		LUA->CreateTable();
 		LUA->SetField(-2, "filter");
 
-		LUA->PushNumber(16395 /* MASK_SOLID_BRUSHONLY */);
+		LUA->PushNumber((hitWorld ? 16395 : 0 /* MASK_SOLID_BRUSHONLY */) | (hitWater ? 16432 : 0 /* MASK_WATER */));
 		LUA->SetField(-2, "mask");
 
 		LUA->PushNumber(0);
@@ -746,7 +753,7 @@ GMOD_MODULE_OPEN()
 			LUA->SetField(-2, "RebuildAccel");
 			LUA->PushCFunction(TraverseScene);
 			LUA->SetField(-2, "TraverseScene");
-			LUA->PushString("v0.3.0");
+			LUA->PushString("v0.3.2");
 			LUA->SetField(-2, "ModuleVersion");
 		LUA->SetField(-2, "vistrace");
 	LUA->Pop();

@@ -12,7 +12,7 @@ VisTrace provides 2 functions in the global scope:
 `RebuildAccel` takes an optional sequential numerical table of entities to build mesh data from, and creates the BVH acceleration structure.  
 This should be called as **infrequently** as possible, due to the time required to build an acceleration structure (i.e. once per frame for a tracer).  
 
-`TraverseScene` takes at a minimum an origin and direction for the ray, with optional parameters to set the minimum and maximum hit distances, and whether or not to call `util.TraceLine` internally in order to hit the world (defaults to `true` as that's most likely the expected behaviour, however not hitting world is significantly faster).  
+`TraverseScene` takes at a minimum an origin and direction for the ray, with optional parameters to set the minimum and maximum hit distances, and whether or not to call `util.TraceLine` internally in order to hit the world and/or water (`hitWorld` defaults to `true` and `hitWater` to `false` as that's most likely the expected behaviour, however not hitting world/water is significantly faster).  
 Attempting to call `TraverseScene` before acceleration structures have been built will throw a Lua error.  
 The return value of this function is a [`TraceResult`](https://wiki.facepunch.com/gmod/Structures/TraceResult) struct, with the following additional contents:
 * `HitTexCoord` is a table representing the texture coord at the hit point (always `{u = 0, v = 0}` if the world was hit)  

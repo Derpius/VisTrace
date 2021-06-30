@@ -61,8 +61,9 @@ return function(instance)
 	-- @param number? tMin Minimum distance of the ray (basically offset from start along direction)
 	-- @param number? tMax Maximum distance of the ray
 	-- @param boolean? hitWorld Enables calling util.TraceLine internally to hit the world (default: true)
+	-- @param boolean? hitWater Enables calling util.TraceLine internally to hit water (default: false)
 	-- @return table Result of the traversal as a TraceResult struct with some extra values (see https://github.com/100PXSquared/VisTrace#usage)
-	function vistrace_library.traverseScene(origin, direction, tMin, tMax, hitWorld)
+	function vistrace_library.traverseScene(origin, direction, tMin, tMax, hitWorld, hitWater)
 		canRun()
 
 		if debug_getmetatable(origin) ~= vecMetaTbl then SF.ThrowTypeError("Vector", SF.GetType(origin), 2) end
@@ -74,8 +75,9 @@ return function(instance)
 		if tMin then checkLuaType(tMin, TYPE_NUMBER) end
 		if tMax then checkLuaType(tMax, TYPE_NUMBER) end
 		if hitWorld then checkLuaType(hitWorld, TYPE_BOOL) end
+		if hitWater then checkLuaType(hitWater, TYPE_BOOL) end
 
-		local hitData = vistrace.TraverseScene(uwrapVec(origin), uwrapVec(direction), tMin, tMax, hitWorld)
+		local hitData = vistrace.TraverseScene(uwrapVec(origin), uwrapVec(direction), tMin, tMax, hitWorld, hitWater)
 		for k, v in pairs(hitData) do -- Note that vistrace returns tables, not actual TraceResult structs, so we can just enumerate and wrap rather than using SF.StructWrapper
 			if k == "HitTexCoord" or k == "HitBarycentric" then hitData[k] = v
 			else hitData[k] = wrapObj(v) end
