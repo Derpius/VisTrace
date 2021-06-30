@@ -173,8 +173,8 @@ LUA_FUNCTION(RebuildAccel)
 		LUA->Call(1, 2);
 
 		// Make sure both return values are present and valid
-		LUA->CheckType(-1, Type::Table);
-		LUA->CheckType(-2, Type::Table);
+		if (!LUA->IsType(-2, Type::Table)) LUA->ThrowError("Entity model invalid");
+		if (!LUA->IsType(-1, Type::Table)) LUA->ThrowError("Entity model valid, but bind pose not returned (this likely means you're running an older version of GMod)");
 
 		// Cache bind pose
 		auto bindBones = std::vector<glm::mat4>(numBones);
