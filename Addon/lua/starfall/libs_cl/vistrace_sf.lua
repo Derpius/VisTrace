@@ -27,7 +27,7 @@ return function(instance)
 	local uwrapEnt, uwrapVec, wrapObj = instance.Types.Entity.Unwrap, instance.Types.Vector.Unwrap, instance.WrapObject
 	local entMetaTable, vecMetaTbl = instance.Types.Entity, instance.Types.Vector
 
-	local function checkIfWeCanRun()
+	local function canRun()
 		checkPermission(instance, nil, "vistrace")
 		if not vistrace then SF.Throw("VisTrace binary module not installed (get it here https://github.com/100PXSquared/VisTrace/releases)", 3) end
 
@@ -42,7 +42,7 @@ return function(instance)
 	--- Note that only 1 of these is loaded into memory at a time and is used by every traversal, calling this will erase the previous state
 	-- @param table? entities Sequential list of entities to build the acceleration structure from (or nil to clear the structure)
 	function vistrace_library.rebuildAccel(entities)
-		checkIfWeCanRun()
+		canRun()
 		if entities then
 			checkLuaType(entities, TYPE_TABLE)
 			local unwrapped = {}
@@ -63,7 +63,7 @@ return function(instance)
 	-- @param boolean? hitWorld Enables calling util.TraceLine internally to hit the world (default: true)
 	-- @return table Result of the traversal as a TraceResult struct with some extra values (see https://github.com/100PXSquared/VisTrace#usage)
 	function vistrace_library.traverseScene(origin, direction, tMin, tMax, hitWorld)
-		checkIfWeCanRun()
+		canRun()
 
 		if debug_getmetatable(origin) ~= vecMetaTbl then SF.ThrowTypeError("Vector", SF.GetType(origin), 2) end
 		validateVector(origin)
