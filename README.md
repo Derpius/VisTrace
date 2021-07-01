@@ -7,7 +7,7 @@ Simply get the latest binary for your architecture from releases, and place it i
 ## Usage
 VisTrace provides 2 functions in the global scope:
 * `vistrace.RebuildAccel(table entities = {})`
-* `vistrace.TraverseScene(Vector origin, Vector direction, float tMin = 0, float tMax = FLT_MAX, hitWorld = true)`.  
+* `vistrace.TraverseScene(Vector origin, Vector direction, float tMin = 0, float tMax = FLT_MAX, hitWorld = true, hitWater = false)`.  
   
 `RebuildAccel` takes an optional sequential numerical table of entities to build mesh data from, and creates the BVH acceleration structure.  
 This should be called as **infrequently** as possible, due to the time required to build an acceleration structure (i.e. once per frame for a tracer).  
