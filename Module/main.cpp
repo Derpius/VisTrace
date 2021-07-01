@@ -266,7 +266,7 @@ LUA_FUNCTION(RebuildAccel)
 					tangent.x = tangent.y = tangent.z = 0.f;
 				}
 				LUA->Pop();
-				tangents.push_back(transformToBone(normal, bones, bindBones, weights, true));
+				tangents.push_back(transformToBone(tangent, bones, bindBones, weights, true));
 
 				LUA->GetField(-1, "binormal");
 				Vector binormal;
@@ -276,7 +276,7 @@ LUA_FUNCTION(RebuildAccel)
 					binormal.x = binormal.y = binormal.z = 0.f;
 				}
 				LUA->Pop();
-				binormals.push_back(transformToBone(normal, bones, bindBones, weights, true));
+				binormals.push_back(transformToBone(binormal, bones, bindBones, weights, true));
 
 				// Get uvs
 				LUA->GetField(-1, "u");
