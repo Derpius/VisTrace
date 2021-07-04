@@ -145,17 +145,19 @@ LUA_FUNCTION(RebuildAccel)
 			LUA->PushNumber(boneIndex);
 			LUA->Call(2, 1);
 
-			glm::mat4 transform = glm::mat4();
-			for (unsigned char row = 0; row < 4; row++) {
-				for (unsigned char col = 0; col < 4; col++) {
-					LUA->GetField(-1, "GetField");
-					LUA->Push(-2);
-					LUA->PushNumber(row + 1);
-					LUA->PushNumber(col + 1);
-					LUA->Call(3, 1);
+			glm::mat4 transform = glm::identity<glm::mat4>();
+			if (LUA->IsType(-1, Type::Matrix)) {
+				for (unsigned char row = 0; row < 4; row++) {
+					for (unsigned char col = 0; col < 4; col++) {
+						LUA->GetField(-1, "GetField");
+						LUA->Push(-2);
+						LUA->PushNumber(row + 1);
+						LUA->PushNumber(col + 1);
+						LUA->Call(3, 1);
 
-					transform[col][row] = LUA->CheckNumber();
-					LUA->Pop();
+						transform[col][row] = LUA->CheckNumber();
+						LUA->Pop();
+					}
 				}
 			}
 			LUA->Pop();
@@ -183,22 +185,24 @@ LUA_FUNCTION(RebuildAccel)
 			LUA->GetTable(-2);
 			LUA->GetField(-1, "matrix");
 
-			glm::mat4 transform = glm::mat4();
-			for (unsigned char row = 0; row < 4; row++) {
-				for (unsigned char col = 0; col < 4; col++) {
-					LUA->GetField(-1, "GetField");
-					LUA->Push(-2);
-					LUA->PushNumber(row + 1);
-					LUA->PushNumber(col + 1);
-					LUA->Call(3, 1);
+			glm::mat4 transform = glm::identity<glm::mat4>();
+			if (LUA->IsType(-1, Type::Matrix)) {
+				for (unsigned char row = 0; row < 4; row++) {
+					for (unsigned char col = 0; col < 4; col++) {
+						LUA->GetField(-1, "GetField");
+						LUA->Push(-2);
+						LUA->PushNumber(row + 1);
+						LUA->PushNumber(col + 1);
+						LUA->Call(3, 1);
 
-					transform[col][row] = LUA->CheckNumber();
-					LUA->Pop();
+						transform[col][row] = LUA->CheckNumber();
+						LUA->Pop();
+					}
 				}
 			}
+			LUA->Pop(2);
 
 			bindBones[boneIndex] = transform;
-			LUA->Pop(2);
 		}
 		LUA->Pop();
 
