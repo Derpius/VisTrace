@@ -130,8 +130,16 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 		LUA->Call(1, 2);
 
 		// Make sure both return values are present and valid
-		if (!LUA->IsType(-2, Type::Table)) LUA->ThrowError("Entity model invalid");
-		if (!LUA->IsType(-1, Type::Table)) LUA->ThrowError("Entity model valid, but bind pose not returned (this likely means you're running an older version of GMod)");
+		if (/*!LUA->IsType(-2, Type::Table)*/ true) {
+			LUA->Pop(2); // Pop the 2 nils
+
+			LUA->GetField(-1, "GetModelMeshes");
+			LUA->PushString("models/error.mdl");
+			LUA->Call(1, 2);
+
+			if (!LUA->IsType(-2, Type::Table)) LUA->ThrowError("Entity model invalid and error model not available"); // This would only ever happen if the user's game is corrupt
+		}
+		if (!LUA->IsType(-1, Type::Table)) LUA->ThrowError("Entity bind pose not returned (this likely means you're running an older version of GMod)");
 
 		// Cache bind pose
 		auto bindBones = std::vector<glm::mat4>(numBones);
@@ -295,7 +303,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 void AccelStruct::Traverse(ILuaBase* LUA)
 {
-	if (!accelBuilt) LUA->ThrowError("Unable to perform traversal, acceleration structure not built (use vistrace.RebuildAccel to build one)");
+	if (!accelBuilt) LUA->ThrowError("Unable to perform traversal, acceleration structure invalid (use AccelStruct:Rebuild to rebuild it)");
 	int numArgs = LUA->Top();
 
 	// Parse arguments
