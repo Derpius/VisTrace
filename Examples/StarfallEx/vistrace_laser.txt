@@ -69,7 +69,7 @@ if CLIENT then
         local cls = ent:getClass()
         return (cls == "prop_physics" or cls == "prop_ragdoll") and isValid(ent:getOwner())
     end)
-    vistrace.rebuildAccel(ents)
+    local accel = vistrace.createAccel(ents)
     
     local lastChipPos = chip:getPos()
     local networking = false
@@ -89,7 +89,7 @@ if CLIENT then
             end
             for length = 1, maxLength do
                 local function buildSegment()
-                    local hit = vistrace.traverseScene(origin, direction)
+                    local hit = accel:traverse(origin, direction)
                     if not hit.Hit then return end
                     
                     local holoPos, holoAng, holoScale = (origin + hit.HitPos) / 2, direction:getAngle(), Vector(scale[1] * origin:getDistance(hit.HitPos), scale[2], scale[3])
