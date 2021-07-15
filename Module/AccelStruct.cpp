@@ -130,7 +130,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 		LUA->Call(1, 2);
 
 		// Make sure both return values are present and valid
-		if (/*!LUA->IsType(-2, Type::Table)*/ true) {
+		if (!LUA->IsType(-2, Type::Table)) {
 			LUA->Pop(2); // Pop the 2 nils
 
 			LUA->GetField(-1, "GetModelMeshes");
