@@ -14,7 +14,7 @@ local debug_getmetatable = debug.getmetatable
 SF.Permissions.registerPrivilege("vistrace", "VisTrace", "Allows the user to build acceleration structures and traverse scenes", { client = {default = 1} })
 
 --- Constructs and traverses a BVH acceleration structure on the CPU allowing for high speed vismesh intersections
---- Requires the binary module installed to use, which you can get here https://github.com/100PXSquared/VisTrace/releases
+--- Requires the binary module installed to use, which you can get here https://github.com/Derpius/VisTrace/releases
 -- @name vistrace
 -- @class library
 -- @libtbl vistrace_library
@@ -44,7 +44,7 @@ return function(instance)
 	local function canRun()
 		checkPermission(instance, nil, "vistrace")
 		if not vistrace then
-			SF.Throw("The required version (v0.4.x) of the VisTrace binary module is not installed (get it here https://github.com/100PXSquared/VisTrace/releases)", 3)
+			SF.Throw("The required version (v0.4.x) of the VisTrace binary module is not installed (get it here https://github.com/Derpius/VisTrace/releases)", 3)
 		end
 	end
 
