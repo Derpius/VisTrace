@@ -1,1 +1,1 @@
-"D:\Steam\steamapps\common\GarrysMod\bin\gmad.exe" create -folder "Addon" -out "Release\Addon.gma"
+"D:\Steam\steamapps\common\GarrysMod\bin\gmad.exe" create -folder "Addon" -out "Release\VisTrace.gma"

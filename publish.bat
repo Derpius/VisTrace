@@ -1,1 +1,1 @@
-"D:\Steam\steamapps\common\GarrysMod\bin\gmpublish.exe" update -addon "Release\Addon.gma" -id "2531198548" -changes %1
+"D:\Steam\steamapps\common\GarrysMod\bin\gmpublish.exe" update -addon "Release\VisTrace.gma" -id "2531198548" -changes %1
