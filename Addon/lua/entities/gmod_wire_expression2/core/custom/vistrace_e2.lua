@@ -71,12 +71,20 @@ net.Receive("VisTrace.E2.Net", function(len, plr)
 		local instance = chip.vistrace
 		for i = 1, numResults do
 			local e2tbl = newE2Table()
+
+			local rayBuffer = instance.rayBuffer
+			local rayBufferPos = (i - 1) * RAY_STRIDE
+			e2tbl.s.RayOrigin = { rayBuffer[rayBufferPos + 1], rayBuffer[rayBufferPos + 2], rayBuffer[rayBufferPos + 3] }
+			e2tbl.stypes.RayOrigin = "v"
+			e2tbl.s.RayDirection = { rayBuffer[rayBufferPos + 4], rayBuffer[rayBufferPos + 5], rayBuffer[rayBufferPos + 6] }
+			e2tbl.stypes.RayDirection = "v"
+
 			if not net_ReadBool() then
-				e2tbl.size = 1
+				e2tbl.size = 3
 				e2tbl.n.Hit = 0
 				e2tbl.ntypes.Hit = "n"
 			else
-				e2tbl.size = 10
+				e2tbl.size = 12
 
 				e2tbl.s.Hit = 1
 				e2tbl.stypes.Hit = "n"

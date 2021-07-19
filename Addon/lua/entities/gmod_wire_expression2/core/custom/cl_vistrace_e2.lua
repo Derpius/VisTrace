@@ -107,7 +107,11 @@ desc("vtSendBuffer(nn)", "Send the current ray buffer")
 desc("vtReceiveClk()", "Returns true if the chip was executed by a result netmsg")
 desc("vtReadResult()", [[
 Reads a result from the buffer as a table with the following keys:
-Hit: number (if 0 no other keys will be present)
+Hit: number
+RayOrigin: vector
+RayDirection: vector
+
+The following keys will only be present if the result is a hit:
 Entity: entity
 HitPos: vector
 HitNormal: vector
