@@ -50,8 +50,12 @@ if (first() & ->DS) {
             
             if (Result["Hit", number]) {
                 Normal = Result["HitNormal", vector]:normalized()
-                DS[Ptr - NumRays] = rgb2digi((Normal / 2 + 1) * 100, 2)
+            } else {
+                rangerHitEntities(0)
+                RD = rangerOffset(100000, Result["RayOrigin", vector], Result["RayDirection", vector])
+                Normal = RD:hitNormal()
             }
+            DS[Ptr - NumRays] = rgb2digi((Normal / 2 + 1) * 100, 2)
             
             NumRays -= 1
             if (NumRays <= 0) {
