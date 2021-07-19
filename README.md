@@ -3,7 +3,7 @@ VisTrace allows tracing visual meshes in Garry's Mod at high speeds on the CPU u
 
 ## Installation
 Simply get the latest binary for your architecture from releases, and place it into `garrysmod/lua/bin`, then `require("VisTrace-vX.X")` in GLua.  
-For a more user friendly experience, get the [Steam Workshop addon](https://steamcommunity.com/sharedfiles/filedetails/?id=2531198548), which will automatically require the applicable version of the module, and provide integration with other addons (currently only [StarfallEx](https://github.com/thegrb93/StarfallEx)).  
+For a more user friendly experience, get the [Steam Workshop addon](https://steamcommunity.com/sharedfiles/filedetails/?id=2531198548), which will automatically require the applicable version of the module, and provide integration with other addons (currently [StarfallEx](https://github.com/thegrb93/StarfallEx) and [Expression 2](https://github.com/wiremod/wire)).  
 
 ## Usage
 VisTrace provides a function in the global scope in order to create an acceleration structure object:
@@ -30,6 +30,8 @@ The return value of this method is a [`TraceResult`](https://wiki.facepunch.com/
 Note that if a mesh was hit, the majority of the `TraceResult` struct returned will not differ from the default values present in a miss struct, like `FractionLeftSolid`.  
 
 ## Example Code
+For more detailed examples, see the [Examples](https://github.com/Derpius/VisTrace/tree/master/Examples) folder.  
+
 This will load the module, build the acceleration structure from all `prop_physics` entities, get an entity to use as a hit marker, and traverse the scene each frame placing the hit marker at the trace hit position if applicable:
 ```lua
 if SERVER then error("VisTrace can only be used on the client!") end
