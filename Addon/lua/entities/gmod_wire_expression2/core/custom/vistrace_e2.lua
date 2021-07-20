@@ -31,39 +31,33 @@ local _Entity, _Vector = Entity, Vector
 	Net Message Scheduler
 ]]
 local rayBufferNetQueue = {}
-local rayBufferNetQueueLength = 0
-local lastSendTime = 0
-local waitingForResponse = false
 hook.Add("Think", "VisTrace.E2.NetScheduler", function()
-	if waitingForResponse then return end
+	for chipId, buffer in pairs(rayBufferNetQueue) do
+		if not buffer.waiting then
+			local msg = buffer[1]
+			local curTime = _CurTime()
+			if msg and curTime - buffer.lastSendTime > NET_MSG_RATE:GetFloat() then
+				buffer.waiting = true
+				buffer.lastSendTime = curTime
 
-	local msg = rayBufferNetQueue[1]
-	local curTime = _CurTime()
-	if msg and curTime - lastSendTime > NET_MSG_RATE:GetFloat() then
-		waitingForResponse = true
-		lastSendTime = curTime
+				net_Start("VisTrace.E2.Net")
+				net_WriteBool(msg.hitWorld)
+				net_WriteBool(msg.hitWater)
+				net_WriteUInt(chipId, 12)
+				net_WriteUInt(msg.numRays, 11)
+				for i = 1, msg.numRays * RAY_STRIDE do
+					net_WriteFloat(msg.buffer[i])
+				end
 
-		net_Start("VisTrace.E2.Net")
-		net_WriteBool(msg.hitWorld)
-		net_WriteBool(msg.hitWater)
-		net_WriteUInt(msg.chip.entity:EntIndex(), 12)
-		net_WriteUInt(msg.numRays, 11)
-		for i = 1, msg.numRays * RAY_STRIDE do
-			net_WriteFloat(msg.buffer[i])
+				net_Send(msg.chip.player)
+			end
 		end
-
-		msg.sent = true
-		net_Send(msg.chip.player)
 	end
 end)
 net.Receive("VisTrace.E2.Net", function(len, plr)
-	local chip = _Entity(net_ReadUInt(12))
-	if not chip:IsValid() or not chip:GetClass() == "gmod_wire_expression2" or chip.player ~= plr then return end
-
-	if not rayBufferNetQueue[1].sent then
-		waitingForResponse = false
-		return
-	end
+	local chipId = net_ReadUInt(12)
+	local chip = _Entity(chipId)
+	if not chip:IsValid() or not chip:GetClass() == "gmod_wire_expression2" or chip.player ~= plr or not rayBufferNetQueue[chipId] then return end
 
 	if net_ReadBool() then
 		local numResults = net_ReadUInt(11)
@@ -143,9 +137,9 @@ net.Receive("VisTrace.E2.Net", function(len, plr)
 	chip:Execute()
 	chip.vistrace.vtReceiveClk = nil
 
-	table_remove(rayBufferNetQueue, 1)
-	waitingForResponse = false
-	rayBufferNetQueueLength = rayBufferNetQueueLength - 1
+	table_remove(rayBufferNetQueue[chipId], 1)
+	rayBufferNetQueue[chipId].waiting = false
+	rayBufferNetQueue[chipId].length = rayBufferNetQueue[chipId].length - 1
 end)
 
 local function canBuffer(instance)
@@ -161,24 +155,24 @@ registerCallback("construct", function(self)
 		activeNetMsg = false
 	}
 
+	local index = self.entity:EntIndex()
+	rayBufferNetQueue[index] = {
+		length = 0,
+		waiting = false,
+		lastSendTime = 0
+	}
+
 	net_Start("VisTrace.E2.Build")
-	net_WriteUInt(self.entity:EntIndex(), 12)
+	net_WriteUInt(index, 12)
 	net_Send(self.player)
 end)
 
 registerCallback("destruct", function(self)
-	local i = 1
-	while i <= rayBufferNetQueueLength do
-		if rayBufferNetQueue[i].chip.entity == self.entity then
-			table_remove(rayBufferNetQueue, i)
-			rayBufferNetQueueLength = rayBufferNetQueueLength - 1
-		else
-			i = i + 1
-		end
-	end
+	local index = self.entity:EntIndex()
+	rayBufferNetQueue[index] = nil
 
 	net_Start("VisTrace.E2.Destruct")
-	net_WriteUInt(self.entity:EntIndex(), 12)
+	net_WriteUInt(index, 12)
 	net_Send(self.player)
 end)
 
@@ -222,8 +216,9 @@ local function sendBuffer(self, hitWorld, hitWater)
 	instance.numResults = 0
 	instance.resultBuffer = {}
 
-	rayBufferNetQueueLength = rayBufferNetQueueLength + 1
-	rayBufferNetQueue[rayBufferNetQueueLength] = {
+	local index = self.entity:EntIndex()
+	rayBufferNetQueue[index].length = rayBufferNetQueue[index].length + 1
+	rayBufferNetQueue[index][rayBufferNetQueue[index].length] = {
 		chip = self,
 		numRays = instance.numRays,
 		buffer = instance.rayBuffer,
