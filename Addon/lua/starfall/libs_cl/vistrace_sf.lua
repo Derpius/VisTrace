@@ -86,7 +86,6 @@ return function(instance)
 		if hitWorld then checkLuaType(hitWorld, TYPE_BOOL) end
 		if hitWater then checkLuaType(hitWater, TYPE_BOOL) end
 
-		PrintTable(debug.getmetatable(uwrapAccel(self)))
 		local hitData = uwrapAccel(self):Traverse(uwrapVec(origin), uwrapVec(direction), tMin, tMax, hitWorld, hitWater)
 		for k, v in pairs(hitData) do -- Note that vistrace returns tables, not actual TraceResult structs, so we can just enumerate and wrap rather than using SF.StructWrapper
 			if k == "HitTexCoord" or k == "HitBarycentric" then hitData[k] = v
