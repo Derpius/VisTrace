@@ -161,10 +161,6 @@ registerCallback("construct", function(self)
 		waiting = false,
 		lastSendTime = 0
 	}
-
-	net_Start("VisTrace.E2.Build")
-	net_WriteUInt(index, 12)
-	net_Send(self.player)
 end)
 
 registerCallback("destruct", function(self)

@@ -21,6 +21,7 @@ if (first() & ->DS) {
     DS[1048573] = RESY
     DS[1048575] = 1 # Apply changes
     
+	vtRebuildAccel()
     runOnTick(1)
 } elseif (tickClk()) {
     if (Mode == 0) { # Buffer rays
