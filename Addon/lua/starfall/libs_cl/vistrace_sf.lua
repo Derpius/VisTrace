@@ -15,12 +15,14 @@ SF.Permissions.registerPrivilege("vistrace", "VisTrace", "Allows the user to bui
 
 --- Constructs and traverses a BVH acceleration structure on the CPU allowing for high speed vismesh intersections
 --- Requires the binary module installed to use, which you can get here https://github.com/Derpius/VisTrace/releases
+-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 -- @name vistrace
 -- @class library
 -- @libtbl vistrace_library
 SF.RegisterLibrary("vistrace")
 
 --- VisTrace acceleration structure
+-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 -- @name AccelStruct
 -- @class type
 -- @libtbl accelstruct_methods
@@ -49,6 +51,7 @@ return function(instance)
 	end
 
 	--- Rebuild the acceleration structure
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param table? entities Sequential list of entities to rebuild the acceleration structure with (or nil to clear the structure)
 	function accelstruct_methods:rebuild(entities)
 		canRun()
@@ -65,6 +68,7 @@ return function(instance)
 	end
 
 	--- Traverses the acceleration structure
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Vector origin Ray origin
 	-- @param Vector direction Ray direction
 	-- @param number? tMin Minimum distance of the ray (basically offset from start along direction)
@@ -95,7 +99,9 @@ return function(instance)
 	end
 
 	--- Creates an acceleration struction (AccelStruct)
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param table? entities Sequential list of entities to build the acceleration structure from (or nil to create an empty structure)
+	-- @return AccelStruct Built acceleration structure
 	function vistrace_library.createAccel(entities)
 		canRun()
 		if entities then
