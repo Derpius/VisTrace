@@ -39,3 +39,6 @@ Debug
 Release
 Module/Debug
 Module/Release
+
+package.bat
+publish.bat
