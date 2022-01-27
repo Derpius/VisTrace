@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 #include <string>
 
 #include "GarrysMod/Lua/Interface.h"
@@ -16,6 +17,10 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"
 
+#include "filesystem.h"
+
+#include "VTFParser.h"
+
 using Vector3 = bvh::Vector3<float>;
 using Triangle = bvh::Triangle<float>;
 using Ray = bvh::Ray<float>;
@@ -26,20 +31,27 @@ using Traverser = bvh::SingleRayTraverser<BVH>;
 
 class AccelStruct
 {
-	bool accelBuilt;
-	BVH accel;
-	Intersector* pIntersector;
-	Traverser* pTraverser;
+	IFileSystem* mpFileSystem;
 
-	std::vector<Triangle> triangles;
-	std::vector<Vector3> normals;
-	std::vector<Vector3> tangents;
-	std::vector<Vector3> binormals;
-	std::vector<std::pair<float, float>> uvs;
-	std::vector<std::pair<unsigned int, unsigned int>> ids; // first: entity id, second: submesh id
+	bool mAccelBuilt;
+	BVH mAccel;
+	Intersector* mpIntersector;
+	Traverser* mpTraverser;
+
+	std::vector<Triangle> mTriangles;
+	std::vector<Vector3> mNormals;
+	std::vector<Vector3> mTangents;
+	std::vector<Vector3> mBinormals;
+	std::vector<std::pair<float, float>> mUvs;
+
+	std::vector<std::pair<unsigned int, unsigned int>> mIds; // first: entity id, second: submesh id
+	std::unordered_map<unsigned int, size_t> mOffsets; // Offset for each entity id into per-submesh tables
+
+	std::unordered_map<std::string, VTFTexture*> mTexCache;
+	std::vector<std::string> mMaterials;
 
 public:
-	AccelStruct();
+	AccelStruct(IFileSystem* pFileSystem);
 	~AccelStruct();
 
 	void PopulateAccel(GarrysMod::Lua::ILuaBase* LUA);

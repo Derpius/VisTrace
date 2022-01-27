@@ -240,7 +240,7 @@ e2function number vtReceiveClk()
 	local instance = self.entity.vistrace
 	if instance.vtReceiveClk then
 		if instance.notInstalled then
-			_error("A VisTrace binary module version compatible with the server's addon version (v0.4.x) is not installed")
+			_error("A VisTrace binary module version compatible with the server's addon version (v0.5.x) is not installed")
 		end
 		return 1
 	end

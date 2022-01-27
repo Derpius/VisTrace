@@ -1,19 +1,18 @@
 #include "Utils.h"
 
-#include <string>
+using namespace GarrysMod::Lua;
 
-void printLua(GarrysMod::Lua::ILuaBase* LUA, const char* text)
+void printLua(ILuaBase* LUA, const char* text)
 {
-	LUA->PushSpecial(GarrysMod::Lua::SPECIAL_GLOB);
+	LUA->PushSpecial(SPECIAL_GLOB);
 	LUA->GetField(-1, "print");
 	LUA->PushString(text);
 	LUA->Call(1, 0);
 	LUA->Pop();
 }
 
-void dumpStack(GarrysMod::Lua::ILuaBase* LUA)
+void dumpStack(ILuaBase* LUA)
 {
-	using namespace GarrysMod::Lua;
 	std::string toPrint = "";
 
 	int max = LUA->Top();
@@ -52,4 +51,30 @@ void dumpStack(GarrysMod::Lua::ILuaBase* LUA)
 	}
 
 	printLua(LUA, toPrint.c_str());
+}
+
+std::string getMaterialString(ILuaBase* LUA, const std::string& key)
+{
+	std::string val = "";
+	LUA->GetField(-1, "GetString");
+	LUA->Push(-2);
+	LUA->PushString(key.c_str());
+	LUA->Call(2, 1);
+	if (LUA->IsType(-1, Type::String)) val = LUA->GetString();
+	LUA->Pop();
+
+	return val;
+}
+
+bool checkMaterialFlags(ILuaBase* LUA, const MaterialFlags flags)
+{
+	unsigned int flagVal = 0;
+	LUA->GetField(-1, "GetInt");
+	LUA->Push(-2);
+	LUA->PushString("$flags");
+	LUA->Call(2, 1);
+	if (LUA->IsType(-1, Type::Number)) flagVal = static_cast<unsigned int>(LUA->GetNumber());
+	LUA->Pop();
+
+	return (flagVal & static_cast<unsigned int>(flags)) == static_cast<unsigned int>(flags);
 }

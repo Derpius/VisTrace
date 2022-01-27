@@ -1,10 +1,13 @@
-[submodule "Module/libs/gmod-module-base"]
-	path = Module/libs/gmod-module-base
-	url = https://github.com/Facepunch/gmod-module-base.git
-	branch = development
 [submodule "Module/libs/glm"]
 	path = Module/libs/glm
 	url = https://github.com/g-truc/glm.git
 [submodule "Module/libs/bvh"]
 	path = Module/libs/bvh
 	url = https://github.com/madmann91/bvh.git
+[submodule "Module/libs/garrysmod_common"]
+	path = Module/libs/garrysmod_common
+	url = https://github.com/danielga/garrysmod_common.git
+	branch = x86-64-support-sourcesdk
+[submodule "Module/libs/VTFParser"]
+	path = Module/libs/VTFParser
+	url = https://github.com/Derpius/VTFParser.git

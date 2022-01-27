@@ -1,9 +1,15 @@
 #include "AccelStruct.h"
 #include "Utils.h"
 
+#include "filesystem.h"
+#include "GarrysMod/InterfacePointers.hpp"
+
+#include "VTFParser.h"
+
 using namespace GarrysMod::Lua;
 
 static int AccelStruct_id;
+static IFileSystem* pFileSystem;
 
 LUA_FUNCTION(AccelStruct_gc)
 {
@@ -23,7 +29,7 @@ LUA_FUNCTION(AccelStruct_gc)
 */
 LUA_FUNCTION(CreateAccel)
 {
-	AccelStruct* pAccelStruct = new AccelStruct();
+	AccelStruct* pAccelStruct = new AccelStruct(pFileSystem);
 
 	if (LUA->Top() == 0) LUA->CreateTable();
 	else if (LUA->IsType(1, Type::Nil)) {
@@ -90,6 +96,9 @@ LUA_FUNCTION(AccelStruct_tostring)
 
 GMOD_MODULE_OPEN()
 {
+	pFileSystem = InterfacePointers::FileSystem();
+	if (pFileSystem == nullptr) LUA->ThrowError("Failed to get filesystem");
+
 	AccelStruct_id = LUA->CreateMetaTable("AccelStruct");
 		LUA->Push(-1);
 		LUA->SetField(-2, "__index");

@@ -37,8 +37,7 @@
 # Build Directories
 Debug
 Release
-Module/Debug
-Module/Release
+Module/projects
 
 package.bat
 publish.bat
