@@ -39,10 +39,10 @@ class AccelStruct
 	Traverser* mpTraverser;
 
 	std::vector<Triangle> mTriangles;
-	std::vector<Vector3> mNormals;
-	std::vector<Vector3> mTangents;
-	std::vector<Vector3> mBinormals;
-	std::vector<std::pair<float, float>> mUvs;
+	std::vector<glm::vec3> mNormals;
+	std::vector<glm::vec3> mTangents;
+	std::vector<glm::vec3> mBinormals;
+	std::vector<glm::vec2> mUvs;
 
 	std::vector<std::pair<unsigned int, unsigned int>> mIds; // first: entity id, second: submesh id
 	std::unordered_map<unsigned int, size_t> mOffsets; // Offset for each entity id into per-submesh tables

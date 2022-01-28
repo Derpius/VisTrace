@@ -78,3 +78,40 @@ bool checkMaterialFlags(ILuaBase* LUA, const MaterialFlags flags)
 
 	return (flagVal & static_cast<unsigned int>(flags)) == static_cast<unsigned int>(flags);
 }
+
+glm::vec3 transformToBone(
+	const Vector& vec,
+	const std::vector<glm::mat4>& bones, const std::vector<glm::mat4>& binds,
+	const std::vector<std::pair<size_t, float>>& weights,
+	const bool angleOnly
+)
+{
+	glm::vec4 final(0.f);
+	for (size_t i = 0U; i < weights.size(); i++) {
+		final += bones[weights[i].first] * binds[weights[i].first] * glm::vec4(vec.x, vec.y, vec.z, angleOnly ? 0.f : 1.f) * weights[i].second;
+	}
+	return glm::vec3(final);
+}
+
+bool readTexture(const std::string& path, IFileSystem* pFileSystem, VTFTexture** ppTextureOut)
+{
+	FileHandle_t file = pFileSystem->Open(("materials/" + path + ".vtf").c_str(), "rb", "GAME");
+
+	uint32_t filesize = pFileSystem->Size(file);
+	uint8_t* data = reinterpret_cast<uint8_t*>(malloc(filesize));
+	if (data == nullptr) return false;
+
+	pFileSystem->Read(data, filesize, file);
+	pFileSystem->Close(file);
+
+	VTFTexture* pTexture = new VTFTexture{ data, filesize };
+	free(data);
+
+	if (!pTexture->IsValid()) {
+		delete pTexture;
+		return false;
+	}
+
+	*ppTextureOut = pTexture;
+	return true;
+}

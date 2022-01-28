@@ -3,57 +3,12 @@
 
 using namespace GarrysMod::Lua;
 
-// Skins a vertex to its bones
-Vector3 transformToBone(
-	const Vector& vec,
-	const std::vector<glm::mat4>& bones, const std::vector<glm::mat4>& binds,
-	const std::vector<std::pair<size_t, float>>& weights,
-	const bool angleOnly = false
-)
-{
-	glm::vec4 final(0.f);
-	for (size_t i = 0U; i < weights.size(); i++) {
-		final += bones[weights[i].first] * binds[weights[i].first] * glm::vec4(vec.x, vec.y, vec.z, angleOnly ? 0.f : 1.f) * weights[i].second;
-	}
-	return Vector3(final.x, final.y, final.z);
-}
-
 void normalise(Vector3& v)
 {
 	float length = sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 	v[0] /= length;
 	v[1] /= length;
 	v[2] /= length;
-}
-
-/// <summary>
-/// Read a VTF texture at the given path
-/// </summary>
-/// <param name="path">Path to texture (without materials/ and .vtf)</param>
-/// <param name="pFileSystem">Pointer to virtual file system</param>
-/// <param name="ppTextureOut">Pointer to pointer to texture for passing the newly read texture out</param>
-/// <returns>Whether the read was successful or not</returns>
-bool readTexture(const std::string& path, IFileSystem* pFileSystem, VTFTexture** ppTextureOut)
-{
-	FileHandle_t file = pFileSystem->Open(("materials/" + path + ".vtf").c_str(), "rb", "GAME");
-
-	uint32_t filesize = pFileSystem->Size(file);
-	uint8_t* data = reinterpret_cast<uint8_t*>(malloc(filesize));
-	if (data == nullptr) return false;
-
-	pFileSystem->Read(data, filesize, file);
-	pFileSystem->Close(file);
-
-	VTFTexture* pTexture = new VTFTexture{ data, filesize };
-	free(data);
-
-	if (!pTexture->IsValid()) {
-		delete pTexture;
-		return false;
-	}
-
-	*ppTextureOut = pTexture;
-	return true;
 }
 
 AccelStruct::AccelStruct(IFileSystem* pFileSystem)
@@ -91,10 +46,10 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 	// Redefine containers
 	mTriangles = std::vector<Triangle>();
-	mNormals = std::vector<Vector3>();
-	mTangents = std::vector<Vector3>();
-	mBinormals = std::vector<Vector3>();
-	mUvs = std::vector<std::pair<float, float>>();
+	mNormals = std::vector<glm::vec3>();
+	mTangents = std::vector<glm::vec3>();
+	mBinormals = std::vector<glm::vec3>();
+	mUvs = std::vector<glm::vec2>();
 
 	mIds = std::vector<std::pair<unsigned int, unsigned int>>();
 	mOffsets = std::unordered_map<unsigned int, size_t>();
@@ -263,42 +218,37 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 				// Get and transform position
 				LUA->GetField(-1, "pos");
-				Vector pos = LUA->GetVector();
-				LUA->Pop();
 
 				size_t triIndex = vertIndex % 3U;
-				tri[triIndex] = transformToBone(pos, bones, bindBones, weights);
+				glm::vec3 pos = transformToBone(LUA->GetVector(), bones, bindBones, weights);
+				tri[triIndex] = Vector3{ pos.x, pos.y, pos.z };
+
+				LUA->Pop();
 
 				// Get and transform normal, tangent, and binormal
 				LUA->GetField(-1, "normal");
-				Vector normal;
 				if (!LUA->IsType(-1, Type::Nil)) {
-					normal = LUA->GetVector();
+					mNormals.push_back(transformToBone(LUA->GetVector(), bones, bindBones, weights, true));
 				} else {
-					normal.x = normal.y = normal.z = 0.f;
+					mNormals.emplace_back(0, 0, 0);
 				}
 				LUA->Pop();
-				mNormals.push_back(transformToBone(normal, bones, bindBones, weights, true));
 
 				LUA->GetField(-1, "tangent");
-				Vector tangent;
 				if (!LUA->IsType(-1, Type::Nil)) {
-					tangent = LUA->GetVector();
+					mTangents.push_back(transformToBone(LUA->GetVector(), bones, bindBones, weights, true));
 				} else {
-					tangent.x = tangent.y = tangent.z = 0.f;
+					mTangents.emplace_back(0, 0, 0);
 				}
 				LUA->Pop();
-				mTangents.push_back(transformToBone(tangent, bones, bindBones, weights, true));
 
 				LUA->GetField(-1, "binormal");
-				Vector binormal;
 				if (!LUA->IsType(-1, Type::Nil)) {
-					binormal = LUA->GetVector();
+					mBinormals.push_back(transformToBone(LUA->GetVector(), bones, bindBones, weights, true));
 				} else {
-					binormal.x = binormal.y = binormal.z = 0.f;
+					mBinormals.emplace_back(0, 0, 0);
 				}
 				LUA->Pop();
-				mBinormals.push_back(transformToBone(binormal, bones, bindBones, weights, true));
 
 				// Get uvs
 				LUA->GetField(-1, "u");
@@ -313,20 +263,50 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 				// Pop MeshVertex
 				LUA->Pop();
 
-				// If this was the last vert in the tri, emplace back
+				// If this was the last vert in the tri, push back and validate normals, tangents, and binormals
 				if (triIndex == 2U) {
 					Triangle builtTri(tri[0], tri[1], tri[2]);
 					mTriangles.push_back(builtTri);
 
-					// in the unlikely event a mesh has no vertex normals, the normal at this point would be 0, 0, 0
-					// if so, replace it with the tri's geometric normal
-					size_t numNorms = mNormals.size();
-					Vector3 n0 = mNormals[numNorms - 2U], n1 = mNormals[numNorms - 1U], n2 = mNormals[numNorms];
+					// Total number of vertices across all meshes (mNormals.size() should be equivalent)
+					size_t totalVerts = mNormals.size();
+
+					glm::vec3 n0 = mNormals[totalVerts - 2U], n1 = mNormals[totalVerts - 1U], n2 = mNormals[totalVerts];
+					glm::vec3 geometricNormal = glm::vec3(builtTri.n[0], builtTri.n[1], builtTri.n[2]);
+					if (n0[0] == 0.f && n0[1] == 0.f && n0[2] == 0.f) mNormals[totalVerts - 2U] = n0 = geometricNormal;
+					if (n1[0] == 0.f && n1[1] == 0.f && n1[2] == 0.f) mNormals[totalVerts - 1U] = n1 = geometricNormal;
+					if (n2[0] == 0.f && n2[1] == 0.f && n2[2] == 0.f) mNormals[totalVerts] = n2 = geometricNormal;
+
+					glm::vec3 t0 = mTangents[totalVerts - 2U], t1 = mTangents[totalVerts - 1U], t2 = mTangents[totalVerts];
 					if (
-						n0[0] == 0.f && n0[1] == 0.f && n0[2] == 0.f &&
-						n1[0] == 0.f && n1[1] == 0.f && n1[2] == 0.f &&
-						n2[0] == 0.f && n2[1] == 0.f && n2[2] == 0.f
-						) mNormals[numNorms - 2U] = mNormals[numNorms - 1U] = mNormals[numNorms] = builtTri.n;
+						(t0[0] == 0.f && t0[1] == 0.f && t0[2] == 0.f) ||
+						(t1[0] == 0.f && t1[1] == 0.f && t1[2] == 0.f) ||
+						(t2[0] == 0.f && t2[1] == 0.f && t2[2] == 0.f)
+					) {
+						glm::vec3 edge1{ builtTri.e1[0], builtTri.e1[1], builtTri.e1[2] };
+						glm::vec3 edge2{ builtTri.e2[0], builtTri.e2[1], builtTri.e2[2] };
+
+						glm::vec2 uv0 = mUvs[totalVerts - 2U], uv1 = mUvs[totalVerts - 1U], uv2 = mUvs[totalVerts];
+						glm::vec2 dUV1 = uv1 - uv0;
+						glm::vec2 dUV2 = uv2 - uv0;
+
+						float f = 1.0f / (dUV1.x * dUV2.y - dUV2.x * dUV1.y);
+
+						glm::vec3 geometricTangent{
+							f * (dUV2.y * edge1.x - dUV1.y * edge2.x),
+							f * (dUV2.y * edge1.y - dUV1.y * edge2.y),
+							f * (dUV2.y * edge1.z - dUV1.y * edge2.z)
+						};
+
+						if (t0[0] == 0.f && t0[1] == 0.f && t0[2] == 0.f) mTangents[totalVerts - 2U] = t0 = geometricTangent;
+						if (t1[0] == 0.f && t1[1] == 0.f && t1[2] == 0.f) mTangents[totalVerts - 1U] = t1 = geometricTangent;
+						if (t2[0] == 0.f && t2[1] == 0.f && t2[2] == 0.f) mTangents[totalVerts] = t2 = geometricTangent;
+					}
+
+					glm::vec3 b0 = mBinormals[totalVerts - 2U], b1 = mBinormals[totalVerts - 1U], b2 = mBinormals[totalVerts];
+					if (b0[0] == 0.f && b0[1] == 0.f && b0[2] == 0.f) mBinormals[totalVerts - 2U] = -glm::cross(n0, t0);
+					if (b1[0] == 0.f && b1[1] == 0.f && b1[2] == 0.f) mBinormals[totalVerts - 1U] = -glm::cross(n1, t1);
+					if (b2[0] == 0.f && b2[1] == 0.f && b2[2] == 0.f) mBinormals[totalVerts] = -glm::cross(n2, t2);
 				}
 			}
 
@@ -760,22 +740,16 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 
 		// Calculate all information needed for texturing
 		float u = intersection.u, v = intersection.v, w = (1.f - u - v);
-		float texU = w * mUvs.at(vertIndex).first + u * mUvs.at(vertIndex + 1U).first + v * mUvs.at(vertIndex + 2U).first;
-		float texV = w * mUvs.at(vertIndex).second + u * mUvs.at(vertIndex + 1U).second + v * mUvs.at(vertIndex + 2U).second;
-		texU -= floor(texU);
-		texV -= floor(texV);
+		glm::vec2 texUV = w * mUvs[vertIndex] + u * mUvs[vertIndex + 1U] + v * mUvs[vertIndex + 2U];
+		texUV -= glm::floor(texUV);
 
-		Vector3 normal = w * mNormals.at(vertIndex) + u * mNormals.at(vertIndex + 1U) + v * mNormals.at(vertIndex + 2U);
+		glm::vec3 normal = w * mNormals.at(vertIndex) + u * mNormals.at(vertIndex + 1U) + v * mNormals.at(vertIndex + 2U);
+		glm::vec3 tangent = w * mTangents.at(vertIndex) + u * mTangents.at(vertIndex + 1U) + v * mTangents.at(vertIndex + 2U);
+		glm::vec3 binormal = w * mBinormals.at(vertIndex) + u * mBinormals.at(vertIndex + 1U) + v * mBinormals.at(vertIndex + 2U);
 
-		Vector3 tangent = w * mTangents.at(vertIndex) + u * mTangents.at(vertIndex + 1U) + v * mTangents.at(vertIndex + 2U);
-		bool tangentValid = tangent[0] != 0.f || tangent[1] != 0.f || tangent[2] != 0.f;
-
-		Vector3 binormal = w * mBinormals.at(vertIndex) + u * mBinormals.at(vertIndex + 1U) + v * mBinormals.at(vertIndex + 2U);
-		bool binormalValid = binormal[0] != 0.f || binormal[1] != 0.f || binormal[2] != 0.f;
-
-		normalise(normal);
-		if (tangentValid) normalise(tangent);
-		if (binormalValid) normalise(binormal);
+		normal = glm::normalize(normal);
+		tangent = glm::normalize(tangent);
+		binormal = glm::normalize(binormal);
 
 		// Create shading data table
 		LUA->PushSpecial(SPECIAL_GLOB);
@@ -793,8 +767,8 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 
 		VTFTexture* pBaseTexture = mTexCache[baseTexturePath];
 		VTFPixel colour = pBaseTexture->GetPixel(
-			floor(texU * pBaseTexture->GetWidth()),
-			floor(texV * pBaseTexture->GetHeight()),
+			floor(texUV.x * pBaseTexture->GetWidth()),
+			floor(texUV.y * pBaseTexture->GetHeight()),
 			0
 		);
 
@@ -807,11 +781,11 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 		LUA->SetField(-3, "HitShader");
 		LUA->Pop(); // Pop _G
 
-		if (!normalMapPath.empty() && tangentValid && binormalValid) {
+		if (!normalMapPath.empty()) {
 			VTFTexture* pNormalTexture = mTexCache[normalMapPath];
 			VTFPixel pixelNormal = pNormalTexture->GetPixel(
-				floor(texU * pNormalTexture->GetWidth()),
-				floor(texV * pNormalTexture->GetHeight()),
+				floor(texUV.x * pNormalTexture->GetWidth()),
+				floor(texUV.y * pNormalTexture->GetHeight()),
 				0
 			);
 
@@ -852,9 +826,9 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 
 		// Push custom hitdata values for U and V (texture and barycentric)
 		LUA->CreateTable();
-		LUA->PushNumber(texU);
+		LUA->PushNumber(texUV.x);
 		LUA->SetField(-2, "u");
-		LUA->PushNumber(texV);
+		LUA->PushNumber(texUV.y);
 		LUA->SetField(-2, "v");
 		LUA->SetField(1, "HitTexCoord");
 

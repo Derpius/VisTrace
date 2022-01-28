@@ -1,8 +1,12 @@
 #pragma once
 
 #include "GarrysMod/Lua/Interface.h"
+#include "glm/glm.hpp"
+#include "VTFParser.h"
+#include "filesystem.h"
 
 #include <string>
+#include <vector>
 
 // Print a string to console using Lua
 void printLua(GarrysMod::Lua::ILuaBase* LUA, const char* text);
@@ -66,3 +70,28 @@ inline MaterialFlags operator|(MaterialFlags a, MaterialFlags b)
 /// <param name="flags">Flags to check</param>
 /// <returns>True if the material has all of the flags specified</returns>
 bool checkMaterialFlags(GarrysMod::Lua::ILuaBase* LUA, const MaterialFlags flags);
+
+/// <summary>
+/// Skins a vertex to its bones
+/// </summary>
+/// <param name="vec">Vector to transform</param>
+/// <param name="bones">Bone list</param>
+/// <param name="binds">Binds list</param>
+/// <param name="weights">Bone vertex weights</param>
+/// <param name="angleOnly">Whether to just transform the angle of the input vector</param>
+/// <returns>The transformed vector</returns>
+glm::vec3 transformToBone(
+	const Vector& vec,
+	const std::vector<glm::mat4>& bones, const std::vector<glm::mat4>& binds,
+	const std::vector<std::pair<size_t, float>>& weights,
+	const bool angleOnly = false
+);
+
+/// <summary>
+/// Read a VTF texture at the given path
+/// </summary>
+/// <param name="path">Path to texture (without materials/ and .vtf)</param>
+/// <param name="pFileSystem">Pointer to virtual file system</param>
+/// <param name="ppTextureOut">Pointer to pointer to texture for passing the newly read texture out</param>
+/// <returns>Whether the read was successful or not</returns>
+bool readTexture(const std::string& path, IFileSystem* pFileSystem, VTFTexture** ppTextureOut);
