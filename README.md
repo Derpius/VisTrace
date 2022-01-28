@@ -19,6 +19,7 @@ This should be called as **infrequently** as possible, due to the time required 
 `Traverse` takes at a minimum an origin and direction for the ray, with optional parameters to set the minimum and maximum hit distances, and whether or not to call `util.TraceLine` internally in order to hit the world and/or water (`hitWorld` defaults to `true` and `hitWater` to `false` as that's most likely the expected behaviour, however not hitting world/water is significantly faster).  
 
 The return value of this method is a [`TraceResult`](https://wiki.facepunch.com/gmod/Structures/TraceResult) struct, with the following additional contents:
+* `HitShader` is atable containing shader data at the hit point (currently `Albedo`, `Alpha` and `Material` which is the matrial object itself)
 * `HitTexCoord` is a table representing the texture coord at the hit point (always `{u = 0, v = 0}` if the world was hit)  
 * `HitBarycentric` is a table representing the barycentric coord local to the tri at the hit point (always `{u = 0, v = 0}` if the world was hit)  
 * `HitTangent` is the tangent at the hit point (always Vector(0) if the world was hit, sometimes Vector(0) if not present in MeshVertex structs)  
