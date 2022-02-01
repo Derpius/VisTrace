@@ -95,3 +95,10 @@ glm::vec3 transformToBone(
 /// <param name="ppTextureOut">Pointer to pointer to texture for passing the newly read texture out</param>
 /// <returns>Whether the read was successful or not</returns>
 bool readTexture(const std::string& path, IFileSystem* pFileSystem, VTFTexture** ppTextureOut);
+
+/// <summary>
+/// Check if a vector is valid (not all zero or NaN)
+/// </summary>
+/// <param name="v">Vector to validate</param>
+/// <returns>Whether the vector was valid</returns>
+bool validVector(const glm::vec3& v);

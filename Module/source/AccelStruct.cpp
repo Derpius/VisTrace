@@ -1,6 +1,8 @@
 #include "AccelStruct.h"
 #include "Utils.h"
 
+#define MISSING_TEXTURE "debug/debugempty"
+
 using namespace GarrysMod::Lua;
 
 void normalise(Vector3& v)
@@ -56,6 +58,14 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 	mTexCache = std::unordered_map<std::string, VTFTexture*>();
 	mMaterials = std::vector<std::string>();
+	mNormalMapBlacklist = std::unordered_map<size_t, bool>();
+
+	{
+		VTFTexture* pTexture;
+		if (!readTexture(MISSING_TEXTURE, mpFileSystem, &pTexture))
+			LUA->ThrowError("Failed to read missing texture VTF");
+		mTexCache[MISSING_TEXTURE] = pTexture;
+	}
 
 	// Iterate over entities
 	size_t numEntities = LUA->ObjLen();
@@ -227,7 +237,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 				// Get and transform normal, tangent, and binormal
 				LUA->GetField(-1, "normal");
-				if (!LUA->IsType(-1, Type::Nil)) {
+				if (LUA->IsType(-1, Type::Vector)) {
 					mNormals.push_back(transformToBone(LUA->GetVector(), bones, bindBones, weights, true));
 				} else {
 					mNormals.emplace_back(0, 0, 0);
@@ -235,7 +245,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 				LUA->Pop();
 
 				LUA->GetField(-1, "tangent");
-				if (!LUA->IsType(-1, Type::Nil)) {
+				if (LUA->IsType(-1, Type::Vector)) {
 					mTangents.push_back(transformToBone(LUA->GetVector(), bones, bindBones, weights, true));
 				} else {
 					mTangents.emplace_back(0, 0, 0);
@@ -243,7 +253,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 				LUA->Pop();
 
 				LUA->GetField(-1, "binormal");
-				if (!LUA->IsType(-1, Type::Nil)) {
+				if (LUA->IsType(-1, Type::Vector)) {
 					mBinormals.push_back(transformToBone(LUA->GetVector(), bones, bindBones, weights, true));
 				} else {
 					mBinormals.emplace_back(0, 0, 0);
@@ -268,45 +278,50 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 					Triangle builtTri(tri[0], tri[1], tri[2]);
 					mTriangles.push_back(builtTri);
 
-					// Total number of vertices across all meshes (mNormals.size() should be equivalent)
-					size_t totalVerts = mNormals.size();
+					// Maximum index of vertices
+					size_t maxVert = mNormals.size() - 1;
 
-					glm::vec3 n0 = mNormals[totalVerts - 2U], n1 = mNormals[totalVerts - 1U], n2 = mNormals[totalVerts];
+					glm::vec3& n0 = mNormals[maxVert - 2U], & n1 = mNormals[maxVert - 1U], & n2 = mNormals[maxVert];
 					glm::vec3 geometricNormal = glm::vec3(builtTri.n[0], builtTri.n[1], builtTri.n[2]);
-					if (n0[0] == 0.f && n0[1] == 0.f && n0[2] == 0.f) mNormals[totalVerts - 2U] = n0 = geometricNormal;
-					if (n1[0] == 0.f && n1[1] == 0.f && n1[2] == 0.f) mNormals[totalVerts - 1U] = n1 = geometricNormal;
-					if (n2[0] == 0.f && n2[1] == 0.f && n2[2] == 0.f) mNormals[totalVerts] = n2 = geometricNormal;
+					if (!validVector(n0)) n0 = geometricNormal;
+					if (!validVector(n1)) n1 = geometricNormal;
+					if (!validVector(n2)) n2 = geometricNormal;
 
-					glm::vec3 t0 = mTangents[totalVerts - 2U], t1 = mTangents[totalVerts - 1U], t2 = mTangents[totalVerts];
-					if (
-						(t0[0] == 0.f && t0[1] == 0.f && t0[2] == 0.f) ||
-						(t1[0] == 0.f && t1[1] == 0.f && t1[2] == 0.f) ||
-						(t2[0] == 0.f && t2[1] == 0.f && t2[2] == 0.f)
-					) {
+					glm::vec3& t0 = mTangents[maxVert - 2U], & t1 = mTangents[maxVert - 1U], & t2 = mTangents[maxVert];
+					if (!(
+						validVector(t0) &&
+						validVector(t1) &&
+						validVector(t2)
+					)) {
 						glm::vec3 edge1{ builtTri.e1[0], builtTri.e1[1], builtTri.e1[2] };
 						glm::vec3 edge2{ builtTri.e2[0], builtTri.e2[1], builtTri.e2[2] };
 
-						glm::vec2 uv0 = mUvs[totalVerts - 2U], uv1 = mUvs[totalVerts - 1U], uv2 = mUvs[totalVerts];
+						glm::vec2 uv0 = mUvs[maxVert - 2U], uv1 = mUvs[maxVert - 1U], uv2 = mUvs[maxVert];
 						glm::vec2 dUV1 = uv1 - uv0;
 						glm::vec2 dUV2 = uv2 - uv0;
 
-						float f = 1.0f / (dUV1.x * dUV2.y - dUV2.x * dUV1.y);
+						float f = 1.f / (dUV1.x * dUV2.y - dUV2.x * dUV1.y);
 
 						glm::vec3 geometricTangent{
 							f * (dUV2.y * edge1.x - dUV1.y * edge2.x),
 							f * (dUV2.y * edge1.y - dUV1.y * edge2.y),
 							f * (dUV2.y * edge1.z - dUV1.y * edge2.z)
 						};
+						if (!validVector(geometricTangent)) {
+							// Set the tangent to one of the edges as a guess on the plane (this will only be reached if the uvs overlap)
+							geometricTangent = glm::normalize(edge1);
+							mNormalMapBlacklist[mTriangles.size() - 1U] = true;
+						}
 
-						if (t0[0] == 0.f && t0[1] == 0.f && t0[2] == 0.f) mTangents[totalVerts - 2U] = t0 = geometricTangent;
-						if (t1[0] == 0.f && t1[1] == 0.f && t1[2] == 0.f) mTangents[totalVerts - 1U] = t1 = geometricTangent;
-						if (t2[0] == 0.f && t2[1] == 0.f && t2[2] == 0.f) mTangents[totalVerts] = t2 = geometricTangent;
+						t0 = geometricTangent;
+						t1 = geometricTangent;
+						t2 = geometricTangent;
 					}
 
-					glm::vec3 b0 = mBinormals[totalVerts - 2U], b1 = mBinormals[totalVerts - 1U], b2 = mBinormals[totalVerts];
-					if (b0[0] == 0.f && b0[1] == 0.f && b0[2] == 0.f) mBinormals[totalVerts - 2U] = -glm::cross(n0, t0);
-					if (b1[0] == 0.f && b1[1] == 0.f && b1[2] == 0.f) mBinormals[totalVerts - 1U] = -glm::cross(n1, t1);
-					if (b2[0] == 0.f && b2[1] == 0.f && b2[2] == 0.f) mBinormals[totalVerts] = -glm::cross(n2, t2);
+					glm::vec3 b0 = mBinormals[maxVert - 2U], b1 = mBinormals[maxVert - 1U], b2 = mBinormals[maxVert];
+					if (!validVector(b0)) mBinormals[maxVert - 2U] = -glm::cross(n0, t0);
+					if (!validVector(b1)) mBinormals[maxVert - 1U] = -glm::cross(n1, t1);
+					if (!validVector(b2)) mBinormals[maxVert] = -glm::cross(n2, t2);
 				}
 			}
 
@@ -351,19 +366,21 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 			std::string normalMap = getMaterialString(LUA, "$bumpmap");
 
 			if (baseTexture.empty()) {
-				baseTexture = "debug/debugempty";
+				baseTexture = MISSING_TEXTURE;
 			}
 
 			if (mTexCache.find(baseTexture) == mTexCache.end()) {
 				VTFTexture* pTexture;
-				if (!readTexture(baseTexture, mpFileSystem, &pTexture)) LUA->ThrowError("Failed to read texture");
+				if (!readTexture(baseTexture, mpFileSystem, &pTexture)) {
+					pTexture = mTexCache[MISSING_TEXTURE];
+				};
 				mTexCache[baseTexture] = pTexture;
 			}
 
 			if (!normalMap.empty() && mTexCache.find(normalMap) == mTexCache.end()) {
 				VTFTexture* pTexture;
-				if (!readTexture(normalMap, mpFileSystem, &pTexture)) LUA->ThrowError("Failed to read texture");
-				mTexCache[normalMap] = pTexture;
+				if (readTexture(normalMap, mpFileSystem, &pTexture))
+					mTexCache[normalMap] = pTexture;
 			}
 
 			LUA->Pop();
@@ -763,7 +780,7 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 
 		LUA->SetField(-2, "Material");
 
-		if (baseTexturePath.empty()) baseTexturePath = "debug/debugempty";
+		if (baseTexturePath.empty()) baseTexturePath = MISSING_TEXTURE;
 
 		VTFTexture* pBaseTexture = mTexCache[baseTexturePath];
 		VTFPixel colour = pBaseTexture->GetPixel(
@@ -781,7 +798,11 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 		LUA->SetField(-3, "HitShader");
 		LUA->Pop(); // Pop _G
 
-		if (!normalMapPath.empty()) {
+		if (
+			!normalMapPath.empty() &&
+			mNormalMapBlacklist.find(hit->primitive_index) == mNormalMapBlacklist.end() &&
+			mTexCache.find(normalMapPath) != mTexCache.end()
+		) {
 			VTFTexture* pNormalTexture = mTexCache[normalMapPath];
 			VTFPixel pixelNormal = pNormalTexture->GetPixel(
 				floor(texUV.x * pNormalTexture->GetWidth()),
@@ -789,16 +810,15 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 				0
 			);
 
-			glm::vec3 finalNormal = glm::mat3{
+			normal = glm::mat3{
 				tangent[0],  tangent[1],  tangent[2],
 				binormal[0], binormal[1], binormal[2],
 				normal[0],   normal[1],   normal[2]
-			} * (glm::vec3{ pixelNormal.r, pixelNormal.g, pixelNormal.b } *2.f - 1.f);
-			finalNormal = glm::normalize(finalNormal);
+			} * (glm::vec3{ pixelNormal.r, pixelNormal.g, pixelNormal.b } * 2.f - 1.f);
+			normal = glm::normalize(normal);
 
-			normal[0] = finalNormal[0];
-			normal[1] = finalNormal[1];
-			normal[2] = finalNormal[2];
+			tangent = glm::normalize(tangent - normal * glm::dot(tangent, normal));
+			binormal = -glm::cross(normal, tangent);
 		}
 
 		// Push normal, tangent, and binormal

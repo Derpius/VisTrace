@@ -49,6 +49,7 @@ class AccelStruct
 
 	std::unordered_map<std::string, VTFTexture*> mTexCache;
 	std::vector<std::string> mMaterials;
+	std::unordered_map<size_t, bool> mNormalMapBlacklist; // Triangles to ignore the normal mapping of (due to invalid tangents likely caused by poor UV mapping)
 
 public:
 	AccelStruct(IFileSystem* pFileSystem);
