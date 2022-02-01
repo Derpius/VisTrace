@@ -46,7 +46,7 @@ return function(instance)
 	local function canRun()
 		checkPermission(instance, nil, "vistrace")
 		if not vistrace then
-			SF.Throw("The required version (v0.5.x) of the VisTrace binary module is not installed (get it here https://github.com/Derpius/VisTrace/releases)", 3)
+			SF.Throw("The required version (v0.6.x) of the VisTrace binary module is not installed (get it here https://github.com/Derpius/VisTrace/releases)", 3)
 		end
 	end
 
@@ -95,7 +95,7 @@ return function(instance)
 			if k == "HitTexCoord" or k == "HitBarycentric" then
 				hitData[k] = v
 			elseif k == "HitShader" then
-				hitData[k] = {Albedo = wrapObj(v.Albedo), Alpha = v.Alpha, Material = wrapObj(v.Material)}
+				hitData[k] = {Albedo = wrapObj(v.Albedo), Alpha = v.Alpha, Roughness = v.Roughness, Material = wrapObj(v.Material)}
 			else hitData[k] = wrapObj(v) end
 		end
 		return hitData

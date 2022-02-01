@@ -778,6 +778,8 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 		std::string baseTexturePath = getMaterialString(LUA, "$basetexture");
 		std::string normalMapPath = getMaterialString(LUA, "$bumpmap");
 
+		bool baseAlphaIsReflectivity = checkMaterialFlags(LUA, MaterialFlags::basealphaenvmapmask);
+
 		LUA->SetField(-2, "Material");
 
 		if (baseTexturePath.empty()) baseTexturePath = MISSING_TEXTURE;
@@ -795,8 +797,7 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 		LUA->PushNumber(colour.a * entColour[3]);
 		LUA->SetField(-2, "Alpha");
 
-		LUA->SetField(-3, "HitShader");
-		LUA->Pop(); // Pop _G
+		float roughness = baseAlphaIsReflectivity ? colour.a : 1;
 
 		if (
 			!normalMapPath.empty() &&
@@ -810,6 +811,9 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 				0
 			);
 
+			if (!baseAlphaIsReflectivity)
+				roughness = 1.f - pixelNormal.a;
+
 			normal = glm::mat3{
 				tangent[0],  tangent[1],  tangent[2],
 				binormal[0], binormal[1], binormal[2],
@@ -820,6 +824,12 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 			tangent = glm::normalize(tangent - normal * glm::dot(tangent, normal));
 			binormal = -glm::cross(normal, tangent);
 		}
+
+		LUA->PushNumber(roughness);
+		LUA->SetField(-2, "Roughness");
+
+		LUA->SetField(-3, "HitShader");
+		LUA->Pop(); // Pop _G
 
 		// Push normal, tangent, and binormal
 		{
