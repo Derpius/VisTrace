@@ -204,7 +204,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 			size_t numVerts = LUA->ObjLen();
 			if (numVerts % 3U != 0U) LUA->ThrowError("Number of vertices is not a multiple of 3");
 
-			Vector3 tri[3];
+			glm::vec3 tri[3];
 			for (size_t vertIndex = 0; vertIndex < numVerts; vertIndex++) {
 				// Get vertex
 				LUA->PushNumber(vertIndex + 1U);
@@ -230,8 +230,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 				LUA->GetField(-1, "pos");
 
 				size_t triIndex = vertIndex % 3U;
-				glm::vec3 pos = transformToBone(LUA->GetVector(), bones, bindBones, weights);
-				tri[triIndex] = Vector3{ pos.x, pos.y, pos.z };
+				tri[triIndex] = transformToBone(LUA->GetVector(), bones, bindBones, weights);
 
 				LUA->Pop();
 
@@ -275,26 +274,46 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 				// If this was the last vert in the tri, push back and validate normals, tangents, and binormals
 				if (triIndex == 2U) {
-					Triangle builtTri(tri[0], tri[1], tri[2]);
+					Triangle builtTri(
+						Vector3{ tri[0].x, tri[0].y, tri[0].z },
+						Vector3{ tri[1].x, tri[1].y, tri[1].z },
+						Vector3{ tri[2].x, tri[2].y, tri[2].z }
+					);
+
+					// Check if triangle is invalid and remove vertices if so
+					glm::vec3 geometricNormal{ builtTri.n[0], builtTri.n[1], builtTri.n[2] };
+					if (!validVector(geometricNormal)) {
+						mNormals.resize(mNormals.size() - 3);
+						mTangents.resize(mTangents.size() - 3);
+						mBinormals.resize(mBinormals.size() - 3);
+						mUvs.resize(mUvs.size() - 3);
+						mIds.resize(mIds.size() - 3);
+						continue;
+					}
+
 					mTriangles.push_back(builtTri);
 
 					// Maximum index of vertices
 					size_t maxVert = mNormals.size() - 1;
 
 					glm::vec3& n0 = mNormals[maxVert - 2U], & n1 = mNormals[maxVert - 1U], & n2 = mNormals[maxVert];
-					glm::vec3 geometricNormal = glm::vec3(builtTri.n[0], builtTri.n[1], builtTri.n[2]);
-					if (!validVector(n0)) n0 = geometricNormal;
-					if (!validVector(n1)) n1 = geometricNormal;
-					if (!validVector(n2)) n2 = geometricNormal;
+					if (!validVector(n0) || glm::dot(n0, geometricNormal) < 0.01f) n0 = geometricNormal;
+					if (!validVector(n1) || glm::dot(n1, geometricNormal) < 0.01f) n1 = geometricNormal;
+					if (!validVector(n2) || glm::dot(n2, geometricNormal) < 0.01f) n2 = geometricNormal;
 
 					glm::vec3& t0 = mTangents[maxVert - 2U], & t1 = mTangents[maxVert - 1U], & t2 = mTangents[maxVert];
-					if (!(
-						validVector(t0) &&
-						validVector(t1) &&
-						validVector(t2)
-					)) {
-						glm::vec3 edge1{ builtTri.e1[0], builtTri.e1[1], builtTri.e1[2] };
-						glm::vec3 edge2{ builtTri.e2[0], builtTri.e2[1], builtTri.e2[2] };
+					if (
+						!(
+							validVector(t0) &&
+							validVector(t1) &&
+							validVector(t2)
+						) ||
+						fabsf(glm::dot(t0, n0)) > .9f ||
+						fabsf(glm::dot(t1, n1)) > .9f ||
+						fabsf(glm::dot(t2, n2)) > .9f
+					) {
+						glm::vec3 edge1 = tri[1] - tri[0];
+						glm::vec3 edge2 = tri[2] - tri[0];
 
 						glm::vec2 uv0 = mUvs[maxVert - 2U], uv1 = mUvs[maxVert - 1U], uv2 = mUvs[maxVert];
 						glm::vec2 dUV1 = uv1 - uv0;
@@ -313,15 +332,16 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 							mNormalMapBlacklist[mTriangles.size() - 1U] = true;
 						}
 
-						t0 = geometricTangent;
-						t1 = geometricTangent;
-						t2 = geometricTangent;
+						// Assign orthogonalised geometric tangent to vertices
+						t0 = glm::normalize(geometricTangent - n0 * glm::dot(geometricTangent, n0));
+						t1 = glm::normalize(geometricTangent - n1 * glm::dot(geometricTangent, n1));
+						t2 = glm::normalize(geometricTangent - n2 * glm::dot(geometricTangent, n2));
 					}
 
-					glm::vec3 b0 = mBinormals[maxVert - 2U], b1 = mBinormals[maxVert - 1U], b2 = mBinormals[maxVert];
-					if (!validVector(b0)) mBinormals[maxVert - 2U] = -glm::cross(n0, t0);
-					if (!validVector(b1)) mBinormals[maxVert - 1U] = -glm::cross(n1, t1);
-					if (!validVector(b2)) mBinormals[maxVert] = -glm::cross(n2, t2);
+					glm::vec3& b0 = mBinormals[maxVert - 2U], & b1 = mBinormals[maxVert - 1U], & b2 = mBinormals[maxVert];
+					if (!validVector(b0)) b0 = -glm::cross(n0, t0);
+					if (!validVector(b1)) b1 = -glm::cross(n1, t1);
+					if (!validVector(b2)) b2 = -glm::cross(n2, t2);
 				}
 			}
 
@@ -794,7 +814,7 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 		LUA->PushVector(Vector{ colour.r * entColour[0], colour.g * entColour[1], colour.b * entColour[2] });
 		LUA->SetField(-2, "Albedo");
 
-		LUA->PushNumber(colour.a * entColour[3]);
+		LUA->PushNumber(colour.a * (baseAlphaIsReflectivity ? 1.f : entColour[3]));
 		LUA->SetField(-2, "Alpha");
 
 		float roughness = baseAlphaIsReflectivity ? colour.a : 1;
@@ -820,6 +840,7 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 				normal[0],   normal[1],   normal[2]
 			} * (glm::vec3{ pixelNormal.r, pixelNormal.g, pixelNormal.b } * 2.f - 1.f);
 			normal = glm::normalize(normal);
+
 
 			tangent = glm::normalize(tangent - normal * glm::dot(tangent, normal));
 			binormal = -glm::cross(normal, tangent);
