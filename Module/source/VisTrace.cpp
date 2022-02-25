@@ -314,7 +314,7 @@ LUA_FUNCTION(LoadHDRI)
 {
 	LUA->CheckString(1);
 
-	std::string texturePath = "hdris/" + std::string(LUA->GetString(1)) + ".hdr";
+	std::string texturePath = "materials/vistrace/hdris/" + std::string(LUA->GetString(1)) + ".png";
 	if (!pFileSystem->FileExists(texturePath.c_str(), "GAME"))
 		LUA->ThrowError("HDRI file does not exist");
 	FileHandle_t file = pFileSystem->Open(texturePath.c_str(), "rb", "GAME");
