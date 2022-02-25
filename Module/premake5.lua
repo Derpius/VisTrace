@@ -18,7 +18,8 @@ IncludeSDKTier1()
 includedirs({
 	"./libs/glm",
 	"./libs/bvh/include",
-	"./libs/VTFParser"
+	"./libs/VTFParser",
+	"./libs/stb"
 })
 
 links("VTFParser")

@@ -11,3 +11,6 @@
 [submodule "Module/libs/VTFParser"]
 	path = Module/libs/VTFParser
 	url = https://github.com/Derpius/VTFParser.git
+[submodule "Module/libs/stb"]
+	path = Module/libs/stb
+	url = https://github.com/nothings/stb.git

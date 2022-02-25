@@ -765,20 +765,17 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 		LUA->PushBool(true);
 		LUA->SetField(1, "HitNonWorld");
 
-		{
-			Vector3 hitPos = ray.origin + ray.direction * intersection.t;
-			Vector v;
-			v.x = hitPos[0];
-			v.y = hitPos[1];
-			v.z = hitPos[2];
-			LUA->PushVector(v);
-			LUA->SetField(1, "HitPos");
-		}
-
 		// Calculate all information needed for texturing
 		float u = intersection.u, v = intersection.v, w = (1.f - u - v);
 		glm::vec2 texUV = w * mUvs[vertIndex] + u * mUvs[vertIndex + 1U] + v * mUvs[vertIndex + 2U];
 		texUV -= glm::floor(texUV);
+
+		{
+			const Triangle& t = mTriangles[hit->primitive_index];
+			Vector3 v = w * t.p0 + u * t.p1() + v * t.p2();
+			LUA->PushVector(Vector{ v[0], v[1], v[2] });
+			LUA->SetField(1, "HitPos");
+		}
 
 		glm::vec3 normal = w * mNormals.at(vertIndex) + u * mNormals.at(vertIndex + 1U) + v * mNormals.at(vertIndex + 2U);
 		glm::vec3 tangent = w * mTangents.at(vertIndex) + u * mTangents.at(vertIndex + 1U) + v * mTangents.at(vertIndex + 2U);
