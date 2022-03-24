@@ -46,6 +46,7 @@ class AccelStruct
 
 	std::vector<std::pair<unsigned int, unsigned int>> mIds; // first: entity id, second: submesh id
 	std::unordered_map<unsigned int, size_t> mOffsets; // Offset for each entity id into per-submesh tables
+	std::unordered_map<unsigned int, CBaseEntity*> mEntities; // Pointer to original entity at that id
 
 	std::unordered_map<std::string, VTFTexture*> mTexCache;
 	std::vector<std::string> mMaterials;

@@ -55,6 +55,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 	mIds = std::vector<std::pair<unsigned int, unsigned int>>();
 	mOffsets = std::unordered_map<unsigned int, size_t>();
+	mEntities = std::unordered_map<unsigned int, CBaseEntity*>();
 
 	mTexCache = std::unordered_map<std::string, VTFTexture*>();
 	mMaterials = std::vector<std::string>();
@@ -410,9 +411,8 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 		LUA->Pop(3); // Pop meshes, util, and _G tables
 
-		// Mark the entity as present in accel (for ent id verification later)
-		LUA->PushBool(true);
-		LUA->SetField(-2, "vistrace_mark"); // TODO: if another accel struct hits the new entity then the check for this later will still be true
+		// Save the entity's pointer for hit verification later
+		mEntities[id.first] = LUA->GetUserType<CBaseEntity>(-1, Type::Entity);
 		LUA->Pop(); // Pop entity
 	}
 	LUA->Pop(); // Pop entity table
@@ -715,14 +715,12 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 		{
 			LUA->PushSpecial(SPECIAL_GLOB);
 			LUA->GetField(-1, "Entity");
-			LUA->PushNumber(mIds.at(vertIndex).first);
+			LUA->PushNumber(id.first);
 			LUA->Call(1, 1);
 
-			LUA->GetField(-1, "vistrace_mark");
-			bool markedEnt = LUA->GetBool();
-			LUA->Pop();
+			CBaseEntity* pEnt = LUA->GetUserType<CBaseEntity>(-1, Type::Entity);
 
-			if (!markedEnt) {
+			if (pEnt == nullptr || pEnt != mEntities[id.first]) {
 				LUA->Pop(); // Pop the invalid entity (not necessarily an invalid entity, but not the same as what was at that index when accel was built)
 				LUA->GetField(-1, "Entity");
 				LUA->PushNumber(-1);
