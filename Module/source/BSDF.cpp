@@ -10,27 +10,6 @@ using namespace glm;
 static const float kMinCosTheta = 1e-6f;
 static const float kMinGGXAlpha = 0.0064f;
 
-#pragma region Sampler
-BSDFSampler::BSDFSampler(uint32_t seed)
-{
-	mGenerator = std::mt19937(seed);
-	mDistribution = std::uniform_real_distribution<double>(0., 1.);
-}
-
-float BSDFSampler::GetFloat()
-{
-	return static_cast<float>(mDistribution(mGenerator));
-}
-
-vec2 BSDFSampler::GetFloat2D()
-{
-	return vec2(
-		static_cast<float>(mDistribution(mGenerator)),
-		static_cast<float>(mDistribution(mGenerator))
-	);
-}
-#pragma endregion
-
 #pragma region Utils
 inline float luminance(vec3 rgb)
 {
@@ -181,7 +160,7 @@ public:
 		return evalWeight(wi, wo) * static_cast<float>(M_1_PI) * wo.z;
 	}
 
-	bool sample(const vec3 wi, vec3& wo, float& pdf, vec3& weight, uint& lobe, BSDFSampler* sg)
+	bool sample(const vec3 wi, vec3& wo, float& pdf, vec3& weight, uint& lobe, Sampler* sg)
 	{
 		wo = sample_cosine_hemisphere_concentric(sg->GetFloat2D(), pdf);
 		lobe = (uint)LobeType::DiffuseReflection;
@@ -228,7 +207,7 @@ public:
 		return static_cast<float>(M_1_PI) * albedo * -wo.z;
 	}
 
-	bool sample(const vec3 wi, vec3& wo, float& pdf, vec3& weight, uint& lobe, BSDFSampler* sg)
+	bool sample(const vec3 wi, vec3& wo, float& pdf, vec3& weight, uint& lobe, Sampler* sg)
 	{
 		wo = sample_cosine_hemisphere_concentric(sg->GetFloat2D(), pdf);
 		wo.z = -wo.z;
@@ -279,7 +258,7 @@ public:
 		return F * D * G * 0.25f / wi.z;
 	}
 
-	bool sample(const vec3 wi, vec3& wo, float pdf, vec3& weight, uint& lobe, BSDFSampler* sg)
+	bool sample(const vec3 wi, vec3& wo, float pdf, vec3& weight, uint& lobe, Sampler* sg)
 	{
 		// Default initialization to avoid divergence at returns.
 		wo = {};
@@ -380,7 +359,7 @@ public:
 		}
 	}
 
-	bool sample(const vec3 wi, vec3& wo, float& pdf, vec3& weight, uint& lobe, BSDFSampler* sg)
+	bool sample(const vec3 wi, vec3& wo, float& pdf, vec3& weight, uint& lobe, Sampler* sg)
 	{
 		// Default initialization to avoid divergence at returns.
 		wo = {};
@@ -627,7 +606,7 @@ public:
 		return result;
 	}
 
-	bool sample(const vec3 wi, vec3& wo, float& pdf, vec3& weight, uint& lobe, BSDFSampler* sg)
+	bool sample(const vec3 wi, vec3& wo, float& pdf, vec3& weight, uint& lobe, Sampler* sg)
 	{
 		// Default initialization to avoid divergence at returns.
 		wo = {};
@@ -698,7 +677,7 @@ vec3 fromLocal(const vec3& T, const vec3& B, const vec3& N, const vec3& v)
 }
 
 bool SampleFalcorBSDF(
-	const MaterialProperties& data, BSDFSampler* sg, BSDFSample& result,
+	const MaterialProperties& data, Sampler* sg, BSDFSample& result,
 	const vec3& normal, const vec3& tangent, const vec3& binormal,
 	const vec3& toEye
 )

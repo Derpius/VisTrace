@@ -8,7 +8,7 @@ end
 	pcall(require, "VisTrace-v0.4") -- Don't throw an error if the module failed to load
 ]]
 
-local VERSION = "0.7"
+local VERSION = "0.8"
 
 local files = file.Find("lua/bin/gmcl_VisTrace-v" .. VERSION .. "_*.dll", "GAME")
 if not files or #files == 0 then return end

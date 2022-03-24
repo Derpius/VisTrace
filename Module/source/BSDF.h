@@ -2,20 +2,7 @@
 
 #include "glm/glm.hpp"
 
-#include <random>
-
-class BSDFSampler
-{
-private:
-	std::mt19937 mGenerator;
-	std::uniform_real_distribution<double> mDistribution;
-
-public:
-	BSDFSampler(uint32_t seed);
-
-	float GetFloat();
-	glm::vec2 GetFloat2D();
-};
+#include "Sampler.h"
 
 enum class LobeType : glm::uint
 {
@@ -81,7 +68,7 @@ struct BSDFSample
 /// <param name="toEye">Vector towards camera or previous hit</param>
 /// <returns>Whether the sample is valid</returns>
 bool SampleFalcorBSDF(
-	const MaterialProperties& data, BSDFSampler* sg, BSDFSample& result,
+	const MaterialProperties& data, Sampler* sg, BSDFSample& result,
 	const glm::vec3& normal, const glm::vec3& tangent, const glm::vec3& binormal,
 	const glm::vec3& toEye
 );

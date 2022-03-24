@@ -82,7 +82,7 @@ return function(instance)
 
 	local function canRun()
 		if not vistrace then
-			SF.Throw("The required version (v0.7.x) of the VisTrace binary module is not installed (get it here https://github.com/Derpius/VisTrace/releases)", 3)
+			SF.Throw("The required version (v0.8.x) of the VisTrace binary module is not installed (get it here https://github.com/Derpius/VisTrace/releases)", 3)
 		end
 	end
 
@@ -165,8 +165,16 @@ return function(instance)
 	-- @return number Random float in a 0-1 range
 	function sampler_methods:getFloat()
 		canRun()
-		
 		return uwrapSampler(self):GetFloat()
+	end
+
+	--- Gets two uniform random floats from the sampler
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number Random float in a 0-1 range
+	-- @return number Random float in a 0-1 range
+	function sampler_methods:getFloat2D()
+		canRun()
+		return uwrapSampler(self):GetFloat2D()
 	end
 
 	--- Creates a random sampler
@@ -175,7 +183,7 @@ return function(instance)
 	-- @return Sampler Sampler object
 	function vistrace_library.createSampler(seed)
 		canRun()
-		
+
 		if seed ~= nil then checkLuaType(seed, TYPE_NUMBER) end
 		return wrapSampler(vistrace.CreateSampler(seed))
 	end
@@ -224,7 +232,7 @@ return function(instance)
 		All = 0xff,
 	}
 
-	--- Importance samples the Disney BSDF
+	--- Importance samples the Falcor BSDF
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Sampler sampler Sampler object
 	-- @param table material Material parameters (See the GitHub for valid params)
@@ -237,19 +245,19 @@ return function(instance)
 	-- @return table? sample Sample generated (if valid)
 	function vistrace_library.sampleBSDF(sampler, material, normal, tangent, binormal, wo, thin)
 		canRun()
-		
+
 		if debug_getmetatable(sampler) ~= sampler_meta then SF.ThrowTypeError("Sampler", SF.GetType(sampler), 2) end
 		checkLuaType(material, TYPE_TABLE)
 
 		checkVector(normal)
 		validateVector(normal)
-		
+
 		checkVector(tangent)
 		validateVector(tangent)
-		
+
 		checkVector(binormal)
 		validateVector(binormal)
-		
+
 		checkVector(wo)
 		validateVector(wo)
 
@@ -277,7 +285,7 @@ return function(instance)
 		}
 	end
 
-	--- Evaluates the Disney BSDF
+	--- Evaluates the Falcor BSDF
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param table material Material parameters (See the GitHub for valid params)
 	-- @param Vector normal Surface normal
@@ -287,22 +295,20 @@ return function(instance)
 	-- @param Vector wi Incoming light direction (towards sampled direction or light)
 	-- @param boolean? thin Whether to simulate the material as a thin film
 	-- @return Vector Evaluated surface colour
-	-- @return number forwardPdf Value of the probability density function for this evaluation in the forward direction
-	-- @return number reversePdf Value of the probability density function for this evaluation in the reverse direction
-	function vistrace_library.evaluateBSDF(material, normal, tangent, binormal, wo, wi, thin)
+	function vistrace_library.evalBSDF(material, normal, tangent, binormal, wo, wi, thin)
 		canRun()
-		
+
 		checkLuaType(material, TYPE_TABLE)
 
 		checkVector(normal)
 		validateVector(normal)
-		
+
 		checkVector(tangent)
 		validateVector(tangent)
-		
+
 		checkVector(binormal)
 		validateVector(binormal)
-		
+
 		checkVector(wo)
 		validateVector(wo)
 
@@ -316,26 +322,74 @@ return function(instance)
 			unwrappedMat[k] = uwrapObj(v)
 		end
 
-		local colour = vistrace.EvaluateBSDF(
+		return wrapVec(vistrace.EvalBSDF(
+			unwrappedMat,
+			uwrapVec(normal), uwrapVec(tangent), uwrapVec(binormal),
+			uwrapVec(wo), uwrapVec(wi),
+			thin
+		))
+	end
+
+	--- Evaluates the Falcor BSDF's PDF
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param table material Material parameters (See the GitHub for valid params)
+	-- @param Vector normal Surface normal
+	-- @param Vector tangent Surface tangent
+	-- @param Vector binormal Surface binormal
+	-- @param Vector wo Outgoing light direction (towards the camera)
+	-- @param Vector wi Incoming light direction (towards sampled direction or light)
+	-- @param boolean? thin Whether to simulate the material as a thin film
+	-- @return number Evaluated PDF
+	function vistrace_library.evalPDF(material, normal, tangent, binormal, wo, wi, thin)
+		canRun()
+
+		checkLuaType(material, TYPE_TABLE)
+
+		checkVector(normal)
+		validateVector(normal)
+
+		checkVector(tangent)
+		validateVector(tangent)
+
+		checkVector(binormal)
+		validateVector(binormal)
+
+		checkVector(wo)
+		validateVector(wo)
+
+		checkVector(wi)
+		validateVector(wi)
+
+		if thin ~= nil then checkLuaType(thin, TYPE_BOOL) end
+
+		local unwrappedMat = {}
+		for k, v in pairs(material) do
+			unwrappedMat[k] = uwrapObj(v)
+		end
+
+		return vistrace.EvalPDF(
 			unwrappedMat,
 			uwrapVec(normal), uwrapVec(tangent), uwrapVec(binormal),
 			uwrapVec(wo), uwrapVec(wi),
 			thin
 		)
-
-		return wrapVec(colour)
 	end
 
 	--- Loads a HDRI from `garrysmod/hdris` and appends the `.hdr` extension automatically
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param string path Path to the HDRI
+	-- @param number? radianceThreshold Minimum total radiance in a sample bin before the bin is no longer divided
+	-- @param number? areaThreshold Minimum area (in pixels) of a sample bin before the bin is no longer divided
 	-- @return HDRI HDRI sampler
-	function vistrace_library.loadHDRI(path)
+	function vistrace_library.loadHDRI(path, radianceThreshold, areaThreshold)
 		checkPermission(instance, nil, "vistrace.hdri")
 		canRun()
-		
+
 		if path ~= nil then checkLuaType(path, TYPE_STRING) end
-		return wrapHDRI(vistrace.LoadHDRI(path))
+		if radianceThreshold ~= nil then checkLuaType(radianceThreshold, TYPE_NUMBER) end
+		if areaThreshold ~= nil then checkLuaType(areaThreshold, TYPE_NUMBER) end
+
+		return wrapHDRI(vistrace.LoadHDRI(path, radianceThreshold, areaThreshold))
 	end
 
 	--- Checks if the HDRI is valid
@@ -360,14 +414,33 @@ return function(instance)
 		return wrapVec(colour), radiance
 	end
 
-	--- Importance samples the HDRI
+	--- Calculates the probability of sampling this direction
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @return Vector Sampled direction
-	-- @return number Evaluated PDF
-	function hdri_methods:sample()
+	-- @param Vector direction Direction to get the probability of
+	-- @return number Probability
+	function hdri_methods:evalPDF(direction)
 		canRun()
-		local dir, pdf = uwrapHDRI(self):Sample()
-		return wrapVec(dir), pdf
+		checkVector(direction)
+		validateVector(direction)
+
+		return uwrapHDRI(self):EvalPDF(uwrapVec(direction))
+	end
+
+	--- Importance samples the HDRI (only the first value is returned if the sample is invalid)
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param Sampler
+	-- @return boolean Whether the sample is valid
+	-- @return Vector? Sampled direction
+	-- @return Vector? Sampled colour
+	-- @return number? Evaluated PDF
+	function hdri_methods:sample(sampler)
+		canRun()
+		if debug_getmetatable(sampler) ~= sampler_meta then SF.ThrowTypeError("Sampler", SF.GetType(sampler), 2) end
+		
+		local valid, dir, colour, pdf = uwrapHDRI(self):Sample(uwrapSampler(sampler))
+
+		if not valid then return false end
+		return true, wrapVec(dir), wrapVec(colour), pdf
 	end
 
 	--- Sets the rotation of the HDRI

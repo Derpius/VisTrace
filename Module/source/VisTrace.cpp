@@ -8,8 +8,59 @@
 
 #include "BSDF.h"
 #include "HDRI.h"
+#include "Sampler.h"
 
 using namespace GarrysMod::Lua;
+
+#pragma region Sampler
+static int Sampler_id;
+
+LUA_FUNCTION(CreateSampler)
+{
+	uint32_t seed = time(NULL);
+	if (LUA->IsType(1, Type::Number)) seed = LUA->GetNumber(1);
+
+	Sampler* pSampler = new Sampler(seed);
+	LUA->PushUserType_Value(pSampler, Sampler_id);
+	return 1;
+}
+
+LUA_FUNCTION(Sampler_gc)
+{
+	LUA->CheckType(1, Sampler_id);
+	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler_id);
+
+	LUA->SetUserType(1, NULL);
+	delete pSampler;
+
+	return 0;
+}
+
+LUA_FUNCTION(Sampler_GetFloat)
+{
+	LUA->CheckType(1, Sampler_id);
+	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler_id);
+	LUA->PushNumber(pSampler->GetFloat());
+	return 1;
+}
+
+LUA_FUNCTION(Sampler_GetFloat2D)
+{
+	LUA->CheckType(1, Sampler_id);
+	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler_id);
+
+	glm::vec2 sample = pSampler->GetFloat2D();
+	LUA->PushNumber(sample.x);
+	LUA->PushNumber(sample.y);
+	return 2;
+}
+
+LUA_FUNCTION(Sampler_tostring)
+{
+	LUA->PushString("Sampler");
+	return 1;
+}
+#pragma endregion
 
 #pragma region Tracing API
 static int AccelStruct_id;
@@ -100,30 +151,6 @@ LUA_FUNCTION(AccelStruct_tostring)
 #pragma endregion
 
 #pragma region BxDF API
-static int Sampler_id;
-
-LUA_FUNCTION(CreateSampler)
-{
-	uint32_t seed = time(NULL);
-	if (LUA->IsType(1, Type::Number)) seed = LUA->GetNumber(1);
-	LUA->PushUserType_Value(BSDFSampler(seed), Sampler_id);
-	return 1;
-}
-
-LUA_FUNCTION(Sampler_GetFloat)
-{
-	LUA->CheckType(1, Sampler_id);
-	BSDFSampler* pSampler = LUA->GetUserType<BSDFSampler>(1, Sampler_id);
-	LUA->PushNumber(pSampler->GetFloat());
-	return 1;
-}
-
-LUA_FUNCTION(Sampler_tostring)
-{
-	LUA->PushString("Sampler");
-	return 1;
-}
-
 MaterialProperties ReadMaterialProps(ILuaBase* LUA, const int stackPos, const glm::vec3& outgoing, const glm::vec3& normal)
 {
 	using namespace glm;
@@ -209,7 +236,7 @@ LUA_FUNCTION(SampleBSDF)
 	LUA->CheckType(5, Type::Vector);
 	LUA->CheckType(6, Type::Vector);
 
-	BSDFSampler* pSampler = LUA->GetUserType<BSDFSampler>(1, Sampler_id);
+	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler_id);
 
 	glm::vec3 normal, tangent, binormal, outgoing;
 	{
@@ -262,14 +289,12 @@ LUA_FUNCTION(SampleBSDF)
 	Vector binormal
 	Vector wo
 	Vector wi
+	bool   thin?
 
 	returns:
 	Vector colour
-	float  forwardPdf
-	float  reversePdf
-
 */
-LUA_FUNCTION(EvaluateBSDF)
+LUA_FUNCTION(EvalBSDF)
 {
 	LUA->CheckType(1, Type::Table);
 	LUA->CheckType(2, Type::Vector);
@@ -297,12 +322,63 @@ LUA_FUNCTION(EvaluateBSDF)
 	}
 
 	auto material = ReadMaterialProps(LUA, 1, outgoing, normal);
+	material.thin = LUA->GetBool(7);
 
 	LUA->Pop(LUA->Top());
 
 	glm::vec3 colour = EvalFalcorBSDF(material, normal, tangent, binormal, outgoing, incoming);
 
 	LUA->PushVector(Vector{ colour.x, colour.y, colour.z });
+	return 1;
+}
+
+/*
+	table  material (optional fields corresponding to MaterialParameter members)
+	Vector normal
+	Vector tangent
+	Vector binormal
+	Vector wo
+	Vector wi
+	bool   thin?
+
+	returns:
+	float pdf
+*/
+LUA_FUNCTION(EvalPDF)
+{
+	LUA->CheckType(1, Type::Table);
+	LUA->CheckType(2, Type::Vector);
+	LUA->CheckType(3, Type::Vector);
+	LUA->CheckType(4, Type::Vector);
+	LUA->CheckType(5, Type::Vector);
+	LUA->CheckType(6, Type::Vector);
+
+	glm::vec3 normal, tangent, binormal, outgoing, incoming;
+	{
+		Vector v = LUA->GetVector(2);
+		normal = glm::vec3(v.x, v.y, v.z);
+
+		v = LUA->GetVector(3);
+		tangent = glm::vec3(v.x, v.y, v.z);
+
+		v = LUA->GetVector(4);
+		binormal = glm::vec3(v.x, v.y, v.z);
+
+		v = LUA->GetVector(5);
+		outgoing = glm::vec3(v.x, v.y, v.z);
+
+		v = LUA->GetVector(6);
+		incoming = glm::vec3(v.x, v.y, v.z);
+	}
+
+	auto material = ReadMaterialProps(LUA, 1, outgoing, normal);
+	material.thin = LUA->GetBool(7);
+
+	LUA->Pop(LUA->Top());
+
+	float pdf = EvalPDFFalcorBSDF(material, normal, tangent, binormal, outgoing, incoming);
+
+	LUA->PushNumber(pdf);
 	return 1;
 }
 #pragma endregion
@@ -313,6 +389,16 @@ static int HDRI_id;
 LUA_FUNCTION(LoadHDRI)
 {
 	LUA->CheckString(1);
+
+	float radianceThresh = 1000.f;
+	if (LUA->IsType(2, Type::Number)) {
+		radianceThresh = LUA->GetNumber(2);
+	}
+
+	uint32_t areaThresh = 8 * 8;
+	if (LUA->IsType(3, Type::Number)) {
+		areaThresh = LUA->GetNumber(3);
+	}
 
 	std::string texturePath = "materials/vistrace/hdris/" + std::string(LUA->GetString(1)) + ".png";
 	if (!pFileSystem->FileExists(texturePath.c_str(), "GAME"))
@@ -326,7 +412,7 @@ LUA_FUNCTION(LoadHDRI)
 	pFileSystem->Read(data, filesize, file);
 	pFileSystem->Close(file);
 
-	HDRI* pHDRI = new HDRI(data, filesize);
+	HDRI* pHDRI = new HDRI(data, filesize, radianceThresh, areaThresh);
 	LUA->PushUserType_Value(pHDRI, HDRI_id);
 	free(data);
 
@@ -355,13 +441,55 @@ LUA_FUNCTION(HDRI_GetPixel)
 	return 2;
 }
 
+LUA_FUNCTION(HDRI_EvalPDF)
+{
+	LUA->CheckType(1, HDRI_id);
+	LUA->CheckType(2, Type::Vector);
+
+	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI_id);
+	Vector direction = LUA->GetVector(2);
+
+	float pdf = pHDRI->EvalPDF(glm::vec3(direction.x, direction.y, direction.z));
+	LUA->PushNumber(pdf);
+	return 1;
+}
+
 LUA_FUNCTION(HDRI_Sample)
 {
-	return 0;
+	LUA->CheckType(1, HDRI_id);
+	LUA->CheckType(2, Sampler_id);
+
+	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI_id);
+	Sampler* pSampler = *LUA->GetUserType<Sampler*>(2, Sampler_id);
+
+	float pdf = 0.f;
+	glm::vec3 sampleDir{ 0.f };
+	glm::vec3 colour{ 0.f };
+
+	bool valid = pHDRI->Sample(pdf, sampleDir, colour, pSampler);
+
+	if (!valid) {
+		LUA->PushBool(false);
+		return 1;
+	}
+
+	LUA->PushBool(true);
+	LUA->PushVector(Vector{ sampleDir.x, sampleDir.y, sampleDir.z });
+	LUA->PushVector(Vector{ colour.r, colour.g, colour.b });
+	LUA->PushNumber(pdf);
+	return 4;
 }
 
 LUA_FUNCTION(HDRI_SetAngles)
 {
+	LUA->CheckType(1, HDRI_id);
+	LUA->CheckType(2, Type::Angle);
+
+	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI_id);
+	QAngle ang = LUA->GetAngle(2);
+
+	pHDRI->SetAngle(glm::vec3(ang.x, ang.y, ang.z));
+
 	return 0;
 }
 
@@ -449,8 +577,12 @@ GMOD_MODULE_OPEN()
 	Sampler_id = LUA->CreateMetaTable("Sampler");
 		LUA->Push(-1);
 		LUA->SetField(-2, "__index");
+		LUA->PushCFunction(Sampler_gc);
+		LUA->SetField(-2, "__gc");
 		LUA->PushCFunction(Sampler_GetFloat);
 		LUA->SetField(-2, "GetFloat");
+		LUA->PushCFunction(Sampler_GetFloat2D);
+		LUA->SetField(-2, "GetFloat2D");
 		LUA->PushCFunction(Sampler_tostring);
 		LUA->SetField(-2, "__tostring");
 	LUA->Pop();
@@ -462,6 +594,8 @@ GMOD_MODULE_OPEN()
 		LUA->SetField(-2, "IsValid");
 		LUA->PushCFunction(HDRI_GetPixel);
 		LUA->SetField(-2, "GetPixel");
+		LUA->PushCFunction(HDRI_EvalPDF);
+		LUA->SetField(-2, "EvalPDF");
 		LUA->PushCFunction(HDRI_Sample);
 		LUA->SetField(-2, "Sample");
 		LUA->PushCFunction(HDRI_SetAngles);
@@ -479,7 +613,8 @@ GMOD_MODULE_OPEN()
 			PUSH_C_FUNC(LoadHDRI);
 
 			PUSH_C_FUNC(SampleBSDF);
-			PUSH_C_FUNC(EvaluateBSDF);
+			PUSH_C_FUNC(EvalBSDF);
+			PUSH_C_FUNC(EvalPDF);
 
 			PUSH_C_FUNC(CalcRayOrigin);
 		LUA->SetField(-2, "vistrace");

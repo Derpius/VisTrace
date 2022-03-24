@@ -412,7 +412,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 		// Mark the entity as present in accel (for ent id verification later)
 		LUA->PushBool(true);
-		LUA->SetField(-2, "vistrace_mark");
+		LUA->SetField(-2, "vistrace_mark"); // TODO: if another accel struct hits the new entity then the check for this later will still be true
 		LUA->Pop(); // Pop entity
 	}
 	LUA->Pop(); // Pop entity table
@@ -772,8 +772,8 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 
 		{
 			const Triangle& t = mTriangles[hit->primitive_index];
-			Vector3 v = w * t.p0 + u * t.p1() + v * t.p2();
-			LUA->PushVector(Vector{ v[0], v[1], v[2] });
+			Vector3 vec = w * t.p0 + u * t.p1() + v * t.p2();
+			LUA->PushVector(Vector{ vec[0], vec[1], vec[2] });
 			LUA->SetField(1, "HitPos");
 		}
 
