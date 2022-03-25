@@ -14,3 +14,6 @@
 [submodule "Module/libs/stb"]
 	path = Module/libs/stb
 	url = https://github.com/nothings/stb.git
+[submodule "Module/libs/curlpp"]
+	path = Module/libs/curlpp
+	url = https://github.com/jpbarrette/curlpp.git
