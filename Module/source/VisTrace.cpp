@@ -400,10 +400,10 @@ LUA_FUNCTION(LoadHDRI)
 		areaThresh = LUA->GetNumber(3);
 	}
 
-	std::string texturePath = "materials/vistrace/hdris/" + std::string(LUA->GetString(1)) + ".png";
-	if (!pFileSystem->FileExists(texturePath.c_str(), "GAME"))
-		LUA->ThrowError("HDRI file does not exist");
-	FileHandle_t file = pFileSystem->Open(texturePath.c_str(), "rb", "GAME");
+	std::string texturePath = "vistrace_hdris/" + std::string(LUA->GetString(1)) + ".hdr";
+	if (!pFileSystem->FileExists(texturePath.c_str(), "DATA"))
+		LUA->ThrowError("HDRI file does not exist (place HDRIs in .hdr format inside data/vistrace_hdris/)");
+	FileHandle_t file = pFileSystem->Open(texturePath.c_str(), "rb", "DATA");
 
 	uint32_t filesize = pFileSystem->Size(file);
 	uint8_t* data = reinterpret_cast<uint8_t*>(malloc(filesize));

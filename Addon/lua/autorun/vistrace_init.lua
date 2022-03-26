@@ -18,3 +18,5 @@ if not system.IsWindows() then
 end
 
 require("VisTrace-v" .. VERSION)
+
+file.CreateDir("vistrace_hdris")

@@ -115,7 +115,6 @@ return function(instance)
 	-- @param boolean? hitWater Enables calling util.TraceLine internally to hit water (default: false)
 	-- @return table Result of the traversal as a TraceResult struct with some extra values (see https://github.com/100PXSquared/VisTrace#usage)
 	function accelstruct_methods:traverse(origin, direction, tMin, tMax, hitWorld, hitWater)
-		checkPermission(instance, nil, "vistrace.accel")
 		canRun()
 
 		checkVector(origin)
@@ -375,7 +374,8 @@ return function(instance)
 		)
 	end
 
-	--- Loads a HDRI from `garrysmod/hdris` and appends the `.hdr` extension automatically
+	--- Loads a HDRI from `garrysmod/data/vistrace_hdris/` and appends the `.hdr` extension automatically  
+	--- Subfolders are allowed
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param string path Path to the HDRI
 	-- @param number? radianceThreshold Minimum total radiance in a sample bin before the bin is no longer divided
