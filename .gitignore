@@ -35,9 +35,8 @@
 .vs
 
 # Build Directories
-Debug
+Module/out
 Release
-Module/projects
 
 package.bat
 publish.bat

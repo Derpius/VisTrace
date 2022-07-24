@@ -1,4 +1,5 @@
 #include "Utils.h"
+#include "GMFS.h"
 
 using namespace GarrysMod::Lua;
 
@@ -23,7 +24,7 @@ void dumpStack(ILuaBase* LUA)
 			toPrint += "Angle: (" + std::to_string((int)LUA->GetAngle(i).x) + ", " + std::to_string((int)LUA->GetAngle(i).y) + ", " + std::to_string((int)LUA->GetAngle(i).z) + ")";
 			break;
 		case Type::Bool:
-			toPrint += "Bool: " + LUA->GetBool(i);
+			toPrint += std::string("Bool: ") + (LUA->GetBool(i) ? std::string("true") : std::string("false"));
 			break;
 		case Type::Function:
 			toPrint += "Function";
@@ -51,6 +52,22 @@ void dumpStack(ILuaBase* LUA)
 	}
 
 	printLua(LUA, toPrint.c_str());
+}
+
+Vector MakeVector(const float n)
+{
+	Vector v{};
+	v.x = v.y = v.z = n;
+	return v;
+}
+
+Vector MakeVector(const float x, const float y, const float z)
+{
+	Vector v{};
+	v.x = x;
+	v.y = y;
+	v.z = z;
+	return v;
 }
 
 std::string getMaterialString(ILuaBase* LUA, const std::string& key)
@@ -94,18 +111,18 @@ glm::vec3 transformToBone(
 	return glm::vec3(final);
 }
 
-bool readTexture(const std::string& path, IFileSystem* pFileSystem, VTFTexture** ppTextureOut)
+bool readTexture(const std::string& path, VTFTexture** ppTextureOut)
 {
 	std::string texturePath = "materials/" + path + ".vtf";
-	if (!pFileSystem->FileExists(texturePath.c_str(), "GAME")) return false;
-	FileHandle_t file = pFileSystem->Open(texturePath.c_str(), "rb", "GAME");
+	if (!FileSystem::Exists(texturePath.c_str(), "GAME")) return false;
+	FileHandle_t file = FileSystem::Open(texturePath.c_str(), "rb", "GAME");
 
-	uint32_t filesize = pFileSystem->Size(file);
+	uint32_t filesize = FileSystem::Size(file);
 	uint8_t* data = reinterpret_cast<uint8_t*>(malloc(filesize));
 	if (data == nullptr) return false;
 
-	pFileSystem->Read(data, filesize, file);
-	pFileSystem->Close(file);
+	FileSystem::Read(data, filesize, file);
+	FileSystem::Close(file);
 
 	VTFTexture* pTexture = new VTFTexture{ data, filesize };
 	free(data);

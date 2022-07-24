@@ -3,7 +3,6 @@
 #include "GarrysMod/Lua/Interface.h"
 #include "glm/glm.hpp"
 #include "VTFParser.h"
-#include "filesystem.h"
 
 #include <string>
 #include <vector>
@@ -13,6 +12,22 @@ void printLua(GarrysMod::Lua::ILuaBase* LUA, const char* text);
 
 // Prints the type of every element on the stack to the console
 void dumpStack(GarrysMod::Lua::ILuaBase* LUA);
+
+/// <summary>
+/// Constructs a GMod vector from a scalar
+/// </summary>
+/// <param name="n">Scalar</param>
+/// <returns>Constructed vector</returns>
+Vector MakeVector(const float n);
+
+/// <summary>
+/// Constructs a GMod vector from 3 scalar components
+/// </summary>
+/// <param name="x">X component</param>
+/// <param name="y">Y component</param>
+/// <param name="z">Z component</param>
+/// <returns>Constructed vector</returns>
+Vector MakeVector(const float x, const float y, const float z);
 
 /// <summary>
 /// Gets a string from the material at the top of the stack
@@ -91,10 +106,9 @@ glm::vec3 transformToBone(
 /// Read a VTF texture at the given path
 /// </summary>
 /// <param name="path">Path to texture (without materials/ and .vtf)</param>
-/// <param name="pFileSystem">Pointer to virtual file system</param>
 /// <param name="ppTextureOut">Pointer to pointer to texture for passing the newly read texture out</param>
 /// <returns>Whether the read was successful or not</returns>
-bool readTexture(const std::string& path, IFileSystem* pFileSystem, VTFTexture** ppTextureOut);
+bool readTexture(const std::string& path, VTFTexture** ppTextureOut);
 
 /// <summary>
 /// Check if a vector is valid (not all zero or NaN)

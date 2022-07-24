@@ -17,8 +17,6 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"
 
-#include "filesystem.h"
-
 #include "VTFParser.h"
 
 using Vector3 = bvh::Vector3<float>;
@@ -29,10 +27,10 @@ using BVH = bvh::Bvh<float>;
 using Intersector = bvh::ClosestPrimitiveIntersector<BVH, Triangle>;
 using Traverser = bvh::SingleRayTraverser<BVH>;
 
+typedef void CBaseEntity;
+
 class AccelStruct
 {
-	IFileSystem* mpFileSystem;
-
 	bool mAccelBuilt;
 	BVH mAccel;
 	Intersector* mpIntersector;
@@ -53,7 +51,7 @@ class AccelStruct
 	std::unordered_map<size_t, bool> mNormalMapBlacklist; // Triangles to ignore the normal mapping of (due to invalid tangents likely caused by poor UV mapping)
 
 public:
-	AccelStruct(IFileSystem* pFileSystem);
+	AccelStruct();
 	~AccelStruct();
 
 	void PopulateAccel(GarrysMod::Lua::ILuaBase* LUA);

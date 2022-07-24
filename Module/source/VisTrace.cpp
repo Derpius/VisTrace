@@ -1,14 +1,12 @@
-#include "AccelStruct.h"
+#include "Objects/AccelStruct.h"
 #include "Utils.h"
 
-#include "filesystem.h"
-#include "GarrysMod/InterfacePointers.hpp"
-
 #include "VTFParser.h"
+#include "GMFS.h"
 
-#include "BSDF.h"
-#include "HDRI.h"
-#include "Sampler.h"
+#include "Objects/BSDF.h"
+#include "Objects/HDRI.h"
+#include "Objects/Sampler.h"
 
 using namespace GarrysMod::Lua;
 
@@ -64,7 +62,6 @@ LUA_FUNCTION(Sampler_tostring)
 
 #pragma region Tracing API
 static int AccelStruct_id;
-static IFileSystem* pFileSystem;
 
 LUA_FUNCTION(AccelStruct_gc)
 {
@@ -84,7 +81,7 @@ LUA_FUNCTION(AccelStruct_gc)
 */
 LUA_FUNCTION(CreateAccel)
 {
-	AccelStruct* pAccelStruct = new AccelStruct(pFileSystem);
+	AccelStruct* pAccelStruct = new AccelStruct();
 
 	if (LUA->Top() == 0) LUA->CreateTable();
 	else if (LUA->IsType(1, Type::Nil)) {
@@ -268,9 +265,9 @@ LUA_FUNCTION(SampleBSDF)
 	LUA->PushBool(true);
 
 	LUA->CreateTable();
-	LUA->PushVector(Vector{ sample.wo.x, sample.wo.y, sample.wo.z });
+	LUA->PushVector(MakeVector(sample.wo.x, sample.wo.y, sample.wo.z));
 	LUA->SetField(-2, "wo");
-	LUA->PushVector(Vector{ sample.weight.x, sample.weight.y, sample.weight.z });
+	LUA->PushVector(MakeVector(sample.weight.x, sample.weight.y, sample.weight.z));
 	LUA->SetField(-2, "weight");
 
 	LUA->PushNumber(sample.pdf);
@@ -328,7 +325,7 @@ LUA_FUNCTION(EvalBSDF)
 
 	glm::vec3 colour = EvalFalcorBSDF(material, normal, tangent, binormal, outgoing, incoming);
 
-	LUA->PushVector(Vector{ colour.x, colour.y, colour.z });
+	LUA->PushVector(MakeVector(colour.x, colour.y, colour.z));
 	return 1;
 }
 
@@ -401,16 +398,16 @@ LUA_FUNCTION(LoadHDRI)
 	}
 
 	std::string texturePath = "vistrace_hdris/" + std::string(LUA->GetString(1)) + ".hdr";
-	if (!pFileSystem->FileExists(texturePath.c_str(), "DATA"))
+	if (!FileSystem::Exists(texturePath.c_str(), "DATA"))
 		LUA->ThrowError("HDRI file does not exist (place HDRIs in .hdr format inside data/vistrace_hdris/)");
-	FileHandle_t file = pFileSystem->Open(texturePath.c_str(), "rb", "DATA");
+	FileHandle_t file = FileSystem::Open(texturePath.c_str(), "rb", "DATA");
 
-	uint32_t filesize = pFileSystem->Size(file);
+	uint32_t filesize = FileSystem::Size(file);
 	uint8_t* data = reinterpret_cast<uint8_t*>(malloc(filesize));
 	if (data == nullptr) LUA->ThrowError("Failed to allocate memory for HDRI");
 
-	pFileSystem->Read(data, filesize, file);
-	pFileSystem->Close(file);
+	FileSystem::Read(data, filesize, file);
+	FileSystem::Close(file);
 
 	HDRI* pHDRI = new HDRI(data, filesize, radianceThresh, areaThresh);
 	LUA->PushUserType_Value(pHDRI, HDRI_id);
@@ -436,7 +433,7 @@ LUA_FUNCTION(HDRI_GetPixel)
 	Vector direction = LUA->GetVector(2);
 
 	glm::vec4 colour = pHDRI->GetPixel(glm::vec3(direction.x, direction.y, direction.z));
-	LUA->PushVector(Vector(colour.r, colour.g, colour.b));
+	LUA->PushVector(MakeVector(colour.r, colour.g, colour.b));
 	LUA->PushNumber(colour.a); // Radiance
 	return 2;
 }
@@ -474,8 +471,8 @@ LUA_FUNCTION(HDRI_Sample)
 	}
 
 	LUA->PushBool(true);
-	LUA->PushVector(Vector{ sampleDir.x, sampleDir.y, sampleDir.z });
-	LUA->PushVector(Vector{ colour.r, colour.g, colour.b });
+	LUA->PushVector(MakeVector(sampleDir.x, sampleDir.y, sampleDir.z));
+	LUA->PushVector(MakeVector(colour.r, colour.g, colour.b));
 	LUA->PushNumber(pdf);
 	return 4;
 }
@@ -543,9 +540,8 @@ LUA_FUNCTION(CalcRayOrigin)
 
 	// Select per-component between small fixed offset or above variable offset depending on distance to origin.
 	vec3 fOff = normal * fScale;
-	;
 
-	LUA->PushVector(Vector(
+	LUA->PushVector(MakeVector(
 		abs(pos.x) < origin ? pos.x + fOff.x : iPos.x,
 		abs(pos.y) < origin ? pos.y + fOff.y : iPos.y,
 		abs(pos.z) < origin ? pos.z + fOff.z : iPos.z
@@ -558,8 +554,16 @@ LUA_FUNCTION(CalcRayOrigin)
 
 GMOD_MODULE_OPEN()
 {
-	pFileSystem = InterfacePointers::FileSystem();
-	if (pFileSystem == nullptr) LUA->ThrowError("Failed to get filesystem");
+	switch (FileSystem::LoadFileSystem()) {
+	case FILESYSTEM_STATUS::MODULELOAD_FAILED:
+		LUA->ThrowError("Failed to get filesystem module handle");
+	case FILESYSTEM_STATUS::GETPROCADDR_FAILED:
+		LUA->ThrowError("Failed to get CreateInterface export");
+	case FILESYSTEM_STATUS::CREATEINTERFACE_FAILED:
+		LUA->ThrowError("CreateInterface failed");
+	case FILESYSTEM_STATUS::OK:
+		printLua(LUA, "Loaded filesystem interface successfully");
+	}
 
 	AccelStruct_id = LUA->CreateMetaTable("AccelStruct");
 		LUA->Push(-1);

@@ -4,16 +4,19 @@
 [submodule "Module/libs/bvh"]
 	path = Module/libs/bvh
 	url = https://github.com/madmann91/bvh.git
-[submodule "Module/libs/garrysmod_common"]
-	path = Module/libs/garrysmod_common
-	url = https://github.com/danielga/garrysmod_common.git
-	branch = x86-64-support-sourcesdk
 [submodule "Module/libs/VTFParser"]
 	path = Module/libs/VTFParser
 	url = https://github.com/Derpius/VTFParser.git
 [submodule "Module/libs/stb"]
 	path = Module/libs/stb
 	url = https://github.com/nothings/stb.git
-[submodule "Module/libs/curlpp"]
-	path = Module/libs/curlpp
-	url = https://github.com/jpbarrette/curlpp.git
+[submodule "Module/libs/BSPParser"]
+	path = Module/libs/BSPParser
+	url = https://github.com/Derpius/BSPParser.git
+[submodule "Module/libs/gmod-module-base"]
+	path = Module/libs/gmod-module-base
+	url = https://github.com/Facepunch/gmod-module-base.git
+	branch = development
+[submodule "Module/libs/GMFS"]
+	path = Module/libs/GMFS
+	url = https://github.com/Derpius/GMFS.git

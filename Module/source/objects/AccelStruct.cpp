@@ -13,9 +13,8 @@ void normalise(Vector3& v)
 	v[2] /= length;
 }
 
-AccelStruct::AccelStruct(IFileSystem* pFileSystem)
+AccelStruct::AccelStruct()
 {
-	mpFileSystem = pFileSystem;
 	mpIntersector = nullptr;
 	mpTraverser = nullptr;
 	mAccelBuilt = false;
@@ -63,7 +62,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 	{
 		VTFTexture* pTexture;
-		if (!readTexture(MISSING_TEXTURE, mpFileSystem, &pTexture))
+		if (!readTexture(MISSING_TEXTURE, &pTexture))
 			LUA->ThrowError("Failed to read missing texture VTF");
 		mTexCache[MISSING_TEXTURE] = pTexture;
 	}
@@ -85,7 +84,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 		LUA->Pop(); // Pop the bool
 
 		// Get entity id
-		std::pair<unsigned int, unsigned int> id;
+		std::pair<unsigned int, unsigned int> id{};
 		{
 			LUA->GetField(-1, "EntIndex");
 			LUA->Push(-2);
@@ -392,7 +391,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 			if (mTexCache.find(baseTexture) == mTexCache.end()) {
 				VTFTexture* pTexture;
-				if (!readTexture(baseTexture, mpFileSystem, &pTexture)) {
+				if (!readTexture(baseTexture, &pTexture)) {
 					pTexture = mTexCache[MISSING_TEXTURE];
 				};
 				mTexCache[baseTexture] = pTexture;
@@ -400,7 +399,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 			if (!normalMap.empty() && mTexCache.find(normalMap) == mTexCache.end()) {
 				VTFTexture* pTexture;
-				if (readTexture(normalMap, mpFileSystem, &pTexture))
+				if (readTexture(normalMap, &pTexture))
 					mTexCache[normalMap] = pTexture;
 			}
 
@@ -412,7 +411,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 		LUA->Pop(3); // Pop meshes, util, and _G tables
 
 		// Save the entity's pointer for hit verification later
-		mEntities[id.first] = LUA->GetUserType<CBaseEntity>(-1, Type::Entity);
+		mEntities[id.first] = LUA->GetUserType<void>(-1, Type::Entity);
 		LUA->Pop(); // Pop entity
 	}
 	LUA->Pop(); // Pop entity table
@@ -705,7 +704,7 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 	if (hit) {
 		auto intersection = hit->intersection;
 		size_t vertIndex = hit->primitive_index * 3;
-		std::pair<unsigned int, unsigned int> id = mIds[vertIndex];
+		std::pair<unsigned int, unsigned int> id{ mIds[vertIndex].first, mIds[vertIndex].second };
 
 		// If hitWorld is true, pop all the data from the stack for the world hit (world hit logic modifies the ray's tMax, so no need to compare distances if this managed to hit)
 		if (hitWorld) LUA->Pop(3);
@@ -718,7 +717,7 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 			LUA->PushNumber(id.first);
 			LUA->Call(1, 1);
 
-			CBaseEntity* pEnt = LUA->GetUserType<CBaseEntity>(-1, Type::Entity);
+			void* pEnt = LUA->GetUserType<void>(-1, Type::Entity);
 
 			if (pEnt == nullptr || pEnt != mEntities[id.first]) {
 				LUA->Pop(); // Pop the invalid entity (not necessarily an invalid entity, but not the same as what was at that index when accel was built)
@@ -771,7 +770,7 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 		{
 			const Triangle& t = mTriangles[hit->primitive_index];
 			Vector3 vec = w * t.p0 + u * t.p1() + v * t.p2();
-			LUA->PushVector(Vector{ vec[0], vec[1], vec[2] });
+			LUA->PushVector(MakeVector(vec[0], vec[1], vec[2]));
 			LUA->SetField(1, "HitPos");
 		}
 
@@ -806,7 +805,7 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 			0
 		);
 
-		LUA->PushVector(Vector{ colour.r * entColour[0], colour.g * entColour[1], colour.b * entColour[2] });
+		LUA->PushVector(MakeVector(colour.r * entColour[0], colour.g * entColour[1], colour.b * entColour[2]));
 		LUA->SetField(-2, "Albedo");
 
 		LUA->PushNumber(colour.a * (baseAlphaIsReflectivity ? 1.f : entColour[3]));
