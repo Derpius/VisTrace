@@ -83,17 +83,9 @@ std::string getMaterialString(ILuaBase* LUA, const std::string& key)
 	return val;
 }
 
-bool checkMaterialFlags(ILuaBase* LUA, const MaterialFlags flags)
+bool checkMaterialFlag(uint32_t flags, const MaterialFlags flag)
 {
-	unsigned int flagVal = 0;
-	LUA->GetField(-1, "GetInt");
-	LUA->Push(-2);
-	LUA->PushString("$flags");
-	LUA->Call(2, 1);
-	if (LUA->IsType(-1, Type::Number)) flagVal = static_cast<unsigned int>(LUA->GetNumber());
-	LUA->Pop();
-
-	return (flagVal & static_cast<unsigned int>(flags)) == static_cast<unsigned int>(flags);
+	return (flags & static_cast<uint32_t>(flag)) == static_cast<uint32_t>(flag);
 }
 
 glm::vec3 transformToBone(

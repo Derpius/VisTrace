@@ -18,6 +18,17 @@ AccelStruct::AccelStruct()
 	mpIntersector = nullptr;
 	mpTraverser = nullptr;
 	mAccelBuilt = false;
+
+	mTriangles = std::vector<Triangle>();
+	mTriangleData = std::vector<TriangleData>();
+
+	mEntities = std::vector<Entity>();
+
+	mTextureIds = std::unordered_map<std::string, size_t>();
+	mTextureCache = std::vector<VTFTexture*>();
+
+	mMaterialIds = std::unordered_map<std::string, size_t>();
+	mMaterials = std::vector<Material>();
 }
 
 AccelStruct::~AccelStruct()
@@ -25,10 +36,9 @@ AccelStruct::~AccelStruct()
 	if (mAccelBuilt) {
 		delete mpIntersector;
 		delete mpTraverser;
-
-		for (auto& element : mTexCache) {
-			delete element.second;
-		}
+	}
+	for (auto& element : mTextureCache) {
+		delete element;
 	}
 }
 
@@ -39,38 +49,36 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 		mAccelBuilt = false;
 		delete mpIntersector;
 		delete mpTraverser;
-
-		for (auto& element : mTexCache) {
-			delete element.second;
-		}
+	}
+	for (auto& element : mTextureCache) {
+		delete element;
 	}
 
 	// Redefine containers
-	mTriangles = std::vector<Triangle>();
-	mNormals = std::vector<glm::vec3>();
-	mTangents = std::vector<glm::vec3>();
-	mBinormals = std::vector<glm::vec3>();
-	mUvs = std::vector<glm::vec2>();
+	mTriangles.erase(mTriangles.begin(), mTriangles.end());
+	mTriangleData.erase(mTriangleData.begin(), mTriangleData.end());
 
-	mIds = std::vector<std::pair<unsigned int, unsigned int>>();
-	mOffsets = std::unordered_map<unsigned int, size_t>();
-	mEntities = std::unordered_map<unsigned int, CBaseEntity*>();
+	mEntities.erase(mEntities.begin(), mEntities.end());
 
-	mTexCache = std::unordered_map<std::string, VTFTexture*>();
-	mMaterials = std::vector<std::string>();
-	mNormalMapBlacklist = std::unordered_map<size_t, bool>();
+	mTextureIds.erase(mTextureIds.begin(), mTextureIds.end());
+	mTextureCache.erase(mTextureCache.begin(), mTextureCache.end());
+
+	mMaterialIds.erase(mMaterialIds.begin(), mMaterialIds.end());
+	mMaterials.erase(mMaterials.begin(), mMaterials.end());
 
 	{
 		VTFTexture* pTexture;
 		if (!readTexture(MISSING_TEXTURE, &pTexture))
 			LUA->ThrowError("Failed to read missing texture VTF");
-		mTexCache[MISSING_TEXTURE] = pTexture;
+		mTextureCache.push_back(pTexture);
+		mTextureIds.emplace(MISSING_TEXTURE, 0);
 	}
 
 	// Iterate over entities
 	size_t numEntities = LUA->ObjLen();
-	size_t offset = 0;
 	for (size_t entIndex = 1; entIndex <= numEntities; entIndex++) {
+		Entity entData{};
+
 		// Get entity
 		LUA->PushNumber(entIndex);
 		LUA->GetTable(-2);
@@ -84,19 +92,37 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 		LUA->Pop(); // Pop the bool
 
 		// Get entity id
-		std::pair<unsigned int, unsigned int> id{};
 		{
 			LUA->GetField(-1, "EntIndex");
 			LUA->Push(-2);
 			LUA->Call(1, 1);
-			double entId = LUA->GetNumber(); // Get as a double so after we check it's positive a static cast to unsigned int wont overflow rather than using int
+			double entId = LUA->GetNumber(); // Get as a double so after we check it's positive a static cast to unsigned int wont underflow rather than using int
 			LUA->Pop();
 
 			if (entId < 0.0) LUA->ThrowError("Entity ID is less than 0");
-			id.first = entId;
+			entData.id = entId;
 		}
 
-		mOffsets[id.first] = offset;
+		// Get entity colour
+		LUA->GetField(-1, "GetColor");
+		LUA->Push(-2);
+		LUA->Call(1, 1);
+
+		LUA->GetField(-1, "r");
+		entData.colour[0] = LUA->GetNumber() / 255.f;
+		LUA->Pop();
+
+		LUA->GetField(-1, "g");
+		entData.colour[1] = LUA->GetNumber() / 255.f;
+		LUA->Pop();
+
+		LUA->GetField(-1, "b");
+		entData.colour[2] = LUA->GetNumber() / 255.f;
+		LUA->Pop();
+
+		LUA->GetField(-1, "a");
+		entData.colour[3] = LUA->GetNumber() / 255.f;
+		LUA->Pop(2);
 
 		// Cache bone transforms
 		// Make sure the bone transforms are updated and the bones themselves are valid
@@ -195,9 +221,6 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 			LUA->PushNumber(meshIndex);
 			LUA->GetTable(-2);
 
-			// Set submesh id
-			id.second = meshIndex - 1U;
-
 			// Iterate over tris
 			LUA->GetField(-1, "triangles");
 			if (!LUA->IsType(-1, Type::Table)) LUA->ThrowError("Vertices tables must contain MeshVertex tables");
@@ -205,6 +228,9 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 			if (numVerts % 3U != 0U) LUA->ThrowError("Number of vertices is not a multiple of 3");
 
 			glm::vec3 tri[3];
+			TriangleData triData{};
+			triData.entIdx = entIndex - 1U;
+			triData.submatIdx = meshIndex - 1U;
 			for (size_t vertIndex = 0; vertIndex < numVerts; vertIndex++) {
 				// Get vertex
 				LUA->PushNumber(vertIndex + 1U);
@@ -237,25 +263,25 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 				// Get and transform normal, tangent, and binormal
 				LUA->GetField(-1, "normal");
 				if (LUA->IsType(-1, Type::Vector)) {
-					mNormals.push_back(transformToBone(LUA->GetVector(), bones, bindBones, weights, true));
+					triData.normals[triIndex] = transformToBone(LUA->GetVector(), bones, bindBones, weights, true);
 				} else {
-					mNormals.emplace_back(0, 0, 0);
+					triData.normals[triIndex] = glm::vec3(0, 0, 0);
 				}
 				LUA->Pop();
 
 				LUA->GetField(-1, "tangent");
 				if (LUA->IsType(-1, Type::Vector)) {
-					mTangents.push_back(transformToBone(LUA->GetVector(), bones, bindBones, weights, true));
+					triData.tangents[triIndex] = transformToBone(LUA->GetVector(), bones, bindBones, weights, true);
 				} else {
-					mTangents.emplace_back(0, 0, 0);
+					triData.tangents[triIndex] = glm::vec3(0, 0, 0);
 				}
 				LUA->Pop();
 
 				LUA->GetField(-1, "binormal");
 				if (LUA->IsType(-1, Type::Vector)) {
-					mBinormals.push_back(transformToBone(LUA->GetVector(), bones, bindBones, weights, true));
+					triData.binormals[triIndex] = transformToBone(LUA->GetVector(), bones, bindBones, weights, true);
 				} else {
-					mBinormals.emplace_back(0, 0, 0);
+					triData.binormals[triIndex] = glm::vec3(0, 0, 0);
 				}
 				LUA->Pop();
 
@@ -264,10 +290,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 				LUA->GetField(-2, "v");
 				float u = LUA->GetNumber(-2), v = LUA->GetNumber();
 				LUA->Pop(2);
-				mUvs.emplace_back(u, v);
-
-				// Push back copy of ids
-				mIds.push_back(id);
+				triData.uvs[triIndex] = glm::vec2(u, v);
 
 				// Pop MeshVertex
 				LUA->Pop();
@@ -282,26 +305,15 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 					// Check if triangle is invalid and remove vertices if so
 					glm::vec3 geometricNormal{ builtTri.n[0], builtTri.n[1], builtTri.n[2] };
-					if (!validVector(geometricNormal)) {
-						mNormals.resize(mNormals.size() - 3);
-						mTangents.resize(mTangents.size() - 3);
-						mBinormals.resize(mBinormals.size() - 3);
-						mUvs.resize(mUvs.size() - 3);
-						mIds.resize(mIds.size() - 3);
-						continue;
-					}
+					if (!validVector(geometricNormal)) continue;
 
-					mTriangles.push_back(builtTri);
 
-					// Maximum index of vertices
-					size_t maxVert = mNormals.size() - 1;
-
-					glm::vec3& n0 = mNormals[maxVert - 2U], & n1 = mNormals[maxVert - 1U], & n2 = mNormals[maxVert];
+					glm::vec3& n0 = triData.normals[0], & n1 = triData.normals[1], & n2 = triData.normals[2];
 					if (!validVector(n0) || glm::dot(n0, geometricNormal) < 0.01f) n0 = geometricNormal;
 					if (!validVector(n1) || glm::dot(n1, geometricNormal) < 0.01f) n1 = geometricNormal;
 					if (!validVector(n2) || glm::dot(n2, geometricNormal) < 0.01f) n2 = geometricNormal;
 
-					glm::vec3& t0 = mTangents[maxVert - 2U], & t1 = mTangents[maxVert - 1U], & t2 = mTangents[maxVert];
+					glm::vec3& t0 = triData.tangents[0], & t1 = triData.tangents[1], & t2 = triData.tangents[2];
 					if (
 						!(
 							validVector(t0) &&
@@ -315,7 +327,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 						glm::vec3 edge1 = tri[1] - tri[0];
 						glm::vec3 edge2 = tri[2] - tri[0];
 
-						glm::vec2 uv0 = mUvs[maxVert - 2U], uv1 = mUvs[maxVert - 1U], uv2 = mUvs[maxVert];
+						glm::vec2 uv0 = triData.uvs[0], uv1 = triData.uvs[1], uv2 = triData.uvs[2];
 						glm::vec2 dUV1 = uv1 - uv0;
 						glm::vec2 dUV2 = uv2 - uv0;
 
@@ -329,7 +341,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 						if (!validVector(geometricTangent)) {
 							// Set the tangent to one of the edges as a guess on the plane (this will only be reached if the uvs overlap)
 							geometricTangent = glm::normalize(edge1);
-							mNormalMapBlacklist[mTriangles.size() - 1U] = true;
+							triData.ignoreNormalMap = true;
 						}
 
 						// Assign orthogonalised geometric tangent to vertices
@@ -338,24 +350,27 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 						t2 = glm::normalize(geometricTangent - n2 * glm::dot(geometricTangent, n2));
 					}
 
-					glm::vec3& b0 = mBinormals[maxVert - 2U], & b1 = mBinormals[maxVert - 1U], & b2 = mBinormals[maxVert];
+					glm::vec3& b0 = triData.binormals[0], & b1 = triData.binormals[1], & b2 = triData.binormals[2];
 					if (!validVector(b0)) b0 = -glm::cross(n0, t0);
 					if (!validVector(b1)) b1 = -glm::cross(n1, t1);
 					if (!validVector(b2)) b2 = -glm::cross(n2, t2);
+
+					mTriangles.push_back(builtTri);
+					mTriangleData.push_back(triData);
 				}
 			}
 
 			// Pop triangle and mesh tables
 			LUA->Pop(2);
 
-			// Get textures
+			// Get material
 			std::string materialPath = "";
 			LUA->GetField(-4, "GetMaterial");
 			LUA->Push(-5);
 			LUA->Call(1, 1);
 			if (LUA->IsType(-1, Type::String)) materialPath = LUA->GetString();
 			LUA->Pop();
-			if (materialPath == "") {
+			if (materialPath.empty()) {
 				LUA->GetField(-4, "GetSubMaterial");
 				LUA->Push(-5);
 				LUA->PushNumber(meshIndex - 1U);
@@ -363,7 +378,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 				if (LUA->IsType(-1, Type::String)) materialPath = LUA->GetString();
 				LUA->Pop();
 
-				if (materialPath == "") {
+				if (materialPath.empty()) {
 					LUA->GetField(-4, "GetMaterials");
 					LUA->Push(-5);
 					LUA->PushNumber(meshIndex);
@@ -374,45 +389,64 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 					LUA->Pop(2); // Path and table
 				}
 			}
+			if (materialPath.empty()) LUA->ThrowError("Entity has empty material");
 
-			LUA->GetField(-3, "Material");
-			LUA->PushString(materialPath.c_str());
-			LUA->Call(1, 1);
-			if (!LUA->IsType(-1, Type::Material)) LUA->ThrowError("Invalid material on entity");
+			if (mMaterialIds.find(materialPath) == mMaterialIds.end()) {
+				LUA->GetField(-3, "Material");
+				LUA->PushString(materialPath.c_str());
+				LUA->Call(1, 1);
+				if (!LUA->IsType(-1, Type::Material)) LUA->ThrowError("Invalid material on entity");
 
-			mMaterials.push_back(materialPath);
+				Material mat{};
 
-			std::string baseTexture = getMaterialString(LUA, "$basetexture");
-			std::string normalMap = getMaterialString(LUA, "$bumpmap");
+				std::string baseTexture = getMaterialString(LUA, "$basetexture");
+				std::string normalMap = getMaterialString(LUA, "$bumpmap");
 
-			if (baseTexture.empty()) {
-				baseTexture = MISSING_TEXTURE;
+				if (mTextureIds.find(baseTexture) != mTextureIds.end()) {
+					mat.baseTexture = mTextureIds[baseTexture];
+				} if (!baseTexture.empty()) {
+					VTFTexture* pTexture;
+					if (readTexture(baseTexture, &pTexture)) {
+						mTextureIds.emplace(baseTexture, mTextureCache.size());
+						mat.baseTexture = mTextureCache.size();
+						mTextureCache.push_back(pTexture);
+					};
+				}
+
+				if (mTextureIds.find(normalMap) != mTextureIds.end()) {
+					mat.normalMap = mTextureIds[normalMap];
+				} else if (!normalMap.empty()) {
+					VTFTexture* pTexture;
+					if (readTexture(normalMap, &pTexture)) {
+						mTextureIds.emplace(normalMap, mTextureCache.size());
+						mat.normalMap = mTextureCache.size();
+						mTextureCache.push_back(pTexture);
+					}
+				}
+
+				LUA->GetField(-1, "GetInt");
+				LUA->Push(-2);
+				LUA->PushString("$flags");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Number)) mat.flags = static_cast<uint32_t>(LUA->GetNumber());
+				LUA->Pop();
+
+				LUA->Pop();
+
+				mMaterialIds.emplace(materialPath, mMaterials.size());
+				mMaterials.push_back(mat);
 			}
 
-			if (mTexCache.find(baseTexture) == mTexCache.end()) {
-				VTFTexture* pTexture;
-				if (!readTexture(baseTexture, &pTexture)) {
-					pTexture = mTexCache[MISSING_TEXTURE];
-				};
-				mTexCache[baseTexture] = pTexture;
-			}
-
-			if (!normalMap.empty() && mTexCache.find(normalMap) == mTexCache.end()) {
-				VTFTexture* pTexture;
-				if (readTexture(normalMap, &pTexture))
-					mTexCache[normalMap] = pTexture;
-			}
-
-			LUA->Pop();
-
-			offset++;
+			entData.materials.push_back(mMaterialIds[materialPath]);
 		}
 
 		LUA->Pop(3); // Pop meshes, util, and _G tables
 
 		// Save the entity's pointer for hit verification later
-		mEntities[id.first] = LUA->GetUserType<void>(-1, Type::Entity);
+		entData.rawEntity = LUA->GetUserType<CBaseEntity>(-1, Type::Entity);
 		LUA->Pop(); // Pop entity
+
+		mEntities.push_back(entData);
 	}
 	LUA->Pop(); // Pop entity table
 
@@ -703,54 +737,34 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 	auto hit = mpTraverser->traverse(ray, *mpIntersector);
 	if (hit) {
 		auto intersection = hit->intersection;
-		size_t vertIndex = hit->primitive_index * 3;
-		std::pair<unsigned int, unsigned int> id{ mIds[vertIndex].first, mIds[vertIndex].second };
+		const TriangleData& tri = mTriangleData[hit->primitive_index];
+		const Entity& ent = mEntities[tri.entIdx];
+		const Material& mat = mMaterials[ent.materials[tri.submatIdx]];
 
 		// If hitWorld is true, pop all the data from the stack for the world hit (world hit logic modifies the ray's tMax, so no need to compare distances if this managed to hit)
 		if (hitWorld) LUA->Pop(3);
 
 		// Entity
-		glm::vec4 entColour{ 1, 1, 1, 1 };
 		{
 			LUA->PushSpecial(SPECIAL_GLOB);
 			LUA->GetField(-1, "Entity");
-			LUA->PushNumber(id.first);
+			LUA->PushNumber(ent.id);
 			LUA->Call(1, 1);
 
-			void* pEnt = LUA->GetUserType<void>(-1, Type::Entity);
+			CBaseEntity* pEnt = LUA->GetUserType<CBaseEntity>(-1, Type::Entity);
 
-			if (pEnt == nullptr || pEnt != mEntities[id.first]) {
+			if (pEnt == nullptr || pEnt != ent.rawEntity) {
 				LUA->Pop(); // Pop the invalid entity (not necessarily an invalid entity, but not the same as what was at that index when accel was built)
 				LUA->GetField(-1, "Entity");
 				LUA->PushNumber(-1);
 				LUA->Call(1, 1);
-			} else {
-				LUA->GetField(-1, "GetColor");
-				LUA->Push(-2);
-				LUA->Call(1, 1);
-
-				LUA->GetField(-1, "r");
-				entColour[0] = LUA->GetNumber() / 255.f;
-				LUA->Pop();
-
-				LUA->GetField(-1, "g");
-				entColour[1] = LUA->GetNumber() / 255.f;
-				LUA->Pop();
-
-				LUA->GetField(-1, "b");
-				entColour[2] = LUA->GetNumber() / 255.f;
-				LUA->Pop();
-
-				LUA->GetField(-1, "a");
-				entColour[3] = LUA->GetNumber() / 255.f;
-				LUA->Pop(2);
 			}
 
 			LUA->SetField(1, "Entity");
 			LUA->Pop(); // Pop _G
 		}
 
-		LUA->PushNumber(mIds.at(vertIndex).first);
+		LUA->PushNumber(ent.id);
 		LUA->SetField(1, "EntIndex");
 
 		LUA->PushNumber(intersection.t / tMax);
@@ -764,7 +778,7 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 
 		// Calculate all information needed for texturing
 		float u = intersection.u, v = intersection.v, w = (1.f - u - v);
-		glm::vec2 texUV = w * mUvs[vertIndex] + u * mUvs[vertIndex + 1U] + v * mUvs[vertIndex + 2U];
+		glm::vec2 texUV = w * tri.uvs[0] + u * tri.uvs[1] + v * tri.uvs[2];
 		texUV -= glm::floor(texUV);
 
 		{
@@ -774,51 +788,36 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 			LUA->SetField(1, "HitPos");
 		}
 
-		glm::vec3 normal = w * mNormals.at(vertIndex) + u * mNormals.at(vertIndex + 1U) + v * mNormals.at(vertIndex + 2U);
-		glm::vec3 tangent = w * mTangents.at(vertIndex) + u * mTangents.at(vertIndex + 1U) + v * mTangents.at(vertIndex + 2U);
-		glm::vec3 binormal = w * mBinormals.at(vertIndex) + u * mBinormals.at(vertIndex + 1U) + v * mBinormals.at(vertIndex + 2U);
+		glm::vec3 normal = w * tri.normals[0] + u * tri.normals[1] + v * tri.normals[2];
+		glm::vec3 tangent = w * tri.tangents[0] + u * tri.tangents[1] + v * tri.tangents[2];
+		glm::vec3 binormal = w * tri.binormals[0] + u * tri.binormals[1] + v * tri.binormals[2];
 
 		normal = glm::normalize(normal);
 		tangent = glm::normalize(tangent);
 		binormal = glm::normalize(binormal);
 
 		// Create shading data table
-		LUA->PushSpecial(SPECIAL_GLOB);
 		LUA->CreateTable();
-		LUA->GetField(-2, "Material");
-		LUA->PushString(mMaterials[mOffsets[id.first] + id.second].c_str());
-		LUA->Call(1, 1);
 
-		std::string baseTexturePath = getMaterialString(LUA, "$basetexture");
-		std::string normalMapPath = getMaterialString(LUA, "$bumpmap");
+		bool baseAlphaIsReflectivity = checkMaterialFlag(mat.flags, MaterialFlags::basealphaenvmapmask);
 
-		bool baseAlphaIsReflectivity = checkMaterialFlags(LUA, MaterialFlags::basealphaenvmapmask);
-
-		LUA->SetField(-2, "Material");
-
-		if (baseTexturePath.empty()) baseTexturePath = MISSING_TEXTURE;
-
-		VTFTexture* pBaseTexture = mTexCache[baseTexturePath];
+		VTFTexture* pBaseTexture = mTextureCache[mat.baseTexture];
 		VTFPixel colour = pBaseTexture->GetPixel(
 			floor(texUV.x * pBaseTexture->GetWidth()),
 			floor(texUV.y * pBaseTexture->GetHeight()),
 			0
 		);
 
-		LUA->PushVector(MakeVector(colour.r * entColour[0], colour.g * entColour[1], colour.b * entColour[2]));
+		LUA->PushVector(MakeVector(colour.r * ent.colour[0], colour.g * ent.colour[1], colour.b * ent.colour[2]));
 		LUA->SetField(-2, "Albedo");
 
-		LUA->PushNumber(colour.a * (baseAlphaIsReflectivity ? 1.f : entColour[3]));
+		LUA->PushNumber(colour.a * (baseAlphaIsReflectivity ? 1.f : ent.colour[3]));
 		LUA->SetField(-2, "Alpha");
 
 		float roughness = baseAlphaIsReflectivity ? colour.a : 1;
 
-		if (
-			!normalMapPath.empty() &&
-			mNormalMapBlacklist.find(hit->primitive_index) == mNormalMapBlacklist.end() &&
-			mTexCache.find(normalMapPath) != mTexCache.end()
-		) {
-			VTFTexture* pNormalTexture = mTexCache[normalMapPath];
+		if (mat.normalMap != 0 && !tri.ignoreNormalMap) {
+			VTFTexture* pNormalTexture = mTextureCache[mat.normalMap];
 			VTFPixel pixelNormal = pNormalTexture->GetPixel(
 				floor(texUV.x * pNormalTexture->GetWidth()),
 				floor(texUV.y * pNormalTexture->GetHeight()),
@@ -843,8 +842,7 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 		LUA->PushNumber(roughness);
 		LUA->SetField(-2, "Roughness");
 
-		LUA->SetField(-3, "HitShader");
-		LUA->Pop(); // Pop _G
+		LUA->SetField(1, "HitShader");
 
 		// Push normal, tangent, and binormal
 		{
@@ -885,12 +883,12 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 		LUA->SetField(1, "HitBarycentric");
 
 		// Push custom hidata values for submat id
-		LUA->PushNumber(mIds.at(vertIndex).second);
+		LUA->PushNumber(tri.submatIdx);
 		LUA->SetField(1, "SubmatIndex");
 
 		// Push geometric normal of hit tri
 		{
-			Vector3 n = mTriangles.at(hit->primitive_index).n;
+			Vector3 n = mTriangles[hit->primitive_index].n;
 			normalise(n);
 
 			Vector v;

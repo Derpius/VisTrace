@@ -73,18 +73,18 @@ enum class MaterialFlags
 	wireframe = 268435456,
 	allowalphatocoverage = 536870912
 };
-inline MaterialFlags operator|(MaterialFlags a, MaterialFlags b)
+inline uint32_t operator|(MaterialFlags a, MaterialFlags b)
 {
-	return static_cast<MaterialFlags>(static_cast<unsigned int>(a) | static_cast<unsigned int>(b));
+	return static_cast<uint32_t>(a) | static_cast<uint32_t>(b);
 }
 
 /// <summary>
-/// Returns true if the material at the top of the stack has the flag(s) specified
+/// Returns true if the flag is present in the flags uint
 /// </summary>
-/// <param name="LUA">ILuaBase pointer</param>
-/// <param name="flags">Flags to check</param>
-/// <returns>True if the material has all of the flags specified</returns>
-bool checkMaterialFlags(GarrysMod::Lua::ILuaBase* LUA, const MaterialFlags flags);
+/// <param name="flags">uint32_t of flags</param>
+/// <param name="flag">Flag to check</param>
+/// <returns>True if the flag is set</returns>
+bool checkMaterialFlag(uint32_t flags, const MaterialFlags flag);
 
 /// <summary>
 /// Skins a vertex to its bones

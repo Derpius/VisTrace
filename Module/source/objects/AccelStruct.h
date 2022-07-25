@@ -29,6 +29,36 @@ using Traverser = bvh::SingleRayTraverser<BVH>;
 
 typedef void CBaseEntity;
 
+struct TriangleData
+{
+	glm::vec3 normals[3];
+	glm::vec3 tangents[3];
+	glm::vec3 binormals[3];
+
+	glm::vec2 uvs[3];
+
+	size_t entIdx;
+	uint32_t submatIdx;
+
+	bool ignoreNormalMap;
+};
+
+struct Material
+{
+	size_t baseTexture = 0;
+	size_t normalMap = 0;
+	uint32_t flags = 0;
+};
+
+struct Entity
+{
+	CBaseEntity* rawEntity;
+	uint32_t id;
+
+	std::vector<size_t> materials;
+	glm::vec4 colour;
+};
+
 class AccelStruct
 {
 	bool mAccelBuilt;
@@ -37,18 +67,15 @@ class AccelStruct
 	Traverser* mpTraverser;
 
 	std::vector<Triangle> mTriangles;
-	std::vector<glm::vec3> mNormals;
-	std::vector<glm::vec3> mTangents;
-	std::vector<glm::vec3> mBinormals;
-	std::vector<glm::vec2> mUvs;
+	std::vector<TriangleData> mTriangleData;
 
-	std::vector<std::pair<unsigned int, unsigned int>> mIds; // first: entity id, second: submesh id
-	std::unordered_map<unsigned int, size_t> mOffsets; // Offset for each entity id into per-submesh tables
-	std::unordered_map<unsigned int, CBaseEntity*> mEntities; // Pointer to original entity at that id
+	std::vector<Entity> mEntities;
 
-	std::unordered_map<std::string, VTFTexture*> mTexCache;
-	std::vector<std::string> mMaterials;
-	std::unordered_map<size_t, bool> mNormalMapBlacklist; // Triangles to ignore the normal mapping of (due to invalid tangents likely caused by poor UV mapping)
+	std::unordered_map<std::string, size_t> mTextureIds;
+	std::vector<VTFTexture*> mTextureCache;
+
+	std::unordered_map<std::string, size_t> mMaterialIds;
+	std::vector<Material> mMaterials;
 
 public:
 	AccelStruct();
