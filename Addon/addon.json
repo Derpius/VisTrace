@@ -1,6 +1,5 @@
 {
 	"title": "VisTrace",
 	"type": "ServerContent",
-	"tags": [ "realism", "build" ],
-	"ignore": ["materials/vistrace/hdris/README.md"]
+	"tags": [ "realism", "build" ]
 }

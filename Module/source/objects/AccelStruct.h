@@ -82,5 +82,5 @@ public:
 	~AccelStruct();
 
 	void PopulateAccel(GarrysMod::Lua::ILuaBase* LUA);
-	void Traverse(GarrysMod::Lua::ILuaBase* LUA);
+	int Traverse(GarrysMod::Lua::ILuaBase* LUA);
 };

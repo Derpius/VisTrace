@@ -1,12 +1,13 @@
-#include "Objects/AccelStruct.h"
+#include "TraceResult.h"
+#include "AccelStruct.h"
 #include "Utils.h"
 
 #include "VTFParser.h"
 #include "GMFS.h"
 
-#include "Objects/BSDF.h"
-#include "Objects/HDRI.h"
-#include "Objects/Sampler.h"
+#include "BSDF.h"
+#include "HDRI.h"
+#include "Sampler.h"
 
 using namespace GarrysMod::Lua;
 
@@ -56,6 +57,135 @@ LUA_FUNCTION(Sampler_GetFloat2D)
 LUA_FUNCTION(Sampler_tostring)
 {
 	LUA->PushString("Sampler");
+	return 1;
+}
+#pragma endregion
+
+#pragma region TraceResult
+LUA_FUNCTION(TraceResult_Pos)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	LUA->PushVector(MakeVector(pResult->pos.x, pResult->pos.y, pResult->pos.z));
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_Entity)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	LUA->PushSpecial(SPECIAL_GLOB);
+	LUA->GetField(-1, "Entity");
+	LUA->PushNumber(pResult->entIdx);
+	LUA->Call(1, 1);
+
+	CBaseEntity* pEnt = LUA->GetUserType<CBaseEntity>(-1, Type::Entity);
+	if (pEnt == nullptr || pEnt != pResult->rawEnt) {
+		LUA->GetField(-2, "Entity");
+		LUA->PushNumber(-1);
+		LUA->Call(1, 1);
+	}
+
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_GeometricNormal)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	LUA->PushVector(MakeVector(pResult->geometricNormal.x, pResult->geometricNormal.y, pResult->geometricNormal.z));
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_Normal)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	const glm::vec3& v = pResult->GetNormal();
+	LUA->PushVector(MakeVector(v.x, v.y, v.z));
+	return 1;
+}
+LUA_FUNCTION(TraceResult_Tangent)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	const glm::vec3& v = pResult->GetTangent();
+	LUA->PushVector(MakeVector(v.x, v.y, v.z));
+	return 1;
+}
+LUA_FUNCTION(TraceResult_Binormal)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	const glm::vec3& v = pResult->GetBinormal();
+	LUA->PushVector(MakeVector(v.x, v.y, v.z));
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_Barycentric)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	LUA->PushVector(MakeVector(pResult->uvw.x, pResult->uvw.y, pResult->uvw.z));
+	return 1;
+}
+LUA_FUNCTION(TraceResult_TextureUV)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	LUA->CreateTable();
+	LUA->PushNumber(pResult->texUV.x);
+	LUA->SetField(-2, "u");
+	LUA->PushNumber(pResult->texUV.y);
+	LUA->SetField(-2, "v");
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_SubMaterialIndex)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	LUA->PushNumber(pResult->submatIdx + 1);
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_Albedo)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	const glm::vec3& v = pResult->GetAlbedo();
+	LUA->PushVector(MakeVector(v.x, v.y, v.z));
+	return 1;
+}
+LUA_FUNCTION(TraceResult_Alpha)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	LUA->PushNumber(pResult->GetAlpha());
+	return 1;
+}
+LUA_FUNCTION(TraceResult_Metalness)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	LUA->PushNumber(pResult->GetMetalness());
+	return 1;
+}
+LUA_FUNCTION(TraceResult_Roughness)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	LUA->PushNumber(pResult->GetRoughness());
 	return 1;
 }
 #pragma endregion
@@ -134,10 +264,7 @@ LUA_FUNCTION(TraverseScene)
 {
 	LUA->CheckType(1, AccelStruct_id);
 	AccelStruct* pAccelStruct = *LUA->GetUserType<AccelStruct*>(1, AccelStruct_id);
-
-	pAccelStruct->Traverse(LUA);
-
-	return 1; // Return the table at the top of the stack (this will either be a default TraceResult, a TraceResult populated by BVH intersection, or a TraceResult populated by world intersection)
+	return pAccelStruct->Traverse(LUA);
 }
 
 LUA_FUNCTION(AccelStruct_tostring)
@@ -213,49 +340,33 @@ MaterialProperties ReadMaterialProps(ILuaBase* LUA, const int stackPos, const gl
 }
 
 /*
-	BSDFSampler sampler
+	TraceResult self
+	Sampler     sampler
 	table       material (optional fields corresponding to MaterialParameter members)
-	Vector      normal
-	Vector      tangent
-	Vector      binormal
-	Vector      wo
 
 	returns:
 	bool valid
 	BSDFSample? sample
 */
-LUA_FUNCTION(SampleBSDF)
+LUA_FUNCTION(TraceResult_SampleBSDF)
 {
-	LUA->CheckType(1, Sampler_id);
-	LUA->CheckType(2, Type::Table);
-	LUA->CheckType(3, Type::Vector);
-	LUA->CheckType(4, Type::Vector);
-	LUA->CheckType(5, Type::Vector);
-	LUA->CheckType(6, Type::Vector);
+	LUA->CheckType(1, TraceResult::id);
+	LUA->CheckType(2, Sampler_id);
+	LUA->CheckType(3, Type::Table);
 
-	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler_id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	Sampler* pSampler = *LUA->GetUserType<Sampler*>(2, Sampler_id);
 
-	glm::vec3 normal, tangent, binormal, outgoing;
-	{
-		Vector v = LUA->GetVector(3);
-		normal = glm::vec3(v.x, v.y, v.z);
-
-		v = LUA->GetVector(4);
-		tangent = glm::vec3(v.x, v.y, v.z);
-
-		v = LUA->GetVector(5);
-		binormal = glm::vec3(v.x, v.y, v.z);
-
-		v = LUA->GetVector(6);
-		outgoing = glm::vec3(v.x, v.y, v.z);
-	}
-
-	auto material = ReadMaterialProps(LUA, 2, outgoing, normal);
+	auto material = ReadMaterialProps(LUA, 3, pResult->wo, pResult->GetNormal());
 
 	LUA->Pop(LUA->Top());
 
 	BSDFSample sample;
-	bool valid = SampleFalcorBSDF(material, pSampler, sample, normal, tangent, binormal, outgoing);
+	bool valid = SampleFalcorBSDF(
+		material, pSampler, sample,
+		pResult->GetNormal(), pResult->GetTangent(), pResult->GetBinormal(),
+		pResult->wo
+	);
 
 	if (!valid) {
 		LUA->PushBool(false);
@@ -280,100 +391,72 @@ LUA_FUNCTION(SampleBSDF)
 }
 
 /*
-	table  material (optional fields corresponding to MaterialParameter members)
-	Vector normal
-	Vector tangent
-	Vector binormal
-	Vector wo
-	Vector wi
-	bool   thin?
+	TraceResult self
+	table       material (optional fields corresponding to MaterialParameter members)
+	Vector      wi
 
 	returns:
 	Vector colour
 */
-LUA_FUNCTION(EvalBSDF)
+LUA_FUNCTION(TraceResult_EvalBSDF)
 {
-	LUA->CheckType(1, Type::Table);
-	LUA->CheckType(2, Type::Vector);
+	LUA->CheckType(1, TraceResult::id);
+	LUA->CheckType(2, Type::Table);
 	LUA->CheckType(3, Type::Vector);
-	LUA->CheckType(4, Type::Vector);
-	LUA->CheckType(5, Type::Vector);
-	LUA->CheckType(6, Type::Vector);
 
-	glm::vec3 normal, tangent, binormal, outgoing, incoming;
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	glm::vec3 incoming;
 	{
-		Vector v = LUA->GetVector(2);
-		normal = glm::vec3(v.x, v.y, v.z);
-
-		v = LUA->GetVector(3);
-		tangent = glm::vec3(v.x, v.y, v.z);
-
-		v = LUA->GetVector(4);
-		binormal = glm::vec3(v.x, v.y, v.z);
-
-		v = LUA->GetVector(5);
-		outgoing = glm::vec3(v.x, v.y, v.z);
-
-		v = LUA->GetVector(6);
+		Vector v = LUA->GetVector(3);
 		incoming = glm::vec3(v.x, v.y, v.z);
 	}
 
-	auto material = ReadMaterialProps(LUA, 1, outgoing, normal);
-	material.thin = LUA->GetBool(7);
+	auto material = ReadMaterialProps(LUA, 2, pResult->wo, pResult->GetNormal());
 
 	LUA->Pop(LUA->Top());
 
-	glm::vec3 colour = EvalFalcorBSDF(material, normal, tangent, binormal, outgoing, incoming);
+	glm::vec3 colour = EvalFalcorBSDF(
+		material,
+		pResult->GetNormal(), pResult->GetTangent(), pResult->GetBinormal(),
+		pResult->wo, incoming
+	);
 
 	LUA->PushVector(MakeVector(colour.x, colour.y, colour.z));
 	return 1;
 }
 
 /*
-	table  material (optional fields corresponding to MaterialParameter members)
-	Vector normal
-	Vector tangent
-	Vector binormal
-	Vector wo
-	Vector wi
-	bool   thin?
+	TraceResult self
+	table       material (optional fields corresponding to MaterialParameter members)
+	Vector      wi
 
 	returns:
 	float pdf
 */
-LUA_FUNCTION(EvalPDF)
+LUA_FUNCTION(TraceResult_EvalPDF)
 {
-	LUA->CheckType(1, Type::Table);
-	LUA->CheckType(2, Type::Vector);
+	LUA->CheckType(1, TraceResult::id);
+	LUA->CheckType(2, Type::Table);
 	LUA->CheckType(3, Type::Vector);
-	LUA->CheckType(4, Type::Vector);
-	LUA->CheckType(5, Type::Vector);
-	LUA->CheckType(6, Type::Vector);
 
-	glm::vec3 normal, tangent, binormal, outgoing, incoming;
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	glm::vec3 incoming;
 	{
-		Vector v = LUA->GetVector(2);
-		normal = glm::vec3(v.x, v.y, v.z);
-
-		v = LUA->GetVector(3);
-		tangent = glm::vec3(v.x, v.y, v.z);
-
-		v = LUA->GetVector(4);
-		binormal = glm::vec3(v.x, v.y, v.z);
-
-		v = LUA->GetVector(5);
-		outgoing = glm::vec3(v.x, v.y, v.z);
-
-		v = LUA->GetVector(6);
+		Vector v = LUA->GetVector(3);
 		incoming = glm::vec3(v.x, v.y, v.z);
 	}
 
-	auto material = ReadMaterialProps(LUA, 1, outgoing, normal);
-	material.thin = LUA->GetBool(7);
+	auto material = ReadMaterialProps(LUA, 2, pResult->wo, pResult->GetNormal());
 
 	LUA->Pop(LUA->Top());
 
-	float pdf = EvalPDFFalcorBSDF(material, normal, tangent, binormal, outgoing, incoming);
+	float pdf = EvalPDFFalcorBSDF(
+		material,
+		pResult->GetNormal(), pResult->GetTangent(), pResult->GetBinormal(),
+		pResult->wo, incoming
+	);
 
 	LUA->PushNumber(pdf);
 	return 1;
@@ -565,6 +648,50 @@ GMOD_MODULE_OPEN()
 		printLua(LUA, "Loaded filesystem interface successfully");
 	}
 
+	TraceResult::id = LUA->CreateMetaTable("VisTraceResult");
+		LUA->Push(-1);
+		LUA->SetField(-2, "__index");
+
+		LUA->PushCFunction(TraceResult_Pos);
+		LUA->SetField(-2, "Pos");
+
+		LUA->PushCFunction(TraceResult_Entity);
+		LUA->SetField(-2, "Entity");
+
+		LUA->PushCFunction(TraceResult_GeometricNormal);
+		LUA->SetField(-2, "GeometricNormal");
+		LUA->PushCFunction(TraceResult_Normal);
+		LUA->SetField(-2, "Normal");
+		LUA->PushCFunction(TraceResult_Tangent);
+		LUA->SetField(-2, "Tangent");
+		LUA->PushCFunction(TraceResult_Binormal);
+		LUA->SetField(-2, "Binormal");
+
+		LUA->PushCFunction(TraceResult_Barycentric);
+		LUA->SetField(-2, "Barycentric");
+		LUA->PushCFunction(TraceResult_TextureUV);
+		LUA->SetField(-2, "TextureUV");
+
+		LUA->PushCFunction(TraceResult_SubMaterialIndex);
+		LUA->SetField(-2, "SubMaterialIndex");
+
+		LUA->PushCFunction(TraceResult_Albedo);
+		LUA->SetField(-2, "Albedo");
+		LUA->PushCFunction(TraceResult_Alpha);
+		LUA->SetField(-2, "Alpha");
+		LUA->PushCFunction(TraceResult_Metalness);
+		LUA->SetField(-2, "Metalness");
+		LUA->PushCFunction(TraceResult_Roughness);
+		LUA->SetField(-2, "Roughness");
+
+		LUA->PushCFunction(TraceResult_SampleBSDF);
+		LUA->SetField(-2, "SampleBSDF");
+		LUA->PushCFunction(TraceResult_EvalBSDF);
+		LUA->SetField(-2, "EvalBSDF");
+		LUA->PushCFunction(TraceResult_EvalPDF);
+		LUA->SetField(-2, "EvalPDF");
+	LUA->Pop();
+
 	AccelStruct_id = LUA->CreateMetaTable("AccelStruct");
 		LUA->Push(-1);
 		LUA->SetField(-2, "__index");
@@ -615,10 +742,6 @@ GMOD_MODULE_OPEN()
 			PUSH_C_FUNC(CreateAccel);
 			PUSH_C_FUNC(CreateSampler);
 			PUSH_C_FUNC(LoadHDRI);
-
-			PUSH_C_FUNC(SampleBSDF);
-			PUSH_C_FUNC(EvalBSDF);
-			PUSH_C_FUNC(EvalPDF);
 
 			PUSH_C_FUNC(CalcRayOrigin);
 		LUA->SetField(-2, "vistrace");

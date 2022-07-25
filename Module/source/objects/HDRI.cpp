@@ -147,7 +147,10 @@ HDRI::HDRI(
 	mAngle = glm::eulerAngleZYX(mAngleEuler.y, mAngleEuler.x, mAngleEuler.z);
 	mAngleInverse = glm::inverse(mAngle);
 
-	if (mRes <= 0) return;
+	if (mRes <= 0) {
+		free(pEquiData);
+		return;
+	}
 
 	// Calculate luminance and convert to octahedral mapping
 	float luminance = 0.f;

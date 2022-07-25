@@ -22,6 +22,14 @@ SF.Permissions.registerPrivilege("vistrace.hdri", "Load VisTrace HDRI Samplers",
 -- @libtbl vistrace_library
 SF.RegisterLibrary("vistrace")
 
+--- VisTrace TraceResult object returned by AccelStruct:traverse
+-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+-- @name VisTraceResult
+-- @class type
+-- @libtbl traceresult_methods
+-- @libtbl traceresult_meta
+SF.RegisterType("VisTraceResult", true, false, debug.getregistry().VisTraceResult)
+
 --- VisTrace acceleration structure
 -- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 -- @name AccelStruct
@@ -53,13 +61,17 @@ return function(instance)
 	local accelstruct_methods, accelstruct_meta = instance.Types.AccelStruct.Methods, instance.Types.AccelStruct
 	local wrapAccel, uwrapAccel = instance.Types.AccelStruct.Wrap, instance.Types.AccelStruct.Unwrap
 
+	local traceresult_methods, traceresult_meta = instance.Types.VisTraceResult.Methods, instance.Types.VisTraceResult
+	local wrapResult, uwrapResult = instance.Types.VisTraceResult.Wrap, instance.Types.VisTraceResult.Unwrap
+
 	local sampler_methods, sampler_meta = instance.Types.Sampler.Methods, instance.Types.Sampler
 	local wrapSampler, uwrapSampler = instance.Types.Sampler.Wrap, instance.Types.Sampler.Unwrap
 
 	local hdri_methods, hdri_meta = instance.Types.HDRI.Methods, instance.Types.HDRI
 	local wrapHDRI, uwrapHDRI = instance.Types.HDRI.Wrap, instance.Types.HDRI.Unwrap
 
-	local uwrapEnt, uwrapVec, wrapVec, uwrapAng = instance.Types.Entity.Unwrap, instance.Types.Vector.Unwrap, instance.Types.Vector.Wrap, instance.Types.Angle.Unwrap
+	local uwrapVec, wrapVec, uwrapAng = instance.Types.Vector.Unwrap, instance.Types.Vector.Wrap, instance.Types.Angle.Unwrap
+	local wrapEnt, uwrapEnt = instance.Types.Entity.Wrap, instance.Types.Entity.Unwrap
 	local entMetaTable, vecMetaTbl, angleMetaTbl = instance.Types.Entity, instance.Types.Vector, instance.Types.Angle
 
 	local uwrapObj, wrapObj = instance.UnwrapObject, instance.WrapObject
@@ -72,6 +84,10 @@ return function(instance)
 		return "AccelStruct"
 	end
 
+	function traceresult_meta.__tostring()
+		return "VisTraceResult"
+	end
+
 	function sampler_meta.__tostring()
 		return "Sampler"
 	end
@@ -82,8 +98,106 @@ return function(instance)
 
 	local function canRun()
 		if not vistrace then
-			SF.Throw("The required version (v0.8.x) of the VisTrace binary module is not installed (get it here https://github.com/Derpius/VisTrace/releases)", 3)
+			SF.Throw("The required version (v" .. VISTRACE_VERSION .. ") of the VisTrace binary module is not installed (get it here https://github.com/Derpius/VisTrace/releases)", 3)
 		end
+	end
+
+	--- Gets the hit pos of the result
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return Vector Position of the point of intersection
+	function traceresult_methods:pos()
+		canRun()
+		return wrapVec(uwrapResult(self):Pos())
+	end
+
+	--- Gets the entity the ray hit
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return Entity Entity that was hit
+	function traceresult_methods:entity()
+		canRun()
+		return wrapEnt(uwrapResult(self):Entity())
+	end
+
+	--- Gets the geometric normal of the tri that was hit
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return Vector Geometric normal
+	function traceresult_methods:geometricNormal()
+		canRun()
+		return wrapVec(uwrapResult(self):GeometricNormal())
+	end
+	--- Gets the shading normal of the intersection
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return Vector Shading normal after weighting and normal mapping
+	function traceresult_methods:normal()
+		canRun()
+		return wrapVec(uwrapResult(self):Normal())
+	end
+	--- Gets the shading tangent of the intersection
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return Vector Shading tangent after weighting and normal mapping
+	function traceresult_methods:tangent()
+		canRun()
+		return wrapVec(uwrapResult(self):Tangent())
+	end
+	--- Gets the shading binormal of the intersection
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return Vector Shading binormal after weighting and normal mapping
+	function traceresult_methods:binormal()
+		canRun()
+		return wrapVec(uwrapResult(self):Binormal())
+	end
+
+	--- Gets the barycentric coordinates of the intersection
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return Vector Vector containing the UVW of the intersection mapped to XYZ
+	function traceresult_methods:barycentric()
+		canRun()
+		return wrapVec(uwrapResult(self):Barycentric())
+	end
+
+	--- Gets the texture UV of the intersection
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return table Table with keys u, v
+	function traceresult_methods:textureUV()
+		canRun()
+		return uwrapResult(self):TextureUV()
+	end
+
+	--- Gets the submaterial index of the hit tri
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number Submat index
+	function traceresult_methods:subMaterialIndex()
+		canRun()
+		return uwrapResult(self):subMaterialIndex()
+	end
+
+	--- Gets the albedo of the intersection after applying entity colour and base texture
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return Vector Colour normalised to 0-1
+	function traceresult_methods:albedo()
+		canRun()
+		return wrapVec(uwrapResult(self):Albedo())
+	end
+	--- Gets the alpha of the intersection after applying entity colour and base texture
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number Alpha normalised to 0-1
+	function traceresult_methods:alpha()
+		canRun()
+		return uwrapResult(self):Alpha()
+	end
+	--- Gets the metalness of the intersection after applying MRAO texture
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number Metalness normailsed to 0-1 (defaults to 0 if no MRAO found)
+	function traceresult_methods:metalness()
+		canRun()
+		return uwrapResult(self):Metalness()
+	end
+	--- Gets the roughness of the intersection after applying MRAO texture
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number roughness normailsed to 0-1 (defaults to 1 if no MRAO found)
+	function traceresult_methods:roughness()
+		canRun()
+		return uwrapResult(self):Roughness()
 	end
 
 	--- Rebuild the acceleration structure
@@ -113,7 +227,7 @@ return function(instance)
 	-- @param number? tMax Maximum distance of the ray
 	-- @param boolean? hitWorld Enables calling util.TraceLine internally to hit the world (default: true)
 	-- @param boolean? hitWater Enables calling util.TraceLine internally to hit water (default: false)
-	-- @return table Result of the traversal as a TraceResult struct with some extra values (see https://github.com/100PXSquared/VisTrace#usage)
+	-- @return VisTraceResult? Result of the traversal, or nil if ray missed
 	function accelstruct_methods:traverse(origin, direction, tMin, tMax, hitWorld, hitWater)
 		canRun()
 
@@ -128,15 +242,10 @@ return function(instance)
 		if hitWorld then checkLuaType(hitWorld, TYPE_BOOL) end
 		if hitWater then checkLuaType(hitWater, TYPE_BOOL) end
 
-		local hitData = uwrapAccel(self):Traverse(uwrapVec(origin), uwrapVec(direction), tMin, tMax, hitWorld, hitWater)
-		for k, v in pairs(hitData) do -- Note that vistrace returns tables, not actual TraceResult structs, so we can just enumerate and wrap rather than using SF.StructWrapper
-			if k == "HitTexCoord" or k == "HitBarycentric" then
-				hitData[k] = v
-			elseif k == "HitShader" then
-				hitData[k] = {Albedo = wrapObj(v.Albedo), Alpha = v.Alpha, Roughness = v.Roughness, Material = wrapObj(v.Material)}
-			else hitData[k] = wrapObj(v) end
+		local res = uwrapAccel(self):Traverse(uwrapVec(origin), uwrapVec(direction), tMin, tMax, hitWorld, hitWater)
+		if res then
+			return wrapResult(res)
 		end
-		return hitData
 	end
 
 	--- Creates an acceleration struction (AccelStruct)
@@ -235,45 +344,20 @@ return function(instance)
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Sampler sampler Sampler object
 	-- @param table material Material parameters (See the GitHub for valid params)
-	-- @param Vector normal Surface normal
-	-- @param Vector tangent Surface tangent
-	-- @param Vector binormal Surface binormal
-	-- @param Vector wo Outgoing light direction (towards the camera)
-	-- @param boolean? thin Whether to simulate the material as a thin film
 	-- @return bool valid Whether the sample is valid or not
 	-- @return table? sample Sample generated (if valid)
-	function vistrace_library.sampleBSDF(sampler, material, normal, tangent, binormal, wo, thin)
+	function traceresult_methods:sampleBSDF(sampler, material)
 		canRun()
 
 		if debug_getmetatable(sampler) ~= sampler_meta then SF.ThrowTypeError("Sampler", SF.GetType(sampler), 2) end
 		checkLuaType(material, TYPE_TABLE)
-
-		checkVector(normal)
-		validateVector(normal)
-
-		checkVector(tangent)
-		validateVector(tangent)
-
-		checkVector(binormal)
-		validateVector(binormal)
-
-		checkVector(wo)
-		validateVector(wo)
-
-		if thin ~= nil then checkLuaType(thin, TYPE_BOOL) end
 
 		local unwrappedMat = {}
 		for k, v in pairs(material) do
 			unwrappedMat[k] = uwrapObj(v)
 		end
 
-		local valid, sample = vistrace.SampleBSDF(
-			uwrapSampler(sampler), unwrappedMat,
-			uwrapVec(normal), uwrapVec(tangent), uwrapVec(binormal),
-			uwrapVec(wo),
-			thin
-		)
-
+		local valid, sample = uwrapResult(self):SampleBSDF(uwrapSampler(sampler), unwrappedMat)
 		if not valid then return false end
 
 		return true, {
@@ -287,91 +371,43 @@ return function(instance)
 	--- Evaluates the Falcor BSDF
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param table material Material parameters (See the GitHub for valid params)
-	-- @param Vector normal Surface normal
-	-- @param Vector tangent Surface tangent
-	-- @param Vector binormal Surface binormal
-	-- @param Vector wo Outgoing light direction (towards the camera)
 	-- @param Vector wi Incoming light direction (towards sampled direction or light)
-	-- @param boolean? thin Whether to simulate the material as a thin film
 	-- @return Vector Evaluated surface colour
-	function vistrace_library.evalBSDF(material, normal, tangent, binormal, wo, wi, thin)
+	function traceresult_methods:evalBSDF(material, wi)
 		canRun()
 
 		checkLuaType(material, TYPE_TABLE)
 
-		checkVector(normal)
-		validateVector(normal)
-
-		checkVector(tangent)
-		validateVector(tangent)
-
-		checkVector(binormal)
-		validateVector(binormal)
-
-		checkVector(wo)
-		validateVector(wo)
-
 		checkVector(wi)
 		validateVector(wi)
-
-		if thin ~= nil then checkLuaType(thin, TYPE_BOOL) end
 
 		local unwrappedMat = {}
 		for k, v in pairs(material) do
 			unwrappedMat[k] = uwrapObj(v)
 		end
 
-		return wrapVec(vistrace.EvalBSDF(
-			unwrappedMat,
-			uwrapVec(normal), uwrapVec(tangent), uwrapVec(binormal),
-			uwrapVec(wo), uwrapVec(wi),
-			thin
-		))
+		return wrapVec(uwrapResult(self):EvalBSDF(unwrappedMat, uwrapVec(wi)))
 	end
 
 	--- Evaluates the Falcor BSDF's PDF
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param table material Material parameters (See the GitHub for valid params)
-	-- @param Vector normal Surface normal
-	-- @param Vector tangent Surface tangent
-	-- @param Vector binormal Surface binormal
-	-- @param Vector wo Outgoing light direction (towards the camera)
 	-- @param Vector wi Incoming light direction (towards sampled direction or light)
-	-- @param boolean? thin Whether to simulate the material as a thin film
 	-- @return number Evaluated PDF
-	function vistrace_library.evalPDF(material, normal, tangent, binormal, wo, wi, thin)
+	function traceresult_methods:evalPDF(material, wi)
 		canRun()
 
 		checkLuaType(material, TYPE_TABLE)
 
-		checkVector(normal)
-		validateVector(normal)
-
-		checkVector(tangent)
-		validateVector(tangent)
-
-		checkVector(binormal)
-		validateVector(binormal)
-
-		checkVector(wo)
-		validateVector(wo)
-
 		checkVector(wi)
 		validateVector(wi)
-
-		if thin ~= nil then checkLuaType(thin, TYPE_BOOL) end
 
 		local unwrappedMat = {}
 		for k, v in pairs(material) do
 			unwrappedMat[k] = uwrapObj(v)
 		end
 
-		return vistrace.EvalPDF(
-			unwrappedMat,
-			uwrapVec(normal), uwrapVec(tangent), uwrapVec(binormal),
-			uwrapVec(wo), uwrapVec(wi),
-			thin
-		)
+		return uwrapResult(self):EvalPDF(unwrappedMat, uwrapVec(wi))
 	end
 
 	--- Loads a HDRI from `garrysmod/data/vistrace_hdris/` and appends the `.hdr` extension automatically  

@@ -18,6 +18,7 @@ add_library(
 	"source/VisTrace.cpp"
 	"source/Utils.cpp"
 	"source/objects/AccelStruct.cpp"
+	"source/objects/TraceResult.cpp"
 	"source/objects/BSDF.cpp"
 	"source/objects/HDRI.cpp"
 	"source/objects/Sampler.cpp"
@@ -27,6 +28,7 @@ add_library(
 target_include_directories(
 	${PROJECT_NAME} PRIVATE
 	"source"
+	"source/objects"
 	"libs/BSPParser"
 	"libs/bvh/include"
 	"libs/glm"

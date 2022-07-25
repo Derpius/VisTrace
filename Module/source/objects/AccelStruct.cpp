@@ -1,6 +1,8 @@
 #include "AccelStruct.h"
 #include "Utils.h"
 
+#include "TraceResult.h"
+
 #define MISSING_TEXTURE "debug/debugempty"
 
 using namespace GarrysMod::Lua;
@@ -463,7 +465,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 	mAccelBuilt = true;
 }
 
-void AccelStruct::Traverse(ILuaBase* LUA)
+int AccelStruct::Traverse(ILuaBase* LUA)
 {
 	if (!mAccelBuilt) LUA->ThrowError("Unable to perform traversal, acceleration structure invalid (use AccelStruct:Rebuild to rebuild it)");
 	int numArgs = LUA->Top();
@@ -484,18 +486,6 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 	if (tMin < 0.f) LUA->ArgError(4, "tMin cannot be less than 0");
 	if (tMax <= tMin) LUA->ArgError(5, "tMax must be greater than tMin");
 
-	bool hitWorld = true;
-	if (numArgs > 5 && !LUA->IsType(6, Type::Nil)) {
-		LUA->CheckType(6, Type::Bool);
-		hitWorld = LUA->GetBool(6);
-	}
-
-	bool hitWater = false;
-	if (numArgs > 6 && !LUA->IsType(7, Type::Nil)) {
-		LUA->CheckType(7, Type::Bool);
-		hitWater = LUA->GetBool(7);
-	}
-
 	LUA->Pop(LUA->Top()); // Clear the stack of any items
 
 	Ray ray(
@@ -505,398 +495,29 @@ void AccelStruct::Traverse(ILuaBase* LUA)
 		tMax
 	);
 
-#pragma region Create Default TraceResult
-	LUA->CreateTable();
-
-	// Set TraceResult.Entity to a NULL entity
-	LUA->PushSpecial(SPECIAL_GLOB);
-	LUA->GetField(-1, "Entity");
-	LUA->PushNumber(-1); // Getting entity at index -1 *should* always return a NULL entity
-	LUA->Call(1, 1);
-	LUA->SetField(1, "Entity");
-	LUA->Pop();
-
-	LUA->PushNumber(1.0);
-	LUA->SetField(1, "Fraction");
-
-	LUA->PushNumber(0.0);
-	LUA->SetField(1, "FractionLeftSolid");
-
-	LUA->PushBool(false);
-	LUA->SetField(1, "Hit");
-
-	LUA->PushNumber(0);
-	LUA->SetField(1, "HitBox");
-
-	LUA->PushNumber(0);
-	LUA->SetField(1, "HitGroup");
-
-	LUA->PushBool(false);
-	LUA->SetField(1, "HitNoDraw");
-
-	LUA->PushBool(false);
-	LUA->SetField(1, "HitNonWorld");
-
-	{
-		Vector v;
-		v.x = v.y = v.z = 0.f;
-		LUA->PushVector(v);
-		LUA->SetField(1, "HitNormal");
-	}
-
-	{
-		Vector3 endPos = ray.origin + ray.direction * ray.tmax;
-		Vector v;
-		v.x = endPos[0];
-		v.y = endPos[1];
-		v.z = endPos[2];
-		LUA->PushVector(v);
-		LUA->SetField(1, "HitPos");
-	}
-
-	LUA->PushBool(false);
-	LUA->SetField(1, "HitSky");
-
-	LUA->PushString("** empty **");
-	LUA->SetField(1, "HitTexture");
-
-	LUA->PushBool(false);
-	LUA->SetField(1, "HitWorld");
-
-	LUA->PushNumber(0);
-	LUA->SetField(1, "MatType");
-
-	{
-		Vector v;
-		v.x = ray.direction[0];
-		v.y = ray.direction[1];
-		v.z = ray.direction[2];
-		LUA->PushVector(v);
-		LUA->SetField(1, "Normal");
-	}
-
-	LUA->PushNumber(0);
-	LUA->SetField(1, "PhysicsBone");
-
-	{
-		Vector3 start = ray.origin + ray.direction * ray.tmin;
-		Vector v;
-		v.x = start[0];
-		v.y = start[1];
-		v.z = start[2];
-		LUA->PushVector(v);
-		LUA->SetField(-2, "StartPos");
-	}
-
-	LUA->PushNumber(0);
-	LUA->SetField(1, "SurfaceProps");
-
-	LUA->PushBool(false);
-	LUA->SetField(1, "StartSolid");
-
-	LUA->PushBool(false);
-	LUA->SetField(1, "AllSolid");
-
-	LUA->PushNumber(0);
-	LUA->SetField(1, "SurfaceFlags");
-
-	LUA->PushNumber(0);
-	LUA->SetField(1, "DispFlags");
-
-	LUA->PushNumber(1);
-	LUA->SetField(1, "Contents");
-
-	// Custom members for uvs
-	LUA->CreateTable();
-	LUA->PushNumber(0);
-	LUA->SetField(-2, "u");
-	LUA->PushNumber(0);
-	LUA->SetField(-2, "v");
-	LUA->SetField(1, "HitTexCoord");
-
-	LUA->CreateTable();
-	LUA->PushNumber(0);
-	LUA->SetField(-2, "u");
-	LUA->PushNumber(0);
-	LUA->SetField(-2, "v");
-	LUA->SetField(1, "HitBarycentric");
-
-	// Custom members for tangent binormal, and geometric normal
-	{
-		Vector v;
-		v.x = v.y = v.z = 0.f;
-		LUA->PushVector(v);
-		LUA->SetField(1, "HitTangent");
-		LUA->PushVector(v);
-		LUA->SetField(1, "HitBinormal");
-		LUA->PushVector(v);
-		LUA->SetField(1, "HitNormalGeometric");
-	}
-
-	// Custom member for the submat id
-	LUA->PushNumber(0);
-	LUA->SetField(1, "SubmatIndex");
-
-	// EntIndex field allows the user to lookup entity data that they've cached themselves, even if the hit entity is now invalid
-	LUA->PushNumber(-1);
-	LUA->SetField(1, "EntIndex");
-#pragma endregion
-
-	// Perform source trace for world hit
-	if (hitWorld || hitWater) {
-		// Get TraceLine function
-		LUA->PushSpecial(SPECIAL_GLOB);
-		LUA->GetField(-1, "util");
-		LUA->GetField(-1, "TraceLine");
-
-		// Create Trace struct that will only hit brushes (https://wiki.facepunch.com/gmod/Structures/Trace)
-		LUA->CreateTable();
-
-		{
-			Vector3 start = ray.origin + ray.direction * ray.tmin;
-			Vector v;
-			v.x = start[0];
-			v.y = start[1];
-			v.z = start[2];
-			LUA->PushVector(v);
-			LUA->SetField(-2, "start");
-		}
-
-		{
-			Vector3 endPos = ray.origin + ray.direction * ray.tmax;
-			Vector v;
-			v.x = endPos[0];
-			v.y = endPos[1];
-			v.z = endPos[2];
-			LUA->PushVector(v);
-			LUA->SetField(-2, "endpos");
-		}
-
-		LUA->CreateTable();
-		LUA->SetField(-2, "filter");
-
-		LUA->PushNumber((hitWorld ? 16395 : 0 /* MASK_SOLID_BRUSHONLY */) | (hitWater ? 16432 : 0 /* MASK_WATER */));
-		LUA->SetField(-2, "mask");
-
-		LUA->PushNumber(0);
-		LUA->SetField(-2, "collisiongroup");
-
-		LUA->PushBool(false);
-		LUA->SetField(-2, "ignoreworld");
-
-		LUA->Call(1, 1);
-
-		// Get new BVH tMax from world hit (to prevent hitting meshes behind the world)
-		LUA->GetField(-1, "Hit");
-		if (LUA->GetBool()) {
-			LUA->GetField(-2, "Fraction");
-			ray.tmax *= LUA->GetNumber();
-			LUA->Pop();
-		}
-		LUA->Pop();
-
-		// Even though we have no world uvs, set the parameters to 0 anyway to avoid erroring code that would normally use them
-		LUA->CreateTable();
-		LUA->PushNumber(0);
-		LUA->SetField(-2, "u");
-		LUA->PushNumber(0);
-		LUA->SetField(-2, "v");
-		LUA->SetField(-2, "HitTexCoord");
-
-		LUA->CreateTable();
-		LUA->PushNumber(0);
-		LUA->SetField(-2, "u");
-		LUA->PushNumber(0);
-		LUA->SetField(-2, "v");
-		LUA->SetField(-2, "HitBarycentric");
-
-		// And same for the other custom members
-		{
-			Vector v;
-			v.x = v.y = v.z = 0.f;
-			LUA->PushVector(v);
-			LUA->SetField(-2, "HitTangent");
-			LUA->PushVector(v);
-			LUA->SetField(-2, "HitBinormal");
-		}
-
-		// Copy HitNormal to HitNormalGeometric
-		{
-			LUA->GetField(-1, "HitNormal");
-			LUA->SetField(-2, "HitNormalGeometric");
-		}
-
-		LUA->PushNumber(0);
-		LUA->SetField(-2, "SubmatIndex");
-
-		LUA->PushNumber(0);
-		LUA->SetField(-2, "EntIndex");
-	}
-
 	// Perform BVH traversal for mesh hit
 	auto hit = mpTraverser->traverse(ray, *mpIntersector);
 	if (hit) {
 		auto intersection = hit->intersection;
-		const TriangleData& tri = mTriangleData[hit->primitive_index];
-		const Entity& ent = mEntities[tri.entIdx];
-		const Material& mat = mMaterials[ent.materials[tri.submatIdx]];
+		const Triangle& tri = mTriangles[hit->primitive_index];
+		const TriangleData& triData = mTriangleData[hit->primitive_index];
+		const Entity& ent = mEntities[triData.entIdx];
+		const Material& mat = mMaterials[ent.materials[triData.submatIdx]];
 
-		// If hitWorld is true, pop all the data from the stack for the world hit (world hit logic modifies the ray's tMax, so no need to compare distances if this managed to hit)
-		if (hitWorld) LUA->Pop(3);
-
-		// Entity
-		{
-			LUA->PushSpecial(SPECIAL_GLOB);
-			LUA->GetField(-1, "Entity");
-			LUA->PushNumber(ent.id);
-			LUA->Call(1, 1);
-
-			CBaseEntity* pEnt = LUA->GetUserType<CBaseEntity>(-1, Type::Entity);
-
-			if (pEnt == nullptr || pEnt != ent.rawEntity) {
-				LUA->Pop(); // Pop the invalid entity (not necessarily an invalid entity, but not the same as what was at that index when accel was built)
-				LUA->GetField(-1, "Entity");
-				LUA->PushNumber(-1);
-				LUA->Call(1, 1);
-			}
-
-			LUA->SetField(1, "Entity");
-			LUA->Pop(); // Pop _G
-		}
-
-		LUA->PushNumber(ent.id);
-		LUA->SetField(1, "EntIndex");
-
-		LUA->PushNumber(intersection.t / tMax);
-		LUA->SetField(1, "Fraction");
-
-		LUA->PushBool(true);
-		LUA->SetField(1, "Hit");
-
-		LUA->PushBool(true);
-		LUA->SetField(1, "HitNonWorld");
-
-		// Calculate all information needed for texturing
-		float u = intersection.u, v = intersection.v, w = (1.f - u - v);
-		glm::vec2 texUV = w * tri.uvs[0] + u * tri.uvs[1] + v * tri.uvs[2];
-		texUV -= glm::floor(texUV);
-
-		{
-			const Triangle& t = mTriangles[hit->primitive_index];
-			Vector3 vec = w * t.p0 + u * t.p1() + v * t.p2();
-			LUA->PushVector(MakeVector(vec[0], vec[1], vec[2]));
-			LUA->SetField(1, "HitPos");
-		}
-
-		glm::vec3 normal = w * tri.normals[0] + u * tri.normals[1] + v * tri.normals[2];
-		glm::vec3 tangent = w * tri.tangents[0] + u * tri.tangents[1] + v * tri.tangents[2];
-		glm::vec3 binormal = w * tri.binormals[0] + u * tri.binormals[1] + v * tri.binormals[2];
-
-		normal = glm::normalize(normal);
-		tangent = glm::normalize(tangent);
-		binormal = glm::normalize(binormal);
-
-		// Create shading data table
-		LUA->CreateTable();
-
-		bool baseAlphaIsReflectivity = checkMaterialFlag(mat.flags, MaterialFlags::basealphaenvmapmask);
-
-		VTFTexture* pBaseTexture = mTextureCache[mat.baseTexture];
-		VTFPixel colour = pBaseTexture->GetPixel(
-			floor(texUV.x * pBaseTexture->GetWidth()),
-			floor(texUV.y * pBaseTexture->GetHeight()),
-			0
+		TraceResult res(
+			glm::normalize(glm::vec3(direction.x, direction.y, direction.z)),
+			glm::vec3(tri.p0[0], tri.p0[1], tri.p0[2]), glm::vec3(tri.p1()[0], tri.p1()[1], tri.p1()[2]), glm::vec3(tri.p2()[0], tri.p2()[1], tri.p2()[2]),
+			triData.normals, triData.tangents, triData.binormals, triData.uvs,
+			glm::normalize(glm::vec3(tri.n[0], tri.n[1], tri.n[2])),
+			glm::vec2(hit->intersection.u, hit->intersection.v),
+			ent.id, ent.rawEntity, triData.submatIdx,
+			mat.flags, ent.colour,
+			mTextureCache[mat.baseTexture], (triData.ignoreNormalMap || mat.normalMap == 0) ? nullptr : mTextureCache[mat.normalMap]
 		);
 
-		LUA->PushVector(MakeVector(colour.r * ent.colour[0], colour.g * ent.colour[1], colour.b * ent.colour[2]));
-		LUA->SetField(-2, "Albedo");
-
-		LUA->PushNumber(colour.a * (baseAlphaIsReflectivity ? 1.f : ent.colour[3]));
-		LUA->SetField(-2, "Alpha");
-
-		float roughness = baseAlphaIsReflectivity ? colour.a : 1;
-
-		if (mat.normalMap != 0 && !tri.ignoreNormalMap) {
-			VTFTexture* pNormalTexture = mTextureCache[mat.normalMap];
-			VTFPixel pixelNormal = pNormalTexture->GetPixel(
-				floor(texUV.x * pNormalTexture->GetWidth()),
-				floor(texUV.y * pNormalTexture->GetHeight()),
-				0
-			);
-
-			if (!baseAlphaIsReflectivity)
-				roughness = 1.f - pixelNormal.a;
-
-			normal = glm::mat3{
-				tangent[0],  tangent[1],  tangent[2],
-				binormal[0], binormal[1], binormal[2],
-				normal[0],   normal[1],   normal[2]
-			} * (glm::vec3{ pixelNormal.r, pixelNormal.g, pixelNormal.b } * 2.f - 1.f);
-			normal = glm::normalize(normal);
-
-
-			tangent = glm::normalize(tangent - normal * glm::dot(tangent, normal));
-			binormal = -glm::cross(normal, tangent);
-		}
-
-		LUA->PushNumber(roughness);
-		LUA->SetField(-2, "Roughness");
-
-		LUA->SetField(1, "HitShader");
-
-		// Push normal, tangent, and binormal
-		{
-			Vector v;
-
-			v.x = normal[0];
-			v.y = normal[1];
-			v.z = normal[2];
-			LUA->PushVector(v);
-			LUA->SetField(1, "HitNormal");
-
-			v.x = tangent[0];
-			v.y = tangent[1];
-			v.z = tangent[2];
-			LUA->PushVector(v);
-			LUA->SetField(1, "HitTangent");
-
-			v.x = binormal[0];
-			v.y = binormal[1];
-			v.z = binormal[2];
-			LUA->PushVector(v);
-			LUA->SetField(1, "HitBinormal");
-		}
-
-		// Push custom hitdata values for U and V (texture and barycentric)
-		LUA->CreateTable();
-		LUA->PushNumber(texUV.x);
-		LUA->SetField(-2, "u");
-		LUA->PushNumber(texUV.y);
-		LUA->SetField(-2, "v");
-		LUA->SetField(1, "HitTexCoord");
-
-		LUA->CreateTable();
-		LUA->PushNumber(u);
-		LUA->SetField(-2, "u");
-		LUA->PushNumber(v);
-		LUA->SetField(-2, "v");
-		LUA->SetField(1, "HitBarycentric");
-
-		// Push custom hidata values for submat id
-		LUA->PushNumber(tri.submatIdx);
-		LUA->SetField(1, "SubmatIndex");
-
-		// Push geometric normal of hit tri
-		{
-			Vector3 n = mTriangles[hit->primitive_index].n;
-			normalise(n);
-
-			Vector v;
-			v.x = n[0];
-			v.y = n[1];
-			v.z = n[2];
-			LUA->PushVector(v);
-			LUA->SetField(1, "HitNormalGeometric");
-		}
+		LUA->PushUserType_Value(res, TraceResult::id);
+		return 1;
 	}
+
+	return 0;
 }
