@@ -18,6 +18,7 @@
 #include "glm/gtc/quaternion.hpp"
 
 #include "VTFParser.h"
+#include "BSPParser.h"
 
 using Vector3 = bvh::Vector3<float>;
 using Triangle = bvh::Triangle<float>;
@@ -59,6 +60,28 @@ struct Entity
 	glm::vec4 colour;
 };
 
+class World
+{
+private:
+	BSPMap* pMap;
+
+public:
+	std::vector<Triangle> triangles;
+	std::vector<TriangleData> triangleData;
+
+	std::vector<Entity> entities;
+
+	std::unordered_map<std::string, size_t> textureIds;
+	std::vector<VTFTexture*> textureCache;
+
+	std::vector<Material> materials;
+
+	World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName);
+	~World();
+
+	bool IsValid() const;
+};
+
 class AccelStruct
 {
 	bool mAccelBuilt;
@@ -81,6 +104,6 @@ public:
 	AccelStruct();
 	~AccelStruct();
 
-	void PopulateAccel(GarrysMod::Lua::ILuaBase* LUA);
+	void PopulateAccel(GarrysMod::Lua::ILuaBase* LUA, const World* pWorld = nullptr);
 	int Traverse(GarrysMod::Lua::ILuaBase* LUA);
 };

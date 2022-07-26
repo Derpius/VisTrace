@@ -5,7 +5,7 @@
 
 #include "VTFParser.h"
 
-typedef void CBaseEntity;
+#include "AccelStruct.h"
 
 class TraceResult
 {
@@ -51,11 +51,10 @@ public:
 
 	TraceResult(
 		const glm::vec3& direction,
-		const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2,
-		const glm::vec3 vertNormals[3], const glm::vec3 vertTangents[3], const glm::vec3 vertBinormals[3], const glm::vec2 vertUVs[3],
-		const glm::vec3& geometricNormal, const glm::vec2& uv,
-		uint32_t entIdx, CBaseEntity* rawEnt, uint32_t submatIdx,
-		uint32_t materialFlags, const glm::vec4& entColour,
+		const Triangle& tri, const TriangleData& triData,
+		const glm::vec2& uv,
+		const Entity& ent,
+		uint32_t materialFlags,
 		VTFTexture* baseTexture, VTFTexture* normalMap = nullptr, VTFTexture* mrao = nullptr
 	);
 

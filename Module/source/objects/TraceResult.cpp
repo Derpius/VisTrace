@@ -4,35 +4,43 @@ int TraceResult::id = -1;
 
 TraceResult::TraceResult(
 	const glm::vec3& direction,
-	const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2,
-	const glm::vec3 vertNormals[3], const glm::vec3 vertTangents[3], const glm::vec3 vertBinormals[3], const glm::vec2 vertUVs[3],
-	const glm::vec3& geometricNormal, const glm::vec2& uv,
-	uint32_t entIdx, CBaseEntity* rawEnt, uint32_t submatIdx,
-	uint32_t materialFlags, const glm::vec4& entColour,
+	const Triangle& tri, const TriangleData& triData,
+	const glm::vec2& uv,
+	const Entity& ent,
+	uint32_t materialFlags,
 	VTFTexture* baseTexture, VTFTexture* normalMap, VTFTexture* mrao
 ) :
-	geometricNormal(geometricNormal),
-	entIdx(entIdx), rawEnt(rawEnt), submatIdx(submatIdx),
 	materialFlags(materialFlags),
 	baseTexture(baseTexture), normalMap(normalMap), mrao(mrao)
 {
 	wo = -direction;
 
 	for (int i = 0; i < 3; i++) {
-		vN[i] = vertNormals[i];
-		vT[i] = vertTangents[i];
-		vB[i] = vertBinormals[i];
-		vUV[i] = vertUVs[i];
+		vN[i] = triData.normals[i];
+		vT[i] = triData.tangents[i];
+		vB[i] = triData.binormals[i];
+		vUV[i] = triData.uvs[i];
 	}
+
+	glm::vec3 v0(tri.p0[0], tri.p0[1], tri.p0[2]);
+	Vector3 p1 = tri.p1(), p2 = tri.p2();
+	glm::vec3 v1(p1[0], p1[1], p1[2]);
+	glm::vec3 v2(p2[0], p2[1], p2[2]);
 
 	uvw = glm::vec3(uv, 1.f - uv[0] - uv[1]);
 	pos = uvw[2] * v0 + uvw[0] * v1 + uvw[1] * v2;
 
+	geometricNormal = glm::normalize(glm::vec3(tri.n[0], tri.n[1], tri.n[2]));
+
 	texUV = uvw[2] * vUV[0] + uvw[0] * vUV[1] + uvw[1] * vUV[2];
 	texUV -= glm::floor(texUV);
 
-	albedo = entColour;
-	alpha = entColour[3];
+	entIdx = ent.id;
+	rawEnt = ent.rawEntity;
+	submatIdx = triData.submatIdx;
+
+	albedo = ent.colour;
+	alpha = ent.colour.a;
 }
 
 void TraceResult::CalcTBN()

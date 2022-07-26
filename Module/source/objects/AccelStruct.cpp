@@ -1,3 +1,7 @@
+#include <stdexcept>
+
+#include "GMFS.h"
+
 #include "AccelStruct.h"
 #include "Utils.h"
 
@@ -13,6 +17,148 @@ void normalise(Vector3& v)
 	v[0] /= length;
 	v[1] /= length;
 	v[2] /= length;
+}
+
+World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
+{
+	std::string path = "maps/" + mapName + ".bsp";
+	if (!FileSystem::Exists(path.c_str(), "GAME")) return;
+	FileHandle_t file = FileSystem::Open(path.c_str(), "rb", "GAME");
+
+	uint32_t filesize = FileSystem::Size(file);
+	uint8_t* data = reinterpret_cast<uint8_t*>(malloc(filesize));
+	if (data == nullptr) return;
+
+	FileSystem::Read(data, filesize, file);
+	FileSystem::Close(file);
+
+	pMap = new BSPMap(data, filesize);
+	free(data);
+
+	if (!pMap->IsValid()) {
+		delete pMap;
+		pMap = nullptr;
+		return;
+	}
+
+	triangles = std::vector<Triangle>();
+	triangleData = std::vector<TriangleData>();
+
+	entities = std::vector<Entity>();
+
+	textureIds = std::unordered_map<std::string, size_t>();
+	textureCache = std::vector<VTFTexture*>();
+
+	materials = std::vector<Material>();
+
+	{
+		VTFTexture* pTexture;
+		if (!readTexture(MISSING_TEXTURE, &pTexture)) {
+			delete pMap;
+			pMap = nullptr;
+			return;
+		}
+		textureIds.emplace(MISSING_TEXTURE, textureCache.size());
+		textureCache.push_back(pTexture);
+	}
+
+	const glm::vec3* vertices = reinterpret_cast<const glm::vec3*>(pMap->GetVertices());
+	const glm::vec3* normals = reinterpret_cast<const glm::vec3*>(pMap->GetNormals());
+	const glm::vec3* tangents = reinterpret_cast<const glm::vec3*>(pMap->GetTangents());
+	const glm::vec3* binormals = reinterpret_cast<const glm::vec3*>(pMap->GetBinormals());
+	const glm::vec2* uvs = reinterpret_cast<const glm::vec2*>(pMap->GetUVs());
+	const int16_t* textures = pMap->GetTriTextures();
+
+	Entity ent{};
+	ent.rawEntity = nullptr; // replace with world ent ptr
+	ent.id = 0;
+	ent.colour = glm::vec4(1, 1, 1, 1);
+	ent.materials = std::vector<size_t>();
+
+	auto matIds = std::unordered_map<std::string, size_t>();
+	for (size_t triIdx = 0; triIdx < pMap->GetNumTris(); triIdx++) {
+		size_t vi0 = triIdx * 3;
+		size_t vi1 = vi0 + 1, vi2 = vi0 + 2;
+
+		// Construct bvh tri
+		triangles.push_back(Triangle{
+			Vector3{ vertices[vi0].x, vertices[vi0].y, vertices[vi0].z },
+			Vector3{ vertices[vi1].x, vertices[vi1].y, vertices[vi1].z },
+			Vector3{ vertices[vi2].x, vertices[vi2].y, vertices[vi2].z },
+		});
+
+		// Construct tri data
+		TriangleData triData{};
+		memcpy(triData.normals, normals + vi0, sizeof(glm::vec3) * 3);
+		memcpy(triData.tangents, tangents + vi0, sizeof(glm::vec3) * 3);
+		memcpy(triData.binormals, binormals + vi0, sizeof(glm::vec3) * 3);
+		memcpy(triData.uvs, uvs + vi0, sizeof(glm::vec2) * 3);
+		triData.entIdx = 0;
+		triData.ignoreNormalMap = true;
+
+		// Load texture
+		BSPTexture tex;
+		try {
+			tex = pMap->GetTexture(textures[triIdx]);
+		} catch (std::runtime_error e) {
+			delete pMap;
+			pMap = nullptr;
+			for (auto& element : textureCache) {
+				delete element;
+			}
+			LUA->ThrowError(e.what());
+		}
+
+		std::string strPath(tex.path);
+		if (strPath.rfind("maps/", 0) == 0) { // Trim invalid prefix and coordinate suffix
+			size_t secondSlash = 0, thirdToLastUnderscore = std::string::npos;
+			for (int i = 0; i < 2; i++) {
+				secondSlash = strPath.find("/", secondSlash + 1);
+			}
+			for (int i = 0; i < 3; i++) {
+				thirdToLastUnderscore = strPath.rfind("_", thirdToLastUnderscore - 1);
+			}
+			strPath = strPath.substr(secondSlash + 1, thirdToLastUnderscore - secondSlash - 1);
+		}
+
+		if (matIds.find(strPath) == matIds.end()) {
+			Material mat{};
+			mat.flags = tex.flags;
+
+			matIds.emplace(strPath, ent.materials.size());
+			ent.materials.push_back(materials.size());
+
+			printLua(LUA, strPath.c_str());
+
+			VTFTexture* pTexture;
+			if (readTexture(strPath, &pTexture)) {
+				printLua(LUA, "texture loaded successfully");
+				textureIds.emplace(strPath, textureCache.size());
+				mat.baseTexture = textureCache.size();
+				textureCache.push_back(pTexture);
+			};
+
+			materials.push_back(mat);
+		}
+		triData.submatIdx = matIds[tex.path];
+
+		triangleData.push_back(triData);
+	}
+
+	entities.push_back(ent);
+}
+
+World::~World()
+{
+	if (pMap != nullptr) delete pMap;
+	for (auto& element : textureCache) {
+		delete element;
+	}
+}
+
+bool World::IsValid() const
+{
+	return pMap != nullptr;
 }
 
 AccelStruct::AccelStruct()
@@ -44,7 +190,7 @@ AccelStruct::~AccelStruct()
 	}
 }
 
-void AccelStruct::PopulateAccel(ILuaBase* LUA)
+void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 {
 	// Delete accel
 	if (mAccelBuilt) {
@@ -52,11 +198,12 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 		delete mpIntersector;
 		delete mpTraverser;
 	}
+
+	// Redefine containers
 	for (auto& element : mTextureCache) {
 		delete element;
 	}
 
-	// Redefine containers
 	mTriangles.erase(mTriangles.begin(), mTriangles.end());
 	mTriangleData.erase(mTriangleData.begin(), mTriangleData.end());
 
@@ -68,12 +215,24 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 	mMaterialIds.erase(mMaterialIds.begin(), mMaterialIds.end());
 	mMaterials.erase(mMaterials.begin(), mMaterials.end());
 
-	{
-		VTFTexture* pTexture;
-		if (!readTexture(MISSING_TEXTURE, &pTexture))
-			LUA->ThrowError("Failed to read missing texture VTF");
-		mTextureCache.push_back(pTexture);
-		mTextureIds.emplace(MISSING_TEXTURE, 0);
+	if (pWorld != nullptr) {
+		mTriangles = pWorld->triangles;
+		mTriangleData = pWorld->triangleData;
+
+		mEntities = pWorld->entities;
+
+		mTextureIds = pWorld->textureIds;
+		mTextureCache = pWorld->textureCache;
+		for (auto const& [texPath, id] : pWorld->textureIds) { // Reread all images to prevent destruction unloading from world
+			VTFTexture* pTexture;
+			if (readTexture(texPath, &pTexture)) {
+				mTextureCache[id] = pTexture;
+			} else {
+				mTextureCache[id] = mTextureCache[0]; // Failed to re-read, replace with missing texture
+			}
+		}
+
+		mMaterials = pWorld->materials;
 	}
 
 	// Iterate over entities
@@ -231,8 +390,8 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 
 			glm::vec3 tri[3];
 			TriangleData triData{};
-			triData.entIdx = entIndex - 1U;
-			triData.submatIdx = meshIndex - 1U;
+			triData.entIdx = mEntities.size();
+			triData.submatIdx = entData.materials.size();
 			for (size_t vertIndex = 0; vertIndex < numVerts; vertIndex++) {
 				// Get vertex
 				LUA->PushNumber(vertIndex + 1U);
@@ -404,6 +563,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA)
 				std::string baseTexture = getMaterialString(LUA, "$basetexture");
 				std::string normalMap = getMaterialString(LUA, "$bumpmap");
 
+				mat.baseTexture = mTextureIds[MISSING_TEXTURE];
 				if (mTextureIds.find(baseTexture) != mTextureIds.end()) {
 					mat.baseTexture = mTextureIds[baseTexture];
 				} if (!baseTexture.empty()) {
@@ -506,13 +666,12 @@ int AccelStruct::Traverse(ILuaBase* LUA)
 
 		TraceResult res(
 			glm::normalize(glm::vec3(direction.x, direction.y, direction.z)),
-			glm::vec3(tri.p0[0], tri.p0[1], tri.p0[2]), glm::vec3(tri.p1()[0], tri.p1()[1], tri.p1()[2]), glm::vec3(tri.p2()[0], tri.p2()[1], tri.p2()[2]),
-			triData.normals, triData.tangents, triData.binormals, triData.uvs,
-			glm::normalize(glm::vec3(tri.n[0], tri.n[1], tri.n[2])),
+			tri, triData,
 			glm::vec2(hit->intersection.u, hit->intersection.v),
-			ent.id, ent.rawEntity, triData.submatIdx,
-			mat.flags, ent.colour,
-			mTextureCache[mat.baseTexture], (triData.ignoreNormalMap || mat.normalMap == 0) ? nullptr : mTextureCache[mat.normalMap]
+			ent,
+			mat.flags,
+			mTextureCache[mat.baseTexture],
+			(triData.ignoreNormalMap || mat.normalMap == 0) ? nullptr : mTextureCache[mat.normalMap]
 		);
 
 		LUA->PushUserType_Value(res, TraceResult::id);

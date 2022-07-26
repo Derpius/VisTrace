@@ -192,6 +192,7 @@ LUA_FUNCTION(TraceResult_Roughness)
 
 #pragma region Tracing API
 static int AccelStruct_id;
+static World* g_pWorld = nullptr;
 
 LUA_FUNCTION(AccelStruct_gc)
 {
@@ -221,7 +222,7 @@ LUA_FUNCTION(CreateAccel)
 		LUA->CheckType(1, Type::Table);
 		LUA->Pop(LUA->Top() - 1); // Pop all but the table
 	}
-	pAccelStruct->PopulateAccel(LUA);
+	pAccelStruct->PopulateAccel(LUA, g_pWorld);
 
 	LUA->PushUserType_Value(pAccelStruct, AccelStruct_id);
 	return 1;
@@ -244,7 +245,7 @@ LUA_FUNCTION(RebuildAccel)
 		LUA->CheckType(2, Type::Table);
 		LUA->Pop(LUA->Top() - 2); // Pop all but the table (and self)
 	}
-	pAccelStruct->PopulateAccel(LUA);
+	pAccelStruct->PopulateAccel(LUA, g_pWorld);
 
 	return 0;
 }
@@ -635,6 +636,27 @@ LUA_FUNCTION(CalcRayOrigin)
 
 #define PUSH_C_FUNC(function) LUA->PushCFunction(function); LUA->SetField(-2, #function)
 
+LUA_FUNCTION(GM_Initialize)
+{
+	printLua(LUA, "VisTrace: Loading map...");
+	LUA->PushSpecial(SPECIAL_GLOB);
+	LUA->GetField(-1, "game");
+	LUA->GetField(-1, "GetMap");
+	LUA->Call(0, 1);
+	const char* mapName = LUA->GetString();
+	LUA->Pop(2); // _G and game
+
+	g_pWorld = new World(LUA, mapName);
+	if (!g_pWorld->IsValid()) {
+		delete g_pWorld;
+		g_pWorld = nullptr;
+		LUA->ThrowError("Failed to load map, accelerations structures will only trace props");
+	}
+
+	printLua(LUA, "VisTrace: Map loaded successfully!");
+	return 0;
+}
+
 GMOD_MODULE_OPEN()
 {
 	switch (FileSystem::LoadFileSystem()) {
@@ -645,8 +667,17 @@ GMOD_MODULE_OPEN()
 	case FILESYSTEM_STATUS::CREATEINTERFACE_FAILED:
 		LUA->ThrowError("CreateInterface failed");
 	case FILESYSTEM_STATUS::OK:
-		printLua(LUA, "Loaded filesystem interface successfully");
+		printLua(LUA, "VisTrace: Loaded filesystem interface successfully");
 	}
+
+	LUA->PushSpecial(SPECIAL_GLOB);
+	LUA->GetField(-1, "hook");
+	LUA->GetField(-1, "Add");
+	LUA->PushString("Initialize");
+	LUA->PushString("VisTrace.LoadWorld");
+	LUA->PushCFunction(GM_Initialize);
+	LUA->Call(3, 0);
+	LUA->Pop(2); // _G and hook
 
 	TraceResult::id = LUA->CreateMetaTable("VisTraceResult");
 		LUA->Push(-1);
