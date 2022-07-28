@@ -75,7 +75,8 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 	ent.colour = glm::vec4(1, 1, 1, 1);
 	ent.materials = std::vector<size_t>();
 
-	auto matIds = std::unordered_map<std::string, size_t>();
+	LUA->PushSpecial(SPECIAL_GLOB);
+	auto submatIds = std::unordered_map<std::string, size_t>();
 	for (size_t triIdx = 0; triIdx < pMap->GetNumTris(); triIdx++) {
 		size_t vi0 = triIdx * 3;
 		size_t vi1 = vi0 + 1, vi2 = vi0 + 2;
@@ -94,7 +95,6 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 		memcpy(triData.binormals, binormals + vi0, sizeof(glm::vec3) * 3);
 		memcpy(triData.uvs, uvs + vi0, sizeof(glm::vec2) * 3);
 		triData.entIdx = 0;
-		triData.ignoreNormalMap = true;
 
 		// Load texture
 		BSPTexture tex;
@@ -121,29 +121,63 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			strPath = strPath.substr(secondSlash + 1, thirdToLastUnderscore - secondSlash - 1);
 		}
 
-		if (matIds.find(strPath) == matIds.end()) {
-			Material mat{};
-			mat.flags = tex.flags;
-
-			matIds.emplace(strPath, ent.materials.size());
-			ent.materials.push_back(materials.size());
-
+		if (materialIds.find(strPath) == materialIds.end()) {
 			printLua(LUA, strPath.c_str());
+			LUA->GetField(-1, "Material");
+			LUA->PushString(strPath.c_str());
+			LUA->Call(1, 1);
+			if (!LUA->IsType(-1, Type::Material)) LUA->ThrowError("Invalid material on world");
 
-			VTFTexture* pTexture;
-			if (readTexture(strPath, &pTexture)) {
-				printLua(LUA, "texture loaded successfully");
-				textureIds.emplace(strPath, textureCache.size());
-				mat.baseTexture = textureCache.size();
-				textureCache.push_back(pTexture);
-			};
+			Material mat{};
 
+			std::string baseTexture = getMaterialString(LUA, "$basetexture");
+			std::string normalMap = getMaterialString(LUA, "$bumpmap");
+
+			mat.baseTexture = textureIds[MISSING_TEXTURE];
+			if (textureIds.find(baseTexture) != textureIds.end()) {
+				mat.baseTexture = textureIds[baseTexture];
+			} if (!baseTexture.empty()) {
+				VTFTexture* pTexture;
+				if (readTexture(baseTexture, &pTexture)) {
+					textureIds.emplace(baseTexture, textureCache.size());
+					mat.baseTexture = textureCache.size();
+					textureCache.push_back(pTexture);
+				};
+			}
+
+			if (textureIds.find(normalMap) != textureIds.end()) {
+				mat.normalMap = textureIds[normalMap];
+			} else if (!normalMap.empty()) {
+				VTFTexture* pTexture;
+				if (readTexture(normalMap, &pTexture)) {
+					textureIds.emplace(normalMap, textureCache.size());
+					mat.normalMap = textureCache.size();
+					textureCache.push_back(pTexture);
+				}
+			}
+
+			LUA->GetField(-1, "GetInt");
+			LUA->Push(-2);
+			LUA->PushString("$flags");
+			LUA->Call(2, 1);
+			if (LUA->IsType(-1, Type::Number)) mat.flags = static_cast<uint32_t>(LUA->GetNumber());
+			LUA->Pop();
+
+			LUA->Pop();
+
+			mat.surfFlags = tex.flags;
+
+			printLua(LUA, "Material loaded successfully!");
+			submatIds.emplace(strPath, ent.materials.size());
+			ent.materials.push_back(materials.size());
+			materialIds.emplace(strPath, materials.size());
 			materials.push_back(mat);
 		}
-		triData.submatIdx = matIds[tex.path];
+		triData.submatIdx = submatIds[tex.path];
 
 		triangleData.push_back(triData);
 	}
+	LUA->Pop();
 
 	entities.push_back(ent);
 }
@@ -222,14 +256,9 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 		mEntities = pWorld->entities;
 
 		mTextureIds = pWorld->textureIds;
-		mTextureCache = pWorld->textureCache;
-		for (auto const& [texPath, id] : pWorld->textureIds) { // Reread all images to prevent destruction unloading from world
-			VTFTexture* pTexture;
-			if (readTexture(texPath, &pTexture)) {
-				mTextureCache[id] = pTexture;
-			} else {
-				mTextureCache[id] = mTextureCache[0]; // Failed to re-read, replace with missing texture
-			}
+		mTextureCache = std::vector<VTFTexture*>(pWorld->textureCache.size(), nullptr);
+		for (int i = 0; i < mTextureCache.size(); i++) { // Copy images into accelstruct
+			mTextureCache[i] = new VTFTexture(*pWorld->textureCache[i]);
 		}
 
 		mMaterials = pWorld->materials;

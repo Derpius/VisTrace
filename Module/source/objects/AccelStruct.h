@@ -49,6 +49,7 @@ struct Material
 	size_t baseTexture = 0;
 	size_t normalMap = 0;
 	uint32_t flags = 0;
+	int32_t surfFlags = 0;
 };
 
 struct Entity
@@ -74,6 +75,7 @@ public:
 	std::unordered_map<std::string, size_t> textureIds;
 	std::vector<VTFTexture*> textureCache;
 
+	std::unordered_map<std::string, size_t> materialIds;
 	std::vector<Material> materials;
 
 	World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName);
