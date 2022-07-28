@@ -816,5 +816,6 @@ GMOD_MODULE_OPEN()
 
 GMOD_MODULE_CLOSE()
 {
+	if (g_pWorld != nullptr) delete g_pWorld;
 	return 0;
 }
