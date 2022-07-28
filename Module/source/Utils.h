@@ -40,8 +40,9 @@ std::string getMaterialString(GarrysMod::Lua::ILuaBase* LUA, const std::string& 
 /// <summary>
 /// VMT flags
 /// </summary>
-enum class MaterialFlags
+enum class MaterialFlags : uint32_t
 {
+	NONE = 0,
 	debug = 1,
 	no_fullbright = 2,
 	no_draw = 4,
@@ -73,9 +74,9 @@ enum class MaterialFlags
 	wireframe = 268435456,
 	allowalphatocoverage = 536870912
 };
-inline uint32_t operator|(MaterialFlags a, MaterialFlags b)
+inline MaterialFlags operator|(MaterialFlags a, MaterialFlags b)
 {
-	return static_cast<uint32_t>(a) | static_cast<uint32_t>(b);
+	return static_cast<MaterialFlags>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
 }
 
 /// <summary>
@@ -84,7 +85,7 @@ inline uint32_t operator|(MaterialFlags a, MaterialFlags b)
 /// <param name="flags">uint32_t of flags</param>
 /// <param name="flag">Flag to check</param>
 /// <returns>True if the flag is set</returns>
-bool checkMaterialFlag(uint32_t flags, const MaterialFlags flag);
+bool checkMaterialFlag(MaterialFlags flags, const MaterialFlags flag);
 
 /// <summary>
 /// Skins a vertex to its bones

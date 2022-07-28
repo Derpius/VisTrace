@@ -3,6 +3,7 @@
 #include "Utils.h"
 
 #include "VTFParser.h"
+#include "BSPParser.h"
 #include "GMFS.h"
 
 #include "BSDF.h"
@@ -186,6 +187,29 @@ LUA_FUNCTION(TraceResult_Roughness)
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
 	LUA->PushNumber(pResult->GetRoughness());
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_MaterialFlags)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	LUA->PushNumber(static_cast<double>(pResult->materialFlags));
+	return 1;
+}
+LUA_FUNCTION(TraceResult_SurfaceFlags)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	LUA->PushNumber(static_cast<double>(pResult->surfaceFlags));
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_HitSky)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	LUA->PushBool((pResult->surfaceFlags & BSPEnums::SURF::SKY) != BSPEnums::SURF::NONE);
 	return 1;
 }
 #pragma endregion
@@ -714,6 +738,14 @@ GMOD_MODULE_OPEN()
 		LUA->SetField(-2, "Metalness");
 		LUA->PushCFunction(TraceResult_Roughness);
 		LUA->SetField(-2, "Roughness");
+
+		LUA->PushCFunction(TraceResult_MaterialFlags);
+		LUA->SetField(-2, "MaterialFlags");
+		LUA->PushCFunction(TraceResult_SurfaceFlags);
+		LUA->SetField(-2, "SurfaceFlags");
+
+		LUA->PushCFunction(TraceResult_HitSky);
+		LUA->SetField(-2, "HitSky");
 
 		LUA->PushCFunction(TraceResult_SampleBSDF);
 		LUA->SetField(-2, "SampleBSDF");

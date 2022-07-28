@@ -4,8 +4,11 @@
 #include "glm/glm.hpp"
 
 #include "VTFParser.h"
+#include "BSPParser.h"
 
 #include "AccelStruct.h"
+
+#include "Utils.h"
 
 class TraceResult
 {
@@ -47,14 +50,15 @@ public:
 	CBaseEntity* rawEnt;
 	uint32_t submatIdx;
 
-	uint32_t materialFlags;
+	MaterialFlags materialFlags;
+	BSPEnums::SURF surfaceFlags;
 
 	TraceResult(
 		const glm::vec3& direction,
 		const Triangle& tri, const TriangleData& triData,
 		const glm::vec2& uv,
 		const Entity& ent,
-		uint32_t materialFlags,
+		MaterialFlags materialFlags, BSPEnums::SURF surfaceFlags,
 		VTFTexture* baseTexture, VTFTexture* normalMap = nullptr, VTFTexture* mrao = nullptr
 	);
 

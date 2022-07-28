@@ -20,6 +20,8 @@
 #include "VTFParser.h"
 #include "BSPParser.h"
 
+#include "Utils.h"
+
 using Vector3 = bvh::Vector3<float>;
 using Triangle = bvh::Triangle<float>;
 using Ray = bvh::Ray<float>;
@@ -48,8 +50,8 @@ struct Material
 {
 	size_t baseTexture = 0;
 	size_t normalMap = 0;
-	uint32_t flags = 0;
-	int32_t surfFlags = 0;
+	MaterialFlags flags = MaterialFlags::NONE;
+	BSPEnums::SURF surfFlags = BSPEnums::SURF::NONE;
 };
 
 struct Entity

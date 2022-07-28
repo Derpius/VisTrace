@@ -200,6 +200,29 @@ return function(instance)
 		return uwrapResult(self):Roughness()
 	end
 
+	--- Gets the material's $flags value
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number Bitflags
+	function traceresult_methods:materialFlags()
+		canRun()
+		return uwrapResult(self):MaterialFlags()
+	end
+	--- Gets the material's SURF flags (only present on world)
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number Bitflags
+	function traceresult_methods:surfaceFlags()
+		canRun()
+		return uwrapResult(self):SurfaceFlags()
+	end
+
+	--- Gets whether we hit the sky
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return boolean True if we hit the sky of the map
+	function traceresult_methods:hitSky()
+		canRun()
+		return uwrapResult(self):HitSky()
+	end
+
 	--- Rebuild the acceleration structure
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param table? entities Sequential list of entities to rebuild the acceleration structure with (or nil to clear the structure)

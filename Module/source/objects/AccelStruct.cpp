@@ -109,22 +109,11 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			LUA->ThrowError(e.what());
 		}
 
-		std::string strPath(tex.path);
-		if (strPath.rfind("maps/", 0) == 0) { // Trim invalid prefix and coordinate suffix
-			size_t secondSlash = 0, thirdToLastUnderscore = std::string::npos;
-			for (int i = 0; i < 2; i++) {
-				secondSlash = strPath.find("/", secondSlash + 1);
-			}
-			for (int i = 0; i < 3; i++) {
-				thirdToLastUnderscore = strPath.rfind("_", thirdToLastUnderscore - 1);
-			}
-			strPath = strPath.substr(secondSlash + 1, thirdToLastUnderscore - secondSlash - 1);
-		}
-
+		const std::string strPath = tex.path;
 		if (materialIds.find(strPath) == materialIds.end()) {
-			printLua(LUA, strPath.c_str());
+			printLua(LUA, tex.path);
 			LUA->GetField(-1, "Material");
-			LUA->PushString(strPath.c_str());
+			LUA->PushString(tex.path);
 			LUA->Call(1, 1);
 			if (!LUA->IsType(-1, Type::Material)) LUA->ThrowError("Invalid material on world");
 
@@ -160,7 +149,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			LUA->Push(-2);
 			LUA->PushString("$flags");
 			LUA->Call(2, 1);
-			if (LUA->IsType(-1, Type::Number)) mat.flags = static_cast<uint32_t>(LUA->GetNumber());
+			if (LUA->IsType(-1, Type::Number)) mat.flags = static_cast<MaterialFlags>(LUA->GetNumber());
 			LUA->Pop();
 
 			LUA->Pop();
@@ -173,7 +162,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			materialIds.emplace(strPath, materials.size());
 			materials.push_back(mat);
 		}
-		triData.submatIdx = submatIds[tex.path];
+		triData.submatIdx = submatIds[strPath];
 
 		triangleData.push_back(triData);
 	}
@@ -619,7 +608,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				LUA->Push(-2);
 				LUA->PushString("$flags");
 				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.flags = static_cast<uint32_t>(LUA->GetNumber());
+				if (LUA->IsType(-1, Type::Number)) mat.flags = static_cast<MaterialFlags>(LUA->GetNumber());
 				LUA->Pop();
 
 				LUA->Pop();
@@ -698,7 +687,7 @@ int AccelStruct::Traverse(ILuaBase* LUA)
 			tri, triData,
 			glm::vec2(hit->intersection.u, hit->intersection.v),
 			ent,
-			mat.flags,
+			mat.flags, mat.surfFlags,
 			mTextureCache[mat.baseTexture],
 			(triData.ignoreNormalMap || mat.normalMap == 0) ? nullptr : mTextureCache[mat.normalMap]
 		);

@@ -7,10 +7,10 @@ TraceResult::TraceResult(
 	const Triangle& tri, const TriangleData& triData,
 	const glm::vec2& uv,
 	const Entity& ent,
-	uint32_t materialFlags,
+	MaterialFlags materialFlags, BSPEnums::SURF surfaceFlags,
 	VTFTexture* baseTexture, VTFTexture* normalMap, VTFTexture* mrao
 ) :
-	materialFlags(materialFlags),
+	materialFlags(materialFlags), surfaceFlags(surfaceFlags),
 	baseTexture(baseTexture), normalMap(normalMap), mrao(mrao)
 {
 	wo = -direction;
