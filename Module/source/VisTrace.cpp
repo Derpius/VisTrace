@@ -68,7 +68,7 @@ LUA_FUNCTION(TraceResult_Pos)
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
 
-	LUA->PushVector(MakeVector(pResult->pos.x, pResult->pos.y, pResult->pos.z));
+	LUA->PushVector(MakeVector(pResult->GetPos().x, pResult->GetPos().y, pResult->GetPos().z));
 	return 1;
 }
 
@@ -97,7 +97,7 @@ LUA_FUNCTION(TraceResult_GeometricNormal)
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
 
-	LUA->PushVector(MakeVector(pResult->geometricNormal.x, pResult->geometricNormal.y, pResult->geometricNormal.z));
+	LUA->PushVector(MakeVector(pResult->GetGeometricNormal().x, pResult->GetGeometricNormal().y, pResult->GetGeometricNormal().z));
 	return 1;
 }
 
@@ -143,9 +143,9 @@ LUA_FUNCTION(TraceResult_TextureUV)
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
 
 	LUA->CreateTable();
-	LUA->PushNumber(pResult->texUV.x);
+	LUA->PushNumber(pResult->GetTexCoord().x);
 	LUA->SetField(-2, "u");
-	LUA->PushNumber(pResult->texUV.y);
+	LUA->PushNumber(pResult->GetTexCoord().y);
 	LUA->SetField(-2, "v");
 	return 1;
 }

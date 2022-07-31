@@ -22,18 +22,13 @@ TraceResult::TraceResult(
 		vUV[i] = triData.uvs[i];
 	}
 
-	glm::vec3 v0(tri.p0[0], tri.p0[1], tri.p0[2]);
+	v[0] = glm::vec3(tri.p0[0], tri.p0[1], tri.p0[2]);
 	Vector3 p1 = tri.p1(), p2 = tri.p2();
-	glm::vec3 v1(p1[0], p1[1], p1[2]);
-	glm::vec3 v2(p2[0], p2[1], p2[2]);
+	v[1] = glm::vec3(p1[0], p1[1], p1[2]);
+	v[2] = glm::vec3(p2[0], p2[1], p2[2]);
 
 	uvw = glm::vec3(uv, 1.f - uv[0] - uv[1]);
-	pos = uvw[2] * v0 + uvw[0] * v1 + uvw[1] * v2;
-
-	geometricNormal = glm::normalize(glm::vec3(tri.n[0], tri.n[1], tri.n[2]));
-
-	texUV = uvw[2] * vUV[0] + uvw[0] * vUV[1] + uvw[1] * vUV[2];
-	texUV -= glm::floor(texUV);
+	geometricNormal = glm::vec3(tri.n[0], tri.n[1], tri.n[2]);
 
 	entIdx = ent.id;
 	rawEnt = ent.rawEntity;
@@ -41,6 +36,16 @@ TraceResult::TraceResult(
 
 	albedo = ent.colour;
 	alpha = ent.colour.a;
+}
+
+void TraceResult::CalcTexCoord()
+{
+	if (texUVSet) return;
+
+	texUV = uvw[2] * vUV[0] + uvw[0] * vUV[1] + uvw[1] * vUV[2];
+	texUV -= glm::floor(texUV);
+
+	texUVSet = true;
 }
 
 void TraceResult::CalcTBN()
@@ -81,6 +86,7 @@ void TraceResult::CalcTBN()
 void TraceResult::CalcShadingData()
 {
 	if (shadingDataSet) return;
+	CalcTexCoord();
 
 	VTFPixel colour = baseTexture->GetPixel(
 		floor(texUV.x * baseTexture->GetWidth()),
@@ -103,6 +109,30 @@ void TraceResult::CalcShadingData()
 	}
 
 	shadingDataSet = true;
+}
+
+const glm::vec3& TraceResult::GetPos()
+{
+	if (!posSet) {
+		pos = uvw[2] * v[0] + uvw[0] * v[1] + uvw[1] * v[2];
+		posSet = true;
+	}
+	return pos;
+}
+
+const glm::vec3& TraceResult::GetGeometricNormal()
+{
+	if (!geoNormSet) {
+		geometricNormal = glm::normalize(geometricNormal);
+		geoNormSet = true;
+	}
+	return geometricNormal;
+}
+
+const glm::vec2& TraceResult::GetTexCoord()
+{
+	CalcTexCoord();
+	return texUV;
 }
 
 const glm::vec3& TraceResult::GetNormal()
