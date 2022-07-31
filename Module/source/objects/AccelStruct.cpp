@@ -111,7 +111,6 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 		const std::string strPath = tex.path;
 		if (materialIds.find(strPath) == materialIds.end()) {
-			printLua(LUA, tex.path);
 			LUA->GetField(-1, "Material");
 			LUA->PushString(tex.path);
 			LUA->Call(1, 1);
@@ -156,7 +155,6 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 			mat.surfFlags = tex.flags;
 
-			printLua(LUA, "Material loaded successfully!");
 			submatIds.emplace(strPath, ent.materials.size());
 			ent.materials.push_back(materials.size());
 			materialIds.emplace(strPath, materials.size());
