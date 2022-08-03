@@ -67,11 +67,11 @@ void TraceResult::CalcTBN()
 			tangent[0],  tangent[1],  tangent[2],
 			binormal[0], binormal[1], binormal[2],
 			normal[0],   normal[1],   normal[2]
-		} *(glm::vec3{ pixelNormal.r, pixelNormal.g, pixelNormal.b } *2.f - 1.f);
+		} * (glm::vec3{ pixelNormal.r, pixelNormal.g, pixelNormal.b } * 2.f - 1.f);
 		normal = glm::normalize(normal);
 
 		tangent = glm::normalize(tangent - normal * glm::dot(tangent, normal));
-		binormal = -glm::cross(normal, tangent);
+		binormal = glm::cross(tangent, normal);
 	}
 
 	if (glm::dot(geometricNormal, wo) < 0.f) {
