@@ -51,6 +51,7 @@ void TraceResult::CalcTexCoord()
 void TraceResult::CalcTBN()
 {
 	if (tbnSet) return;
+	CalcTexCoord();
 
 	normal = uvw[2] * vN[0] + uvw[0] * vN[1] + uvw[1] * vN[2];
 	tangent = uvw[2] * vT[0] + uvw[0] * vT[1] + uvw[1] * vT[2];
