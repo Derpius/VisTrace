@@ -17,6 +17,15 @@ private:
 	VTFTexture* normalMap;
 	VTFTexture* mrao;
 
+	VTFTexture* baseTexture2;
+	VTFTexture* normalMap2;
+	VTFTexture* mrao2;
+
+	VTFTexture* blendTexture;
+	bool blendFactorSet = false;
+	bool maskedBlending;
+	float blendFactor;
+
 	glm::vec3 v[3];
 	glm::vec3 vN[3];
 	glm::vec3 vT[3];
@@ -43,6 +52,7 @@ private:
 	float metalness = 0;
 	float roughness = 1;
 
+	void CalcBlendFactor();
 	void CalcTexCoord();
 	void CalcTBN();
 	void CalcShadingData();
@@ -66,8 +76,10 @@ public:
 		const Triangle& tri, const TriangleData& triData,
 		const glm::vec2& uv,
 		const Entity& ent,
-		MaterialFlags materialFlags, BSPEnums::SURF surfaceFlags,
-		VTFTexture* baseTexture, VTFTexture* normalMap = nullptr, VTFTexture* mrao = nullptr
+		MaterialFlags materialFlags, BSPEnums::SURF surfaceFlags, bool maskedBlending,
+		VTFTexture* baseTexture, VTFTexture* normalMap = nullptr, VTFTexture* mrao = nullptr,
+		VTFTexture* baseTexture2 = nullptr, VTFTexture* normalMap2 = nullptr, VTFTexture* mrao2 = nullptr,
+		VTFTexture* blendTexture = nullptr
 	);
 
 	const glm::vec3& GetPos();

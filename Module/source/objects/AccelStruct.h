@@ -39,6 +39,7 @@ struct TriangleData
 	glm::vec3 binormals[3];
 
 	glm::vec2 uvs[3];
+	float alphas[3];
 
 	size_t entIdx;
 	uint32_t submatIdx;
@@ -48,9 +49,15 @@ struct TriangleData
 
 struct Material
 {
-	size_t baseTexture = 0;
-	size_t normalMap = 0;
-	MaterialFlags flags = MaterialFlags::NONE;
+	VTFTexture* baseTexture  = nullptr;
+	VTFTexture* normalMap    = nullptr;
+
+	VTFTexture* baseTexture2 = nullptr;
+	VTFTexture* normalMap2   = nullptr;
+	VTFTexture* blendTexture = nullptr;
+	bool maskedBlending;
+
+	MaterialFlags flags      = MaterialFlags::NONE;
 	BSPEnums::SURF surfFlags = BSPEnums::SURF::NONE;
 };
 
@@ -74,8 +81,7 @@ public:
 
 	std::vector<Entity> entities;
 
-	std::unordered_map<std::string, size_t> textureIds;
-	std::vector<VTFTexture*> textureCache;
+	std::unordered_map<std::string, VTFTexture*> textureCache;
 
 	std::unordered_map<std::string, size_t> materialIds;
 	std::vector<Material> materials;
@@ -98,8 +104,7 @@ class AccelStruct
 
 	std::vector<Entity> mEntities;
 
-	std::unordered_map<std::string, size_t> mTextureIds;
-	std::vector<VTFTexture*> mTextureCache;
+	std::unordered_map<std::string, VTFTexture*> mTextureCache;
 
 	std::unordered_map<std::string, size_t> mMaterialIds;
 	std::vector<Material> mMaterials;

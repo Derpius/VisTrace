@@ -19,6 +19,25 @@ void normalise(Vector3& v)
 	v[2] /= length;
 }
 
+VTFTexture* CacheTexture(
+	const std::string& path,
+	std::unordered_map<std::string, VTFTexture*>& cache,
+	VTFTexture* fallback = nullptr
+)
+{
+	if (cache.find(path) != cache.end()) return cache[path];
+
+	if (!path.empty()) {
+		VTFTexture* pTexture;
+		if (readTexture(path, &pTexture)) {
+			cache.emplace(path, pTexture);
+			return pTexture;
+		};
+	}
+
+	return fallback;
+}
+
 World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 {
 	std::string path = "maps/" + mapName + ".bsp";
@@ -46,8 +65,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 	entities = std::vector<Entity>();
 
-	textureIds = std::unordered_map<std::string, size_t>();
-	textureCache = std::vector<VTFTexture*>();
+	textureCache = std::unordered_map<std::string, VTFTexture*>();
 
 	materials = std::vector<Material>();
 
@@ -58,8 +76,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			pMap = nullptr;
 			return;
 		}
-		textureIds.emplace(MISSING_TEXTURE, textureCache.size());
-		textureCache.push_back(pTexture);
+		textureCache.emplace(MISSING_TEXTURE, pTexture);
 	}
 
 	const glm::vec3* vertices = reinterpret_cast<const glm::vec3*>(pMap->GetVertices());
@@ -67,6 +84,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 	const glm::vec3* tangents = reinterpret_cast<const glm::vec3*>(pMap->GetTangents());
 	const glm::vec3* binormals = reinterpret_cast<const glm::vec3*>(pMap->GetBinormals());
 	const glm::vec2* uvs = reinterpret_cast<const glm::vec2*>(pMap->GetUVs());
+	const float* alphas = pMap->GetAlphas();
 	const int16_t* textures = pMap->GetTriTextures();
 
 	Entity ent{};
@@ -94,6 +112,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 		memcpy(triData.tangents, tangents + vi0, sizeof(glm::vec3) * 3);
 		memcpy(triData.binormals, binormals + vi0, sizeof(glm::vec3) * 3);
 		memcpy(triData.uvs, uvs + vi0, sizeof(glm::vec2) * 3);
+		memcpy(triData.alphas, alphas + vi0, sizeof(float) * 3);
 		triData.entIdx = 0;
 
 		// Load texture
@@ -103,7 +122,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 		} catch (std::runtime_error e) {
 			delete pMap;
 			pMap = nullptr;
-			for (auto& element : textureCache) {
+			for (auto& [key, element] : textureCache) {
 				delete element;
 			}
 			LUA->ThrowError(e.what());
@@ -117,32 +136,28 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			if (!LUA->IsType(-1, Type::Material)) LUA->ThrowError("Invalid material on world");
 
 			Material mat{};
+			mat.maskedBlending = false;
+
+			LUA->GetField(-1, "GetInt");
+			LUA->Push(-2);
+			LUA->PushString("$maskedblending");
+			LUA->Call(2, 1);
+			if (LUA->IsType(-1, Type::Number)) mat.maskedBlending = LUA->GetNumber() != 0;
+			LUA->Pop();
 
 			std::string baseTexture = getMaterialString(LUA, "$basetexture");
 			std::string normalMap = getMaterialString(LUA, "$bumpmap");
 
-			mat.baseTexture = textureIds[MISSING_TEXTURE];
-			if (textureIds.find(baseTexture) != textureIds.end()) {
-				mat.baseTexture = textureIds[baseTexture];
-			} if (!baseTexture.empty()) {
-				VTFTexture* pTexture;
-				if (readTexture(baseTexture, &pTexture)) {
-					textureIds.emplace(baseTexture, textureCache.size());
-					mat.baseTexture = textureCache.size();
-					textureCache.push_back(pTexture);
-				};
-			}
+			std::string baseTexture2 = getMaterialString(LUA, "$basetexture2");
+			std::string normalMap2 = getMaterialString(LUA, "$bumpmap2");
+			std::string blendTexture = getMaterialString(LUA, "$blendmodulatetexture");
 
-			if (textureIds.find(normalMap) != textureIds.end()) {
-				mat.normalMap = textureIds[normalMap];
-			} else if (!normalMap.empty()) {
-				VTFTexture* pTexture;
-				if (readTexture(normalMap, &pTexture)) {
-					textureIds.emplace(normalMap, textureCache.size());
-					mat.normalMap = textureCache.size();
-					textureCache.push_back(pTexture);
-				}
-			}
+			mat.baseTexture = CacheTexture(baseTexture, textureCache, textureCache[MISSING_TEXTURE]);
+			mat.normalMap = CacheTexture(normalMap, textureCache);
+
+			mat.baseTexture2 = CacheTexture(baseTexture2, textureCache);
+			mat.normalMap2 = CacheTexture(normalMap2, textureCache);
+			mat.blendTexture = CacheTexture(blendTexture, textureCache);
 
 			LUA->GetField(-1, "GetInt");
 			LUA->Push(-2);
@@ -172,7 +187,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 World::~World()
 {
 	if (pMap != nullptr) delete pMap;
-	for (auto& element : textureCache) {
+	for (auto& [key, element] : textureCache) {
 		delete element;
 	}
 }
@@ -193,8 +208,7 @@ AccelStruct::AccelStruct()
 
 	mEntities = std::vector<Entity>();
 
-	mTextureIds = std::unordered_map<std::string, size_t>();
-	mTextureCache = std::vector<VTFTexture*>();
+	mTextureCache = std::unordered_map<std::string, VTFTexture*>();
 
 	mMaterialIds = std::unordered_map<std::string, size_t>();
 	mMaterials = std::vector<Material>();
@@ -206,7 +220,7 @@ AccelStruct::~AccelStruct()
 		delete mpIntersector;
 		delete mpTraverser;
 	}
-	for (auto& element : mTextureCache) {
+	for (auto& [key, element] : mTextureCache) {
 		delete element;
 	}
 }
@@ -221,7 +235,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 	}
 
 	// Redefine containers
-	for (auto& element : mTextureCache) {
+	for (auto& [key, element] : mTextureCache) {
 		delete element;
 	}
 
@@ -230,7 +244,6 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 
 	mEntities.erase(mEntities.begin(), mEntities.end());
 
-	mTextureIds.erase(mTextureIds.begin(), mTextureIds.end());
 	mTextureCache.erase(mTextureCache.begin(), mTextureCache.end());
 
 	mMaterialIds.erase(mMaterialIds.begin(), mMaterialIds.end());
@@ -242,10 +255,8 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 
 		mEntities = pWorld->entities;
 
-		mTextureIds = pWorld->textureIds;
-		mTextureCache = std::vector<VTFTexture*>(pWorld->textureCache.size(), nullptr);
-		for (int i = 0; i < mTextureCache.size(); i++) { // Copy images into accelstruct
-			mTextureCache[i] = new VTFTexture(*pWorld->textureCache[i]);
+		for (auto& [path, texture] : pWorld->textureCache) { // Copy images into accelstruct
+			mTextureCache.emplace(path, new VTFTexture(*texture));
 		}
 
 		mMaterials = pWorld->materials;
@@ -408,6 +419,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 			TriangleData triData{};
 			triData.entIdx = mEntities.size();
 			triData.submatIdx = entData.materials.size();
+			triData.alphas[0] = triData.alphas[1] = triData.alphas[2] = 1.f;
 			for (size_t vertIndex = 0; vertIndex < numVerts; vertIndex++) {
 				// Get vertex
 				LUA->PushNumber(vertIndex + 1U);
@@ -575,32 +587,13 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				if (!LUA->IsType(-1, Type::Material)) LUA->ThrowError("Invalid material on entity");
 
 				Material mat{};
+				mat.maskedBlending = false;
 
 				std::string baseTexture = getMaterialString(LUA, "$basetexture");
 				std::string normalMap = getMaterialString(LUA, "$bumpmap");
 
-				mat.baseTexture = mTextureIds[MISSING_TEXTURE];
-				if (mTextureIds.find(baseTexture) != mTextureIds.end()) {
-					mat.baseTexture = mTextureIds[baseTexture];
-				} if (!baseTexture.empty()) {
-					VTFTexture* pTexture;
-					if (readTexture(baseTexture, &pTexture)) {
-						mTextureIds.emplace(baseTexture, mTextureCache.size());
-						mat.baseTexture = mTextureCache.size();
-						mTextureCache.push_back(pTexture);
-					};
-				}
-
-				if (mTextureIds.find(normalMap) != mTextureIds.end()) {
-					mat.normalMap = mTextureIds[normalMap];
-				} else if (!normalMap.empty()) {
-					VTFTexture* pTexture;
-					if (readTexture(normalMap, &pTexture)) {
-						mTextureIds.emplace(normalMap, mTextureCache.size());
-						mat.normalMap = mTextureCache.size();
-						mTextureCache.push_back(pTexture);
-					}
-				}
+				mat.baseTexture = CacheTexture(baseTexture, mTextureCache, mTextureCache[MISSING_TEXTURE]);
+				mat.normalMap = CacheTexture(normalMap, mTextureCache);
 
 				LUA->GetField(-1, "GetInt");
 				LUA->Push(-2);
@@ -685,9 +678,11 @@ int AccelStruct::Traverse(ILuaBase* LUA)
 			tri, triData,
 			glm::vec2(hit->intersection.u, hit->intersection.v),
 			ent,
-			mat.flags, mat.surfFlags,
-			mTextureCache[mat.baseTexture],
-			(triData.ignoreNormalMap || mat.normalMap == 0) ? nullptr : mTextureCache[mat.normalMap]
+			mat.flags, mat.surfFlags, mat.maskedBlending,
+
+			mat.baseTexture, (triData.ignoreNormalMap) ? nullptr : mat.normalMap, nullptr,
+			mat.baseTexture2, mat.normalMap2, nullptr,
+			mat.blendTexture
 		);
 
 		LUA->PushUserType_Value(res, TraceResult::id);
