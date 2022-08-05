@@ -8,17 +8,18 @@ TraceResult::TraceResult(
 	const glm::vec3& direction,
 	const Triangle& tri, const TriangleData& triData,
 	const glm::vec2& uv,
-	const Entity& ent,
-	MaterialFlags materialFlags, BSPEnums::SURF surfaceFlags, bool maskedBlending,
-	VTFTexture* baseTexture, VTFTexture* normalMap, VTFTexture* mrao,
-	VTFTexture* baseTexture2, VTFTexture* normalMap2, VTFTexture* mrao2,
-	VTFTexture* blendTexture
+	const Entity& ent, const Material& mat
 ) :
-	materialFlags(materialFlags), surfaceFlags(surfaceFlags), maskedBlending(maskedBlending),
-	baseTexture(baseTexture), normalMap(normalMap), mrao(mrao),
-	baseTexture2(baseTexture2), normalMap2(normalMap2), mrao2(mrao2),
-	blendTexture(blendTexture)
+	materialFlags(mat.flags), surfaceFlags(mat.surfFlags), maskedBlending(mat.maskedBlending),
+	baseTexture(mat.baseTexture), mrao(mat.mrao),
+	baseTexture2(mat.baseTexture2), mrao2(mat.mrao2),
+	blendTexture(mat.blendTexture)
 {
+	if (!triData.ignoreNormalMap) {
+		normalMap = mat.normalMap;
+		normalMap2 = mat.normalMap2;
+	}
+
 	wo = -direction;
 
 	for (int i = 0; i < 3; i++) {
@@ -42,8 +43,11 @@ TraceResult::TraceResult(
 	rawEnt = ent.rawEntity;
 	submatIdx = triData.submatIdx;
 
-	albedo = ent.colour;
-	alpha = ent.colour.a;
+	albedo = ent.colour * mat.colour;
+	alpha = ent.colour.a * mat.colour.a;
+
+	hitSky = (surfaceFlags & BSPEnums::SURF::SKY) != BSPEnums::SURF::NONE;
+	hitWater = mat.water;
 }
 
 void TraceResult::CalcBlendFactor()
@@ -96,12 +100,6 @@ void TraceResult::CalcTBN()
 
 		tangent = glm::normalize(tangent - normal * glm::dot(tangent, normal));
 		binormal = glm::cross(tangent, normal);
-	}
-
-	if (glm::dot(geometricNormal, wo) < 0.f) {
-		normal = -normal;
-		tangent = -tangent;
-		binormal = -binormal;
 	}
 
 	tbnSet = true;

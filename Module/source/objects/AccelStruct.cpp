@@ -8,6 +8,7 @@
 #include "TraceResult.h"
 
 #define MISSING_TEXTURE "debug/debugempty"
+#define WATER_BASE_TEXTURE "models/debug/debugwhite"
 
 using namespace GarrysMod::Lua;
 
@@ -77,6 +78,10 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			return;
 		}
 		textureCache.emplace(MISSING_TEXTURE, pTexture);
+
+		if (readTexture(WATER_BASE_TEXTURE, &pTexture)) {
+			textureCache.emplace(WATER_BASE_TEXTURE, pTexture);
+		}
 	}
 
 	const glm::vec3* vertices = reinterpret_cast<const glm::vec3*>(pMap->GetVertices());
@@ -104,10 +109,15 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			Vector3{ vertices[vi0].x, vertices[vi0].y, vertices[vi0].z },
 			Vector3{ vertices[vi1].x, vertices[vi1].y, vertices[vi1].z },
 			Vector3{ vertices[vi2].x, vertices[vi2].y, vertices[vi2].z },
+
+			// Backface cull on the world to prevent z fighting on 2 sided water surfaces
+			// (given you shouldnt be refracting through any other brushes this should be fine)
+			true
 		});
 
 		// Construct tri data
 		TriangleData triData{};
+		triData.ignoreNormalMap = false;
 		memcpy(triData.normals, normals + vi0, sizeof(glm::vec3) * 3);
 		memcpy(triData.tangents, tangents + vi0, sizeof(glm::vec3) * 3);
 		memcpy(triData.binormals, binormals + vi0, sizeof(glm::vec3) * 3);
@@ -138,26 +148,59 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			Material mat{};
 			mat.maskedBlending = false;
 
-			LUA->GetField(-1, "GetInt");
+			// Note, GetShader doesnt work on Linux srcds according to the wiki
+			// If I made a server binary and water didnt render correctly, this is why
+			LUA->GetField(-1, "GetShader");
 			LUA->Push(-2);
-			LUA->PushString("$maskedblending");
-			LUA->Call(2, 1);
-			if (LUA->IsType(-1, Type::Number)) mat.maskedBlending = LUA->GetNumber() != 0;
+			LUA->Call(1, 1);
+			const char* shaderName = LUA->GetString();
 			LUA->Pop();
 
-			std::string baseTexture = getMaterialString(LUA, "$basetexture");
-			std::string normalMap = getMaterialString(LUA, "$bumpmap");
+			if (shaderName == nullptr || strncmp(shaderName, "Water", 5) != 0) {
+				LUA->GetField(-1, "GetInt");
+				LUA->Push(-2);
+				LUA->PushString("$maskedblending");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Number)) mat.maskedBlending = LUA->GetNumber() != 0;
+				LUA->Pop();
 
-			std::string baseTexture2 = getMaterialString(LUA, "$basetexture2");
-			std::string normalMap2 = getMaterialString(LUA, "$bumpmap2");
-			std::string blendTexture = getMaterialString(LUA, "$blendmodulatetexture");
+				std::string baseTexture = getMaterialString(LUA, "$basetexture");
+				std::string normalMap = getMaterialString(LUA, "$bumpmap");
 
-			mat.baseTexture = CacheTexture(baseTexture, textureCache, textureCache[MISSING_TEXTURE]);
-			mat.normalMap = CacheTexture(normalMap, textureCache);
+				std::string baseTexture2 = getMaterialString(LUA, "$basetexture2");
+				std::string normalMap2 = getMaterialString(LUA, "$bumpmap2");
+				std::string blendTexture = getMaterialString(LUA, "$blendmodulatetexture");
 
-			mat.baseTexture2 = CacheTexture(baseTexture2, textureCache);
-			mat.normalMap2 = CacheTexture(normalMap2, textureCache);
-			mat.blendTexture = CacheTexture(blendTexture, textureCache);
+				mat.baseTexture = CacheTexture(baseTexture, textureCache, textureCache[MISSING_TEXTURE]);
+				mat.normalMap = CacheTexture(normalMap, textureCache);
+
+				mat.baseTexture2 = CacheTexture(baseTexture2, textureCache);
+				mat.normalMap2 = CacheTexture(normalMap2, textureCache);
+				mat.blendTexture = CacheTexture(blendTexture, textureCache);
+			} else {
+				mat.water = true;
+				std::string normalMap = getMaterialString(LUA, "$normalmap");
+
+				LUA->GetField(-1, "GetVector");
+				LUA->Push(-2);
+				LUA->PushString("$fogcolor");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Vector)) {
+					Vector v = LUA->GetVector();
+					mat.colour = glm::vec4(v.x, v.y, v.z, 1);
+				}
+				LUA->Pop();
+
+				// Not sure if any gmod materials will even implement water base textures
+				// Or if it's even available in gmod's engine version, but here just in case
+				std::string baseTexture = getMaterialString(LUA, "$basetexture");
+
+				mat.baseTexture = CacheTexture(
+					baseTexture, textureCache,
+					(textureCache.find(WATER_BASE_TEXTURE) == textureCache.end()) ? textureCache[MISSING_TEXTURE] : textureCache[WATER_BASE_TEXTURE]
+				);
+				mat.normalMap = CacheTexture(normalMap, textureCache);
+			}
 
 			LUA->GetField(-1, "GetInt");
 			LUA->Push(-2);
@@ -677,12 +720,7 @@ int AccelStruct::Traverse(ILuaBase* LUA)
 			glm::normalize(glm::vec3(direction.x, direction.y, direction.z)),
 			tri, triData,
 			glm::vec2(hit->intersection.u, hit->intersection.v),
-			ent,
-			mat.flags, mat.surfFlags, mat.maskedBlending,
-
-			mat.baseTexture, (triData.ignoreNormalMap) ? nullptr : mat.normalMap, nullptr,
-			mat.baseTexture2, mat.normalMap2, nullptr,
-			mat.blendTexture
+			ent, mat
 		);
 
 		LUA->PushUserType_Value(res, TraceResult::id);

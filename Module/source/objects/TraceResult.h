@@ -13,15 +13,15 @@
 class TraceResult
 {
 private:
-	VTFTexture* baseTexture;
-	VTFTexture* normalMap;
-	VTFTexture* mrao;
+	VTFTexture* baseTexture  = nullptr;
+	VTFTexture* normalMap    = nullptr;
+	VTFTexture* mrao         = nullptr;
 
-	VTFTexture* baseTexture2;
-	VTFTexture* normalMap2;
-	VTFTexture* mrao2;
+	VTFTexture* baseTexture2 = nullptr;
+	VTFTexture* normalMap2   = nullptr;
+	VTFTexture* mrao2        = nullptr;
 
-	VTFTexture* blendTexture;
+	VTFTexture* blendTexture = nullptr;
 	bool blendFactorSet = false;
 	bool maskedBlending;
 	float blendFactor;
@@ -66,16 +66,14 @@ public:
 
 	MaterialFlags materialFlags;
 	BSPEnums::SURF surfaceFlags;
+	bool hitSky = false;
+	bool hitWater = false;
 
 	TraceResult(
 		const glm::vec3& direction,
 		const Triangle& tri, const TriangleData& triData,
 		const glm::vec2& uv,
-		const Entity& ent,
-		MaterialFlags materialFlags, BSPEnums::SURF surfaceFlags, bool maskedBlending,
-		VTFTexture* baseTexture, VTFTexture* normalMap = nullptr, VTFTexture* mrao = nullptr,
-		VTFTexture* baseTexture2 = nullptr, VTFTexture* normalMap2 = nullptr, VTFTexture* mrao2 = nullptr,
-		VTFTexture* blendTexture = nullptr
+		const Entity& ent, const Material& mat
 	);
 
 	const glm::vec3& GetPos();

@@ -223,6 +223,14 @@ return function(instance)
 		return uwrapResult(self):HitSky()
 	end
 
+	--- Gets whether we hit water
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return boolean True if we hit a tri using a water shader
+	function traceresult_methods:hitWater()
+		canRun()
+		return uwrapResult(self):HitWater()
+	end
+
 	--- Rebuild the acceleration structure
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param table? entities Sequential list of entities to rebuild the acceleration structure with (or nil to clear the structure)
