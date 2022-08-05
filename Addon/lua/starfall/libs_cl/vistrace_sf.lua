@@ -226,9 +226,12 @@ return function(instance)
 	--- Rebuild the acceleration structure
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param table? entities Sequential list of entities to rebuild the acceleration structure with (or nil to clear the structure)
-	function accelstruct_methods:rebuild(entities)
+	-- @param boolean? traceWorld Whether to include the world in the acceleration structure (defaults to true)
+	function accelstruct_methods:rebuild(entities, traceWorld)
 		checkPermission(instance, nil, "vistrace.accel")
 		canRun()
+		
+		if traceWorld ~= nil then checkLuaType(traceWorld, TYPE_BOOL) end
 
 		if entities then
 			checkLuaType(entities, TYPE_TABLE)
@@ -239,7 +242,7 @@ return function(instance)
 			end
 			entities = unwrapped
 		end
-		uwrapAccel(self):Rebuild(entities)
+		uwrapAccel(self):Rebuild(entities, traceWorld)
 	end
 
 	--- Traverses the acceleration structure
@@ -274,10 +277,13 @@ return function(instance)
 	--- Creates an acceleration struction (AccelStruct)
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param table? entities Sequential list of entities to build the acceleration structure from (or nil to create an empty structure)
+	-- @param boolean? traceWorld Whether to include the world in the acceleration structure (defaults to true)
 	-- @return AccelStruct Built acceleration structure
-	function vistrace_library.createAccel(entities)
+	function vistrace_library.createAccel(entities, traceWorld)
 		checkPermission(instance, nil, "vistrace.accel")
 		canRun()
+
+		if traceWorld ~= nil then checkLuaType(traceWorld, TYPE_BOOL) end
 
 		if entities then
 			checkLuaType(entities, TYPE_TABLE)
@@ -288,7 +294,7 @@ return function(instance)
 			end
 			entities = unwrapped
 		end
-		return wrapAccel(vistrace.CreateAccel(entities))
+		return wrapAccel(vistrace.CreateAccel(entities, traceWorld))
 	end
 
 	--- Gets a uniform random float from the sampler

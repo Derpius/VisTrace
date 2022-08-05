@@ -231,11 +231,15 @@ LUA_FUNCTION(AccelStruct_gc)
 
 /*
 	table[Entity] entities = {}
+	boolean       traceWorld = true
 
 	returns AccelStruct
 */
 LUA_FUNCTION(CreateAccel)
 {
+	bool traceWorld = true;
+	if (LUA->IsType(2, Type::Bool)) traceWorld = LUA->GetBool(2);
+
 	AccelStruct* pAccelStruct = new AccelStruct();
 
 	if (LUA->Top() == 0) LUA->CreateTable();
@@ -243,10 +247,13 @@ LUA_FUNCTION(CreateAccel)
 		LUA->Pop(LUA->Top());
 		LUA->CreateTable();
 	} else {
-		LUA->CheckType(1, Type::Table);
+		if (!LUA->IsType(1, Type::Table)) {
+			delete pAccelStruct; // Throwing an error wont destruct
+			LUA->CheckType(1, Type::Table); // Still checktype so we get the formatted error for free
+		}
 		LUA->Pop(LUA->Top() - 1); // Pop all but the table
 	}
-	pAccelStruct->PopulateAccel(LUA, g_pWorld);
+	pAccelStruct->PopulateAccel(LUA, traceWorld ? g_pWorld : nullptr);
 
 	LUA->PushUserType_Value(pAccelStruct, AccelStruct_id);
 	return 1;
@@ -259,6 +266,10 @@ LUA_FUNCTION(CreateAccel)
 LUA_FUNCTION(RebuildAccel)
 {
 	LUA->CheckType(1, AccelStruct_id);
+
+	bool traceWorld = true;
+	if (LUA->IsType(3, Type::Bool)) traceWorld = LUA->GetBool(3);
+
 	AccelStruct* pAccelStruct = *LUA->GetUserType<AccelStruct*>(1, AccelStruct_id);
 
 	if (LUA->Top() == 1) LUA->CreateTable();
@@ -269,7 +280,7 @@ LUA_FUNCTION(RebuildAccel)
 		LUA->CheckType(2, Type::Table);
 		LUA->Pop(LUA->Top() - 2); // Pop all but the table (and self)
 	}
-	pAccelStruct->PopulateAccel(LUA, g_pWorld);
+	pAccelStruct->PopulateAccel(LUA, traceWorld ? g_pWorld : nullptr);
 
 	return 0;
 }
