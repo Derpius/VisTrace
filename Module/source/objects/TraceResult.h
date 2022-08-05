@@ -69,6 +69,8 @@ public:
 	bool hitSky = false;
 	bool hitWater = false;
 
+	bool frontFacing;
+
 	TraceResult(
 		const glm::vec3& direction,
 		const Triangle& tri, const TriangleData& triData,

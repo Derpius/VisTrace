@@ -48,6 +48,8 @@ TraceResult::TraceResult(
 
 	hitSky = (surfaceFlags & BSPEnums::SURF::SKY) != BSPEnums::SURF::NONE;
 	hitWater = mat.water;
+
+	frontFacing = glm::dot(wo, geometricNormal) >= 0.f;
 }
 
 void TraceResult::CalcBlendFactor()
@@ -97,6 +99,19 @@ void TraceResult::CalcTBN()
 			normal[0],   normal[1],   normal[2]
 		} * mappedNormal;
 		normal = glm::normalize(normal);
+
+		tangent = glm::normalize(tangent - normal * glm::dot(tangent, normal));
+		binormal = glm::cross(tangent, normal);
+	}
+
+	glm::vec3 Ng = frontFacing ? geometricNormal : -geometricNormal;
+	glm::vec3 Ns = normal;
+
+	const float kCosThetaThreshold = 0.1f;
+	float cosTheta = glm::dot(wo, Ns);
+	if (cosTheta <= kCosThetaThreshold) {
+		float t = glm::saturate(cosTheta * (1.f / kCosThetaThreshold));
+		normal = glm::normalize(glm::lerp(Ng, Ns, t));
 
 		tangent = glm::normalize(tangent - normal * glm::dot(tangent, normal));
 		binormal = glm::cross(tangent, normal);

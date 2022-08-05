@@ -212,12 +212,19 @@ LUA_FUNCTION(TraceResult_HitSky)
 	LUA->PushBool(pResult->hitSky);
 	return 1;
 }
-
 LUA_FUNCTION(TraceResult_HitWater)
 {
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
 	LUA->PushBool(pResult->hitWater);
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_FrontFacing)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	LUA->PushBool(pResult->frontFacing);
 	return 1;
 }
 #pragma endregion
@@ -767,6 +774,9 @@ GMOD_MODULE_OPEN()
 		LUA->SetField(-2, "HitSky");
 		LUA->PushCFunction(TraceResult_HitWater);
 		LUA->SetField(-2, "HitWater");
+
+		LUA->PushCFunction(TraceResult_FrontFacing);
+		LUA->SetField(-2, "FrontFacing");
 
 		LUA->PushCFunction(TraceResult_SampleBSDF);
 		LUA->SetField(-2, "SampleBSDF");
