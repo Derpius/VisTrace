@@ -20,3 +20,7 @@
 [submodule "Module/libs/GMFS"]
 	path = Module/libs/GMFS
 	url = https://github.com/Derpius/GMFS.git
+[submodule "Addon/materials/vistrace/pbr"]
+	path = Addon/materials/vistrace/pbr
+	url = https://github.com/Derpius/gmod-pbr.git
+	branch = vtf

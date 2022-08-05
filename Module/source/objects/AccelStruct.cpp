@@ -173,9 +173,12 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 				mat.baseTexture = CacheTexture(baseTexture, textureCache, textureCache[MISSING_TEXTURE]);
 				mat.normalMap = CacheTexture(normalMap, textureCache);
+				if (!baseTexture.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + baseTexture + "_mrao", textureCache);
 
 				mat.baseTexture2 = CacheTexture(baseTexture2, textureCache);
 				mat.normalMap2 = CacheTexture(normalMap2, textureCache);
+				if (!baseTexture2.empty()) mat.mrao2 = CacheTexture("vistrace/pbr/" + baseTexture2 + "_mrao", textureCache);
+
 				mat.blendTexture = CacheTexture(blendTexture, textureCache);
 			} else {
 				mat.water = true;
@@ -637,6 +640,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 
 				mat.baseTexture = CacheTexture(baseTexture, mTextureCache, mTextureCache[MISSING_TEXTURE]);
 				mat.normalMap = CacheTexture(normalMap, mTextureCache);
+				if (!baseTexture.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + baseTexture + "_mrao", mTextureCache);
 
 				LUA->GetField(-1, "GetInt");
 				LUA->Push(-2);
