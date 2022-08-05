@@ -143,9 +143,9 @@ LUA_FUNCTION(TraceResult_TextureUV)
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
 
 	LUA->CreateTable();
-	LUA->PushNumber(pResult->GetTexCoord().x);
+	LUA->PushNumber(pResult->texUV.x);
 	LUA->SetField(-2, "u");
-	LUA->PushNumber(pResult->GetTexCoord().y);
+	LUA->PushNumber(pResult->texUV.y);
 	LUA->SetField(-2, "v");
 	return 1;
 }

@@ -30,16 +30,12 @@ private:
 	glm::vec3 vN[3];
 	glm::vec3 vT[3];
 	glm::vec3 vB[3];
-	glm::vec2 vUV[3];
 
 	bool posSet = false;
 	glm::vec3 pos;
 
 	bool geoNormSet = false;
 	glm::vec3 geometricNormal;
-
-	bool texUVSet = false;
-	glm::vec2 texUV;
 
 	bool tbnSet = false;
 	glm::vec3 normal;
@@ -53,7 +49,6 @@ private:
 	float roughness = 1;
 
 	void CalcBlendFactor();
-	void CalcTexCoord();
 	void CalcTBN();
 	void CalcShadingData();
 
@@ -63,6 +58,7 @@ public:
 	glm::vec3 wo;
 
 	glm::vec3 uvw;
+	glm::vec2 texUV;
 
 	uint32_t entIdx;
 	CBaseEntity* rawEnt;
@@ -84,7 +80,6 @@ public:
 
 	const glm::vec3& GetPos();
 	const glm::vec3& GetGeometricNormal();
-	const glm::vec2& GetTexCoord();
 
 	const glm::vec3& GetNormal();
 	const glm::vec3& GetTangent();
