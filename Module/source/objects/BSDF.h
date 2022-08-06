@@ -30,22 +30,35 @@ enum class LobeType : glm::uint
 	All = 0xff,
 };
 
-struct MaterialProperties
+struct BSDFMaterial
 {
-	glm::vec3 diffuse{ .3f };
-	glm::vec3 specular{ 1.f };
-	glm::vec3 transmission{ 1.f };
+	static int id;
 
+	glm::vec3 baseColour{ 1.f, 1.f, 1.f };
+	float ior = 1;
+
+	bool roughnessOverridden = false;
 	float roughness = 1.f;
+	bool metallicOverridden = false;
 	float metallic = 0.f;
 
-	float eta = 1.f;
+	glm::vec3 diffuse{ 1.f, 1.f, 1.f };
+	glm::vec3 specular{ 1.f, 1.f, 1.f };
+	glm::vec3 transmission{ 1.f, 1.f, 1.f };
+
+	bool etaOverridden = false;
+	float eta = 1;
 	float diffuseTransmission = 0.f;
 	float specularTransmission = 0.f;
 
-	bool thin = false;
+	bool thin = true;
 
 	glm::uint activeLobes = static_cast<glm::uint>(LobeType::All);
+
+	void PrepShadingData(
+		const glm::vec3& hitColour, float hitMetalness, float hitRoughness,
+		bool frontFacing
+	);
 };
 
 struct BSDFSample
@@ -68,7 +81,7 @@ struct BSDFSample
 /// <param name="toEye">Vector towards camera or previous hit</param>
 /// <returns>Whether the sample is valid</returns>
 bool SampleFalcorBSDF(
-	const MaterialProperties& data, Sampler* sg, BSDFSample& result,
+	const BSDFMaterial& data, Sampler* sg, BSDFSample& result,
 	const glm::vec3& normal, const glm::vec3& tangent, const glm::vec3& binormal,
 	const glm::vec3& toEye
 );
@@ -84,7 +97,7 @@ bool SampleFalcorBSDF(
 /// <param name="sampledDir">Sampled vector at this hit</param>
 /// <returns>The value of the BSDF</returns>
 glm::vec3 EvalFalcorBSDF(
-	const MaterialProperties& data,
+	const BSDFMaterial& data,
 	const glm::vec3& normal, const glm::vec3& tangent, const glm::vec3& binormal,
 	const glm::vec3& toEye, const glm::vec3& sampledDir
 );
@@ -100,7 +113,7 @@ glm::vec3 EvalFalcorBSDF(
 /// <param name="sampledDir">Sampled vector at this hit</param>
 /// <returns>The value of the PDF</returns>
 float EvalPDFFalcorBSDF(
-	const MaterialProperties& data,
+	const BSDFMaterial& data,
 	const glm::vec3& normal, const glm::vec3& tangent, const glm::vec3& binormal,
 	const glm::vec3& toEye, const glm::vec3& sampledDir
 );

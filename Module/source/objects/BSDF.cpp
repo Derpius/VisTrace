@@ -3,12 +3,38 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-// Implementation taken from https://github.com/NVIDIAGameWorks/Falcor/blob/8c85b5a0abacc918e3c0ce2d04fa16b6ee488d3d/Source/Falcor/Rendering/Materials/BxDF.slang
-
 using namespace glm;
 
 static const float kMinCosTheta = 1e-6f;
 static const float kMinGGXAlpha = 0.0064f;
+
+int BSDFMaterial::id = -1;
+
+void BSDFMaterial::PrepShadingData(
+	const vec3& hitColour, float hitMetalness, float hitRoughness,
+	bool frontFacing
+)
+{
+	if (!metallicOverridden) metallic = hitMetalness;
+	if (!roughnessOverridden) roughness = hitRoughness;
+
+	metallic = clamp(metallic, 0.f, 1.f);
+	roughness = clamp(roughness, 0.f, 1.f);
+
+	float f = (ior - 1.f) / (ior + 1.f);
+	float F0 = f * f;
+
+	diffuse = mix(clamp(baseColour * hitColour, 0.f, 1.f), vec3(0.f), metallic);
+	specular = mix(vec3(F0), diffuse, metallic);
+	transmission = specular;
+
+	specularTransmission = clamp(specularTransmission, 0.f, 1.f);
+	diffuseTransmission = clamp(diffuseTransmission, 0.f, 1.f);
+
+	if (!etaOverridden) eta = frontFacing ? 1.f / ior : ior;
+}
+
+// Implementation taken from https://github.com/NVIDIAGameWorks/Falcor/blob/8c85b5a0abacc918e3c0ce2d04fa16b6ee488d3d/Source/Falcor/Rendering/Materials/BxDF.slang
 
 #pragma region Utils
 inline float luminance(vec3 rgb)
@@ -515,7 +541,7 @@ public:
 		\param[in] sd Shading data.
 		\param[in] data BSDF parameters.
 	*/
-	FalcorBSDF(const MaterialProperties& data, const vec3& wo, const vec3& n)
+	FalcorBSDF(const BSDFMaterial& data, const vec3& wo, const vec3& n)
 	{
 		// TODO: Currently specular reflection and transmission lobes are not properly separated.
 		// This leads to incorrect behaviour if only the specular reflection or transmission lobe is selected.
@@ -578,7 +604,7 @@ public:
 		\param[in] data BSDF parameters.
 		\return Returns a set of lobes (see LobeType.slang).
 	*/
-	static uint getLobes(const MaterialProperties& data)
+	static uint getLobes(const BSDFMaterial& data)
 	{
 		float alpha = data.roughness * data.roughness;
 		bool isDelta = alpha < kMinGGXAlpha;
@@ -677,7 +703,7 @@ vec3 fromLocal(const vec3& T, const vec3& B, const vec3& N, const vec3& v)
 }
 
 bool SampleFalcorBSDF(
-	const MaterialProperties& data, Sampler* sg, BSDFSample& result,
+	const BSDFMaterial& data, Sampler* sg, BSDFSample& result,
 	const vec3& normal, const vec3& tangent, const vec3& binormal,
 	const vec3& toEye
 )
@@ -694,7 +720,7 @@ bool SampleFalcorBSDF(
 }
 
 vec3 EvalFalcorBSDF(
-	const MaterialProperties& data,
+	const BSDFMaterial& data,
 	const vec3& normal, const vec3& tangent, const vec3& binormal,
 	const vec3& toEye, const vec3& sampledDir
 )
@@ -708,7 +734,7 @@ vec3 EvalFalcorBSDF(
 }
 
 float EvalPDFFalcorBSDF(
-	const MaterialProperties& data,
+	const BSDFMaterial& data,
 	const vec3& normal, const vec3& tangent, const vec3& binormal,
 	const vec3& toEye, const vec3& sampledDir
 )

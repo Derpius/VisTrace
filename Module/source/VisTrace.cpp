@@ -227,6 +227,12 @@ LUA_FUNCTION(TraceResult_FrontFacing)
 	LUA->PushBool(pResult->frontFacing);
 	return 1;
 }
+
+LUA_FUNCTION(TraceResult_tostring)
+{
+	LUA->PushString("VisTraceResult");
+	return 1;
+}
 #pragma endregion
 
 #pragma region Tracing API
@@ -325,75 +331,106 @@ LUA_FUNCTION(AccelStruct_tostring)
 }
 #pragma endregion
 
-#pragma region BxDF API
-MaterialProperties ReadMaterialProps(ILuaBase* LUA, const int stackPos, const glm::vec3& outgoing, const glm::vec3& normal)
+#pragma region BSDFMaterial
+LUA_FUNCTION(CreateMaterial)
 {
-	using namespace glm;
-	MaterialProperties material{};
-
-	LUA->GetField(stackPos, "Metalness");
-	if (LUA->IsType(-1, Type::Number)) {
-		material.metallic = glm::clamp(LUA->GetNumber(), 0., 1.);
-	}
-	LUA->GetField(stackPos, "Roughness");
-	if (LUA->IsType(-1, Type::Number)) {
-		material.roughness = LUA->GetNumber();
-	}
-	LUA->Pop(2);
-
-	float ior = 1.f;
-	LUA->GetField(stackPos, "IoR");
-	if (LUA->IsType(-1, Type::Number)) {
-		ior = LUA->GetNumber();
-	}
-	LUA->Pop();
-
-	float f = (ior - 1.f) / (ior + 1.f);
-	float F0 = f * f;
-
-	LUA->GetField(stackPos, "BaseColour");
-	if (LUA->IsType(-1, Type::Vector)) {
-		Vector v = LUA->GetVector(-1);
-		material.diffuse = mix(glm::vec3(v.x, v.y, v.z), vec3(0.f), material.metallic);
-	} else material.diffuse = mix(glm::vec3(1.f), vec3(0.f), material.metallic);
-	material.specular = mix(vec3(F0), material.diffuse, material.metallic);
-
-	LUA->GetField(stackPos, "TransmissionColour");
-	if (LUA->IsType(-1, Type::Vector)) {
-		Vector v = LUA->GetVector(-1);
-		material.transmission = glm::vec3(v.x, v.y, v.z);
-	} else material.transmission = material.specular;
-	LUA->Pop(2);
-
-	LUA->GetField(stackPos, "SpecularTransmission");
-	if (LUA->IsType(-1, Type::Number)) {
-		material.specularTransmission = glm::clamp(LUA->GetNumber(), 0., 1.);
-	}
-	LUA->GetField(stackPos, "DiffuseTransmission");
-	if (LUA->IsType(-1, Type::Number)) {
-		material.diffuseTransmission = glm::clamp(LUA->GetNumber(), 0., 1.);
-	}
-	LUA->Pop(2);
-
-	LUA->GetField(stackPos, "RelativeIoR");
-	if (LUA->IsType(-1, Type::Number)) {
-		material.eta = LUA->GetNumber();
-	} else material.eta = glm::dot(outgoing, normal) < 0.f ? ior : 1.f / ior;
-	LUA->Pop();
-
-	LUA->GetField(stackPos, "Thin");
-	if (LUA->IsType(-1, Type::Bool)) {
-		material.thin = LUA->GetBool();
-	}
-	LUA->Pop();
-
-	return material;
+	LUA->PushUserType_Value(BSDFMaterial{}, BSDFMaterial::id);
+	return 1;
 }
 
+LUA_FUNCTION(Material_Colour)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Vector);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	Vector v = LUA->GetVector(2);
+	pMat->baseColour = glm::vec3(v.x, v.y, v.z);
+	return 0;
+}
+
+LUA_FUNCTION(Material_Metalness)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Number);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	pMat->metallic = LUA->GetNumber(2);
+	pMat->metallicOverridden = true;
+	return 0;
+}
+LUA_FUNCTION(Material_Roughness)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Number);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	pMat->roughness = LUA->GetNumber(2);
+	pMat->roughnessOverridden = true;
+	return 0;
+}
+
+LUA_FUNCTION(Material_IoR)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Number);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	pMat->ior = LUA->GetNumber(2);
+	return 0;
+}
+LUA_FUNCTION(Material_RelativeIoR)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Number);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	pMat->eta = LUA->GetNumber(2);
+	pMat->etaOverridden = true;
+	return 0;
+}
+
+LUA_FUNCTION(Material_DiffuseTransmission)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Number);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	pMat->diffuseTransmission = LUA->GetNumber(2);
+	return 0;
+}
+LUA_FUNCTION(Material_SpecularTransmission)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Number);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	pMat->specularTransmission = LUA->GetNumber(2);
+	return 0;
+}
+
+LUA_FUNCTION(Material_Thin)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Bool);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	pMat->thin = LUA->GetBool(2);
+	return 0;
+}
+
+LUA_FUNCTION(Material_tostring)
+{
+	LUA->PushString("BSDFMaterial");
+	return 1;
+}
+#pragma endregion
+
+#pragma region BxDF API
 /*
-	TraceResult self
-	Sampler     sampler
-	table       material (optional fields corresponding to MaterialParameter members)
+	TraceResult  self
+	Sampler      sampler
+	BSDFMaterial material
 
 	returns:
 	bool valid
@@ -403,18 +440,23 @@ LUA_FUNCTION(TraceResult_SampleBSDF)
 {
 	LUA->CheckType(1, TraceResult::id);
 	LUA->CheckType(2, Sampler_id);
-	LUA->CheckType(3, Type::Table);
+	LUA->CheckType(3, BSDFMaterial::id);
 
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
 	Sampler* pSampler = *LUA->GetUserType<Sampler*>(2, Sampler_id);
 
-	auto material = ReadMaterialProps(LUA, 3, pResult->wo, pResult->GetNormal());
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(3, BSDFMaterial::id);
+	pMat->PrepShadingData(
+		pResult->GetAlbedo(),
+		pResult->GetMetalness(), pResult->GetRoughness(),
+		pResult->frontFacing
+	);
 
 	LUA->Pop(LUA->Top());
 
 	BSDFSample sample;
 	bool valid = SampleFalcorBSDF(
-		material, pSampler, sample,
+		*pMat, pSampler, sample,
 		pResult->GetNormal(), pResult->GetTangent(), pResult->GetBinormal(),
 		pResult->wo
 	);
@@ -442,9 +484,9 @@ LUA_FUNCTION(TraceResult_SampleBSDF)
 }
 
 /*
-	TraceResult self
-	table       material (optional fields corresponding to MaterialParameter members)
-	Vector      wi
+	TraceResult  self
+	BSDFMaterial material
+	Vector       wi
 
 	returns:
 	Vector colour
@@ -452,7 +494,7 @@ LUA_FUNCTION(TraceResult_SampleBSDF)
 LUA_FUNCTION(TraceResult_EvalBSDF)
 {
 	LUA->CheckType(1, TraceResult::id);
-	LUA->CheckType(2, Type::Table);
+	LUA->CheckType(2, BSDFMaterial::id);
 	LUA->CheckType(3, Type::Vector);
 
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
@@ -463,12 +505,17 @@ LUA_FUNCTION(TraceResult_EvalBSDF)
 		incoming = glm::vec3(v.x, v.y, v.z);
 	}
 
-	auto material = ReadMaterialProps(LUA, 2, pResult->wo, pResult->GetNormal());
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(2, BSDFMaterial::id);
+	pMat->PrepShadingData(
+		pResult->GetAlbedo(),
+		pResult->GetMetalness(), pResult->GetRoughness(),
+		pResult->frontFacing
+	);
 
 	LUA->Pop(LUA->Top());
 
 	glm::vec3 colour = EvalFalcorBSDF(
-		material,
+		*pMat,
 		pResult->GetNormal(), pResult->GetTangent(), pResult->GetBinormal(),
 		pResult->wo, incoming
 	);
@@ -478,9 +525,9 @@ LUA_FUNCTION(TraceResult_EvalBSDF)
 }
 
 /*
-	TraceResult self
-	table       material (optional fields corresponding to MaterialParameter members)
-	Vector      wi
+	TraceResult  self
+	BSDFMaterial material
+	Vector       wi
 
 	returns:
 	float pdf
@@ -488,7 +535,7 @@ LUA_FUNCTION(TraceResult_EvalBSDF)
 LUA_FUNCTION(TraceResult_EvalPDF)
 {
 	LUA->CheckType(1, TraceResult::id);
-	LUA->CheckType(2, Type::Table);
+	LUA->CheckType(2, BSDFMaterial::id);
 	LUA->CheckType(3, Type::Vector);
 
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
@@ -499,12 +546,17 @@ LUA_FUNCTION(TraceResult_EvalPDF)
 		incoming = glm::vec3(v.x, v.y, v.z);
 	}
 
-	auto material = ReadMaterialProps(LUA, 2, pResult->wo, pResult->GetNormal());
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(2, BSDFMaterial::id);
+	pMat->PrepShadingData(
+		pResult->GetAlbedo(),
+		pResult->GetMetalness(), pResult->GetRoughness(),
+		pResult->frontFacing
+	);
 
 	LUA->Pop(LUA->Top());
 
 	float pdf = EvalPDFFalcorBSDF(
-		material,
+		*pMat,
 		pResult->GetNormal(), pResult->GetTangent(), pResult->GetBinormal(),
 		pResult->wo, incoming
 	);
@@ -732,6 +784,8 @@ GMOD_MODULE_OPEN()
 	TraceResult::id = LUA->CreateMetaTable("VisTraceResult");
 		LUA->Push(-1);
 		LUA->SetField(-2, "__index");
+		LUA->PushCFunction(TraceResult_tostring);
+		LUA->SetField(-2, "__tostring");
 
 		LUA->PushCFunction(TraceResult_Pos);
 		LUA->SetField(-2, "Pos");
@@ -789,52 +843,87 @@ GMOD_MODULE_OPEN()
 	AccelStruct_id = LUA->CreateMetaTable("AccelStruct");
 		LUA->Push(-1);
 		LUA->SetField(-2, "__index");
+		LUA->PushCFunction(AccelStruct_tostring);
+		LUA->SetField(-2, "__tostring");
 		LUA->PushCFunction(AccelStruct_gc);
 		LUA->SetField(-2, "__gc");
+
 		LUA->PushCFunction(RebuildAccel);
 		LUA->SetField(-2, "Rebuild");
 		LUA->PushCFunction(TraverseScene);
 		LUA->SetField(-2, "Traverse");
-		LUA->PushCFunction(AccelStruct_tostring);
-		LUA->SetField(-2, "__tostring");
 	LUA->Pop();
 
 	Sampler_id = LUA->CreateMetaTable("Sampler");
 		LUA->Push(-1);
 		LUA->SetField(-2, "__index");
+		LUA->PushCFunction(Sampler_tostring);
+		LUA->SetField(-2, "__tostring");
 		LUA->PushCFunction(Sampler_gc);
 		LUA->SetField(-2, "__gc");
+
 		LUA->PushCFunction(Sampler_GetFloat);
 		LUA->SetField(-2, "GetFloat");
 		LUA->PushCFunction(Sampler_GetFloat2D);
 		LUA->SetField(-2, "GetFloat2D");
-		LUA->PushCFunction(Sampler_tostring);
-		LUA->SetField(-2, "__tostring");
 	LUA->Pop();
 
 	HDRI_id = LUA->CreateMetaTable("HDRI");
 		LUA->Push(-1);
 		LUA->SetField(-2, "__index");
-		LUA->PushCFunction(HDRI_IsValid);
-		LUA->SetField(-2, "IsValid");
-		LUA->PushCFunction(HDRI_GetPixel);
-		LUA->SetField(-2, "GetPixel");
-		LUA->PushCFunction(HDRI_EvalPDF);
-		LUA->SetField(-2, "EvalPDF");
-		LUA->PushCFunction(HDRI_Sample);
-		LUA->SetField(-2, "Sample");
-		LUA->PushCFunction(HDRI_SetAngles);
-		LUA->SetField(-2, "SetAngles");
 		LUA->PushCFunction(HDRI_tostring);
 		LUA->SetField(-2, "__tostring");
 		LUA->PushCFunction(HDRI_gc);
 		LUA->SetField(-2, "__gc");
+
+		LUA->PushCFunction(HDRI_IsValid);
+		LUA->SetField(-2, "IsValid");
+
+		LUA->PushCFunction(HDRI_GetPixel);
+		LUA->SetField(-2, "GetPixel");
+
+		LUA->PushCFunction(HDRI_EvalPDF);
+		LUA->SetField(-2, "EvalPDF");
+		LUA->PushCFunction(HDRI_Sample);
+		LUA->SetField(-2, "Sample");
+
+		LUA->PushCFunction(HDRI_SetAngles);
+		LUA->SetField(-2, "SetAngles");
+	LUA->Pop();
+
+	BSDFMaterial::id = LUA->CreateMetaTable("BSDFMaterial");
+		LUA->Push(-1);
+		LUA->SetField(-2, "__index");
+		LUA->PushCFunction(Material_tostring);
+		LUA->SetField(-2, "__tostring");
+
+		LUA->PushCFunction(Material_Colour);
+		LUA->SetField(-2, "Colour");
+
+		LUA->PushCFunction(Material_Metalness);
+		LUA->SetField(-2, "Metalness");
+		LUA->PushCFunction(Material_Roughness);
+		LUA->SetField(-2, "Roughness");
+
+		LUA->PushCFunction(Material_IoR);
+		LUA->SetField(-2, "IoR");
+		LUA->PushCFunction(Material_RelativeIoR);
+		LUA->SetField(-2, "RelativeIoR");
+
+		LUA->PushCFunction(Material_DiffuseTransmission);
+		LUA->SetField(-2, "DiffuseTransmission");
+		LUA->PushCFunction(Material_SpecularTransmission);
+		LUA->SetField(-2, "SpecularTransmission");
+
+		LUA->PushCFunction(Material_Thin);
+		LUA->SetField(-2, "Thin");
 	LUA->Pop();
 
 	LUA->PushSpecial(SPECIAL_GLOB);
 		LUA->CreateTable();
 			PUSH_C_FUNC(CreateAccel);
 			PUSH_C_FUNC(CreateSampler);
+			PUSH_C_FUNC(CreateMaterial);
 			PUSH_C_FUNC(LoadHDRI);
 
 			PUSH_C_FUNC(CalcRayOrigin);

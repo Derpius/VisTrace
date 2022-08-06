@@ -54,6 +54,14 @@ SF.RegisterType("Sampler", true, false, debug.getregistry().Sampler)
 -- @libtbl hdri_meta
 SF.RegisterType("HDRI", true, false, debug.getregistry().HDRI)
 
+--- VisTrace BSDF material
+-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+-- @name BSDFMaterial
+-- @class type
+-- @libtbl bsdfmaterial_methods
+-- @libtbl bsdfmaterial_meta
+SF.RegisterType("BSDFMaterial", true, false, debug.getregistry().BSDFMaterial)
+
 return function(instance)
 	local checkPermission = instance.player ~= SF.Superuser and SF.Permissions.check or function() end
 	local vistrace_library = instance.Libraries.vistrace
@@ -69,6 +77,9 @@ return function(instance)
 
 	local hdri_methods, hdri_meta = instance.Types.HDRI.Methods, instance.Types.HDRI
 	local wrapHDRI, uwrapHDRI = instance.Types.HDRI.Wrap, instance.Types.HDRI.Unwrap
+
+	local bsdfmaterial_methods, bsdfmaterial_meta = instance.Types.BSDFMaterial.Methods, instance.Types.BSDFMaterial
+	local wrapMat, uwrapMat = instance.Types.BSDFMaterial.Wrap, instance.Types.BSDFMaterial.Unwrap
 
 	local uwrapVec, wrapVec, uwrapAng = instance.Types.Vector.Unwrap, instance.Types.Vector.Wrap, instance.Types.Angle.Unwrap
 	local wrapEnt, uwrapEnt = instance.Types.Entity.Wrap, instance.Types.Entity.Unwrap
@@ -96,11 +107,17 @@ return function(instance)
 		return "HDRI"
 	end
 
+	function bsdfmaterial_meta.__tostring()
+		return "BSDFMaterial"
+	end
+
 	local function canRun()
 		if not vistrace then
 			SF.Throw("The required version (v" .. VISTRACE_VERSION .. ") of the VisTrace binary module is not installed (get it here https://github.com/Derpius/VisTrace/releases)", 3)
 		end
 	end
+
+--#region VisTraceResult
 
 	--- Gets the hit pos of the result
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
@@ -239,6 +256,10 @@ return function(instance)
 		return uwrapResult(self):FrontFacing()
 	end
 
+--#endregion
+
+--#region AccelStruct
+
 	--- Rebuild the acceleration structure
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param table? entities Sequential list of entities to rebuild the acceleration structure with (or nil to clear the structure)
@@ -313,6 +334,10 @@ return function(instance)
 		return wrapAccel(vistrace.CreateAccel(entities, traceWorld))
 	end
 
+--#endregion
+
+--#region Sampler
+
 	--- Gets a uniform random float from the sampler
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number Random float in a 0-1 range
@@ -340,6 +365,91 @@ return function(instance)
 		if seed ~= nil then checkLuaType(seed, TYPE_NUMBER) end
 		return wrapSampler(vistrace.CreateSampler(seed))
 	end
+
+--#endregion
+
+--#region BSDFMaterial
+
+	--- Creates a new material for use with BSDF sampling
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return BSDFMaterial New material object
+	function vistrace_library.createMaterial()
+		canRun()
+		return wrapMat(vistrace.CreateMaterial())
+	end
+
+	--- Set the colour of the material (multiplies by the sampled colour)
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param Vector colour Colour to set as a 0-1 normalised vector
+	function bsdfmaterial_methods:colour(colour)
+		canRun()
+		uwrapMat(self):Colour(uwrapVec(colour))
+	end
+
+	--- Set the metalness of the material (overrides PBR textures)
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number metalness Metalness to set
+	function bsdfmaterial_methods:metalness(metalness)
+		canRun()
+		checkLuaType(metalness, TYPE_NUMBER)
+		uwrapMat(self):Metalness(metalness)
+	end
+	--- Set the roughness of the material (overrides PBR textures)
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number roughness Roughness to set
+	function bsdfmaterial_methods:roughness(roughness)
+		canRun()
+		checkLuaType(roughness, TYPE_NUMBER)
+		uwrapMat(self):Roughness(roughness)
+	end
+
+	--- Set the index of refraction of the material
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number ior Index of refraction to set
+	function bsdfmaterial_methods:ior(ior)
+		canRun()
+		checkLuaType(ior, TYPE_NUMBER)
+		uwrapMat(self):IoR(ior)
+	end
+	--- Set the relative index of refraction of the material
+	--- Used to implement nested dielectrics (dont use if you dont know what you're doing)
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number relativeIor Relative index of refraction to set
+	function bsdfmaterial_methods:relativeIor(relativeIor)
+		canRun()
+		checkLuaType(relativeIor, TYPE_NUMBER)
+		uwrapMat(self):RelativeIoR(relativeIor)
+	end
+
+	--- Set the diffuse transmission amount
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number diffuseTransmission 0-1 where 0 is no light transmitted and 1 is all light transmitted
+	function bsdfmaterial_methods:diffuseTransmission(diffuseTransmission)
+		canRun()
+		checkLuaType(diffuseTransmission, TYPE_NUMBER)
+		uwrapMat(self):DiffuseTransmission(diffuseTransmission)
+	end
+	--- Set the specular transmission amount
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number specularTransmission 0-1 where 0 is no light refracted and 1 is all light refracted
+	function bsdfmaterial_methods:specularTransmission(specularTransmission)
+		canRun()
+		checkLuaType(specularTransmission, TYPE_NUMBER)
+		uwrapMat(self):SpecularTransmission(specularTransmission)
+	end
+
+	--- Toggle thin film
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param boolean thin True to simulate the material as thin film
+	function bsdfmaterial_methods:thin(thin)
+		canRun()
+		checkLuaType(thin, TYPE_BOOL)
+		uwrapMat(self):Thin(thin)
+	end
+
+--#endregion
+
+--#region BSDF
 
 	--- BSDF Lobes
 	-- @name vistrace_library.LobeType
@@ -388,21 +498,16 @@ return function(instance)
 	--- Importance samples the Falcor BSDF
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Sampler sampler Sampler object
-	-- @param table material Material parameters (See the GitHub for valid params)
+	-- @param BSDFMaterial material Material parameters
 	-- @return bool valid Whether the sample is valid or not
 	-- @return table? sample Sample generated (if valid)
 	function traceresult_methods:sampleBSDF(sampler, material)
 		canRun()
 
 		if debug_getmetatable(sampler) ~= sampler_meta then SF.ThrowTypeError("Sampler", SF.GetType(sampler), 2) end
-		checkLuaType(material, TYPE_TABLE)
+		if debug_getmetatable(material) ~= bsdfmaterial_meta then SF.ThrowTypeError("BSDFMaterial", SF.GetType(material), 2) end
 
-		local unwrappedMat = {}
-		for k, v in pairs(material) do
-			unwrappedMat[k] = uwrapObj(v)
-		end
-
-		local valid, sample = uwrapResult(self):SampleBSDF(uwrapSampler(sampler), unwrappedMat)
+		local valid, sample = uwrapResult(self):SampleBSDF(uwrapSampler(sampler), uwrapMat(material))
 		if not valid then return false end
 
 		return true, {
@@ -415,45 +520,39 @@ return function(instance)
 
 	--- Evaluates the Falcor BSDF
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param table material Material parameters (See the GitHub for valid params)
+	-- @param BSDFMaterial material Material parameters
 	-- @param Vector wi Incoming light direction (towards sampled direction or light)
 	-- @return Vector Evaluated surface colour
 	function traceresult_methods:evalBSDF(material, wi)
 		canRun()
 
-		checkLuaType(material, TYPE_TABLE)
+		if debug_getmetatable(material) ~= bsdfmaterial_meta then SF.ThrowTypeError("BSDFMaterial", SF.GetType(material), 2) end
 
 		checkVector(wi)
 		validateVector(wi)
 
-		local unwrappedMat = {}
-		for k, v in pairs(material) do
-			unwrappedMat[k] = uwrapObj(v)
-		end
-
-		return wrapVec(uwrapResult(self):EvalBSDF(unwrappedMat, uwrapVec(wi)))
+		return wrapVec(uwrapResult(self):EvalBSDF(uwrapMat(material), uwrapVec(wi)))
 	end
 
 	--- Evaluates the Falcor BSDF's PDF
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param table material Material parameters (See the GitHub for valid params)
+	-- @param BSDFMaterial material Material parameters
 	-- @param Vector wi Incoming light direction (towards sampled direction or light)
 	-- @return number Evaluated PDF
 	function traceresult_methods:evalPDF(material, wi)
 		canRun()
 
-		checkLuaType(material, TYPE_TABLE)
+		if debug_getmetatable(material) ~= bsdfmaterial_meta then SF.ThrowTypeError("BSDFMaterial", SF.GetType(material), 2) end
 
 		checkVector(wi)
 		validateVector(wi)
 
-		local unwrappedMat = {}
-		for k, v in pairs(material) do
-			unwrappedMat[k] = uwrapObj(v)
-		end
-
-		return uwrapResult(self):EvalPDF(unwrappedMat, uwrapVec(wi))
+		return uwrapResult(self):EvalPDF(uwrapMat(material), uwrapVec(wi))
 	end
+
+--#endregion
+
+--#region HDRI
 
 	--- Loads a HDRI from `garrysmod/data/vistrace_hdris/` and appends the `.hdr` extension automatically  
 	--- Subfolders are allowed
@@ -532,6 +631,8 @@ return function(instance)
 		if debug_getmetatable(angle) ~= angleMetaTbl then SF.ThrowTypeError("Angle", SF.GetType(angle), 2) end
 		uwrapHDRI(self):SetAngles(uwrapAng(angle))
 	end
+
+--#endregion
 
 	--- Calculates a biased offset from an intersection point to prevent self intersection
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
