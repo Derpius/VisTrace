@@ -3,50 +3,53 @@ VisTrace allows tracing visual meshes in Garry's Mod at high speeds on the CPU u
 
 ## Installation
 Simply get the latest binary for your architecture from releases, and place it into `garrysmod/lua/bin`, then `require("VisTrace-vX.X")` in GLua.  
-For a more user friendly experience, get the [Steam Workshop addon](https://steamcommunity.com/sharedfiles/filedetails/?id=2531198548), which will automatically require the applicable version of the module, and provide integration with other addons (currently [StarfallEx](https://github.com/thegrb93/StarfallEx) and [Expression 2](https://github.com/wiremod/wire)).  
+For a more user friendly experience, get the [Steam Workshop addon](https://steamcommunity.com/sharedfiles/filedetails/?id=2531198548), which will automatically require the applicable version of the module, and provide integration with other addons (currently [StarfallEx](https://github.com/thegrb93/StarfallEx) ~~and [Expression 2](https://github.com/wiremod/wire)~~ https://github.com/Derpius/VisTrace/issues/22).  
+
+## Compiling
+While it's recommended to just download the latest release binary, if you want to test WIP features before a full release, or you want to help develop the module, then you'll need to set up your toolchain to compile VisTrace and its dependencies.  
+
+### Prerequesits
+* Visual Studio 2019 or Visual Studio Code with the CMake tools extension with the Visual Studio 2019 Build Tools installed
+* `clang-cl` - MSVC version of Clang to use OpenMP while being ABI compatible with source (you can install this as part of the Visual Studio build tools)
+* Ninja (again can be installed as part of the VS build tools, you could likely build using another system, but untested)
+* CMake
+* premake5 installed and on path (for building GMFS)
+* msbuild installed and on path (for building GMFS, part of the VS build tools)
+
+The GMFS submodule is not set up to invoke premake with anything other than vs2019, so you'll need to modify its CMakeLists.txt if you want to compile with an older version of VS, or on Linux.  
+If you do make such modifications in addition to still letting the file work on Windows, then please submit a PR with your new CMakeLists.txt at https://github.com/Derpius/GMFS.  
+
+### First time setup
+1. Clone the repository with the `--recursive` flag to init all submodules (check that submodules of submodules like `sourcedk-minimal` in `garrysmod_common` in `GMFS` have files in them)
+2. Open the `Module` directory in either vs2019 or vscode (other editors can probably be used but dont have as good of an integration with CMake)  
+3. Select a preset to compile (`relwithsymbols` for debugging as building with full debug mode breaks ABI compatibility with Source)
+4. Compile (compiled dll can be found in `Module/out/build/{presetname}`)
 
 ## Usage
-VisTrace provides a function in the global scope in order to create an acceleration structure object:
-* `vistrace.CreateAccel(table entities = {})`  
-  
-`CreateAccel` takes an optional sequential numerical table of entities to build mesh data from, creates the BVH acceleration structure, and returns an `AccelStruct` object.  
-The `AccelStruct` object has a basic `__tostring` metamethod (which simply returns `"AccelStruct"`), and two main methods:  
-* `AccelStruct:Rebuild(table entities = {})` - Same as `vistrace.CreateAccel` but self modifies.  
-This should be called as **infrequently** as possible, due to the time required to build an acceleration structure (i.e. once per frame for a tracer).  
-* `AccelStruct:Traverse(Vector origin, Vector direction, float tMin = 0, float tMax = FLT_MAX, hitWorld = true, hitWater = false)` - Traverses the acceleration structure, returning a [`TraceResult`](https://wiki.facepunch.com/gmod/Structures/TraceResult) table, with a few extra values.  
-
-### `AccelStruct:Traverse` Details
-`Traverse` takes at a minimum an origin and direction for the ray, with optional parameters to set the minimum and maximum hit distances, and whether or not to call `util.TraceLine` internally in order to hit the world and/or water (`hitWorld` defaults to `true` and `hitWater` to `false` as that's most likely the expected behaviour, however not hitting world/water is significantly faster).  
-
-The return value of this method is a [`TraceResult`](https://wiki.facepunch.com/gmod/Structures/TraceResult) struct, with the following additional contents:
-* `HitShader` is a table containing shader data at the hit point (currently `Albedo`, `Alpha` and `Material` which is the material object itself)
-* `HitTexCoord` is a table representing the texture coord at the hit point (always `{u = 0, v = 0}` if the world was hit)  
-* `HitBarycentric` is a table representing the barycentric coord local to the tri at the hit point (always `{u = 0, v = 0}` if the world was hit)  
-* `HitTangent` is the tangent at the hit point (always Vector(0) if the world was hit, sometimes Vector(0) if not present in MeshVertex structs)  
-* `HitBinormal` is the binormal at the hit point (always Vector(0) if the world was hit, sometimes Vector(0) if not present in MeshVertex structs)  
-* `HitNormalGeometric` is the geometric normal of the hit (same as `HitNormal` if world was hit)  
-* `SubmatIndex` is the id of the submaterial hit (always 0 if world was hit, will be the 0 indexed id used with `Entity:GetSubMaterial`, so add 1 if needed for other uses)  
-* `EntIndex` is the id of the entity hit (this is required as an entity can be built into the accel struct, deleted, and replaced with a new entity at the same id, which now correctly marks the ent as null in the `TraceResult`, but you can still get the original id to index a table of custom data you might have)  
-
-Note that if a mesh was hit, the majority of the `TraceResult` struct returned will not differ from the default values present in a miss struct, like `FractionLeftSolid`.  
+MOVING TO WIKI
 
 ## Example Code
 For more detailed examples, see the [Examples](https://github.com/Derpius/VisTrace/tree/master/Examples) folder.  
 
-This will load the module, build the acceleration structure from all `prop_physics` entities, get an entity to use as a hit marker, and traverse the scene each frame placing the hit marker at the trace hit position if applicable:
+This will load the module, build the acceleration structure from all `prop_physics` entities (and the world), get an entity to use as a hit marker, and traverse the scene each frame placing the hit marker at the trace hit position if we hit:
 ```lua
 if SERVER then error("VisTrace can only be used on the client!") end
-require("VisTrace")
-local accel = vistrace.CreateAccel(ents.FindByClass("prop_physics"))
+require("VisTrace-vX.X") -- Put current version here
+local accel = vistrace.CreateAccel(ents.FindByClass("prop_physics")--[[, false]]) -- Pass false here to disable tracing world (useful if you just want to interact with entities)
 
 local plr = LocalPlayer()
 
-local hitMarker = Entity(68) -- Change the entity ID here to one you want to use as a hit marker (hard coded here for simplicity of the example, and assuming no addons that change this will be the first prop created on flatgrass in singleplayer)
+-- Change the entity ID here to one you want to use as a hit marker
+-- hard coded here for simplicity of the example,
+-- and assuming no addons that change this are mounted,
+-- will be the first prop created on flatgrass in singleplayer
+local hitMarker = Entity(68) 
+
 
 hook.Add("Think", "vistraceTest", function()
 	local hitData = accel:Traverse(plr:EyePos(), plr:GetAimVector())
-	if hitData.Hit then
-		hitMarker:SetPos(hitData.HitPos)
+	if hitData then
+		hitMarker:SetPos(hitData:Pos())
 	end
 end)
 ```
