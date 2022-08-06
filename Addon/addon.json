@@ -1,5 +1,10 @@
 {
 	"title": "VisTrace",
 	"type": "ServerContent",
-	"tags": [ "realism", "build" ]
+	"tags": [ "realism", "build" ],
+	"ignore": [
+		"*.git*",
+		"*.md",
+		"*LICENSE"
+	]
 }
