@@ -88,7 +88,6 @@ public:
 	const glm::vec3& GetAlbedo();
 	float GetAlpha();
 
-	bool HasPBRData();
 	float GetMetalness();
 	float GetRoughness();
 };

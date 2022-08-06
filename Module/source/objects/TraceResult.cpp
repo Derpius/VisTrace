@@ -201,15 +201,13 @@ float TraceResult::GetAlpha()
 	return alpha;
 }
 
-bool TraceResult::HasPBRData()
-{
-	return mrao != nullptr;
-}
 float TraceResult::GetMetalness()
 {
+	CalcShadingData();
 	return metalness;
 }
 float TraceResult::GetRoughness()
 {
+	CalcShadingData();
 	return roughness;
 }
