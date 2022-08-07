@@ -51,7 +51,7 @@ struct BSDFMaterial
 	float diffuseTransmission = 0.f;
 	float specularTransmission = 0.f;
 
-	bool thin = true;
+	bool thin = false;
 
 	glm::uint activeLobes = static_cast<glm::uint>(LobeType::All);
 
