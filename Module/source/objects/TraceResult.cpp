@@ -104,6 +104,10 @@ void TraceResult::CalcTBN()
 		binormal = glm::cross(tangent, normal);
 	}
 
+	if (!frontFacing) {
+		normal = -normal;
+	}
+
 	glm::vec3 Ng = frontFacing ? geometricNormal : -geometricNormal;
 	glm::vec3 Ns = normal;
 
