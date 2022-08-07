@@ -35,7 +35,7 @@ struct BSDFMaterial
 	static int id;
 
 	glm::vec3 baseColour{ 1.f, 1.f, 1.f };
-	float ior = 1;
+	float ior = 1.5;
 
 	bool roughnessOverridden = false;
 	float roughness = 1.f;

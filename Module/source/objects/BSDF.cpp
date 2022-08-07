@@ -24,8 +24,9 @@ void BSDFMaterial::PrepShadingData(
 	float f = (ior - 1.f) / (ior + 1.f);
 	float F0 = f * f;
 
-	diffuse = mix(clamp(baseColour * hitColour, 0.f, 1.f), vec3(0.f), metallic);
-	specular = mix(vec3(F0), diffuse, metallic);
+	vec3 surfaceColour = clamp(baseColour * hitColour, 0.f, 1.f);
+	diffuse = mix(surfaceColour, vec3(0.f), metallic);
+	specular = mix(vec3(F0), surfaceColour, metallic);
 	transmission = specular;
 
 	specularTransmission = clamp(specularTransmission, 0.f, 1.f);
