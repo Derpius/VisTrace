@@ -12,6 +12,7 @@
 
 #include "BSDF.h"
 #include "HDRI.h"
+#include "Tonemapper.h"
 
 using namespace GarrysMod::Lua;
 
@@ -166,6 +167,17 @@ LUA_FUNCTION(RT_SetPixel)
 	}
 	pRt->SetPixel(x, y, pixel);
 
+	return 0;
+}
+
+LUA_FUNCTION(RT_Tonemap)
+{
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+	if (pRt->GetFormat() != RT::Format::RGBFFF) LUA->ThrowError("Render target's format must be RGBFFF");
+
+	Tonemap(pRt);
 	return 0;
 }
 
@@ -920,6 +932,9 @@ GMOD_MODULE_OPEN()
 		LUA->SetField(-2, "GetPixel");
 		LUA->PushCFunction(RT_SetPixel);
 		LUA->SetField(-2, "SetPixel");
+
+		LUA->PushCFunction(RT_Tonemap);
+		LUA->SetField(-2, "Tonemap");
 	LUA->Pop();
 
 	TraceResult::id = LUA->CreateMetaTable("VisTraceResult");
