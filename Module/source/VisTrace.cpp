@@ -1,14 +1,17 @@
-#include "TraceResult.h"
-#include "AccelStruct.h"
 #include "Utils.h"
 
 #include "VTFParser.h"
 #include "BSPParser.h"
 #include "GMFS.h"
 
+#include "Sampler.h"
+#include "RenderTarget.h"
+
+#include "TraceResult.h"
+#include "AccelStruct.h"
+
 #include "BSDF.h"
 #include "HDRI.h"
-#include "Sampler.h"
 
 using namespace GarrysMod::Lua;
 
@@ -58,6 +61,117 @@ LUA_FUNCTION(Sampler_GetFloat2D)
 LUA_FUNCTION(Sampler_tostring)
 {
 	LUA->PushString("Sampler");
+	return 1;
+}
+#pragma endregion
+
+#pragma region Render Targets
+/*
+	uint8_t            width
+	uint8_t            height
+	RenderTargetFormat format
+*/
+LUA_FUNCTION(CreateRenderTarget)
+{
+	uint8_t width = LUA->CheckNumber(1), height = LUA->CheckNumber(2);
+	RT::Format format = static_cast<RT::Format>(LUA->CheckNumber(3));
+
+	switch (format) {
+	case RT::Format::R8:
+	case RT::Format::RG88:
+	case RT::Format::RGB888:
+	case RT::Format::RGBFFF:
+		LUA->PushUserType_Value(new RT::Texture(width, height, format), RT::Texture::id);
+		return 1;
+	default:
+		LUA->ArgError(3, "Invalid format");
+		return 0; // prevents compiler warning
+	}
+}
+LUA_FUNCTION(RT_gc)
+{
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+
+	LUA->SetUserType(1, NULL);
+	delete pRt;
+
+	return 0;
+}
+
+LUA_FUNCTION(RT_IsValid)
+{
+	RT::Texture** ppRt = LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->PushBool(ppRt != nullptr && (*ppRt)->IsValid());
+	return 1;
+}
+
+LUA_FUNCTION(RT_Resize)
+{
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->PushBool(pRt->Resize(LUA->CheckNumber(2), LUA->CheckNumber(3)));
+	return 1;
+}
+
+LUA_FUNCTION(RT_GetWidth)
+{
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->PushNumber(pRt->GetWidth());
+	return 1;
+}
+LUA_FUNCTION(RT_GetHeight)
+{
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->PushNumber(pRt->GetHeight());
+	return 1;
+}
+LUA_FUNCTION(RT_GetFormat)
+{
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->PushNumber(static_cast<double>(pRt->GetFormat()));
+	return 1;
+}
+
+LUA_FUNCTION(RT_GetPixel)
+{
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+
+	uint16_t x = LUA->CheckNumber(2), y = LUA->CheckNumber(3);
+	if (x >= pRt->GetWidth() || y >= pRt->GetHeight()) LUA->ThrowError("Pixel coordinate out of range");
+	RT::Pixel pixel = pRt->GetPixel(x, y);
+
+	for (int channel = 0; channel < RT::CHANNELS[static_cast<size_t>(pRt->GetFormat())]; channel++) {
+		LUA->PushNumber(pixel[channel]);
+	}
+	return RT::CHANNELS[static_cast<size_t>(pRt->GetFormat())];
+}
+LUA_FUNCTION(RT_SetPixel)
+{
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+
+	uint16_t x = LUA->CheckNumber(2), y = LUA->CheckNumber(3);
+	if (x >= pRt->GetWidth() || y >= pRt->GetHeight()) LUA->ThrowError("Pixel coordinate out of range");
+
+	RT::Pixel pixel{};
+	for (int channel = 0; channel < RT::CHANNELS[static_cast<size_t>(pRt->GetFormat())]; channel++) {
+		pixel[channel] = LUA->GetNumber(3 + channel);
+	}
+	pRt->SetPixel(x, y, pixel);
+
+	return 0;
+}
+
+LUA_FUNCTION(RT_tostring)
+{
+	LUA->PushString("VisTraceRT");
 	return 1;
 }
 #pragma endregion
@@ -781,6 +895,33 @@ GMOD_MODULE_OPEN()
 	LUA->Call(3, 0);
 	LUA->Pop(2); // _G and hook
 
+	RT::Texture::id = LUA->CreateMetaTable("VisTraceRT");
+		LUA->Push(-1);
+		LUA->SetField(-2, "__index");
+		LUA->PushCFunction(RT_tostring);
+		LUA->SetField(-2, "__tostring");
+		LUA->PushCFunction(RT_gc);
+		LUA->SetField(-2, "__gc");
+
+		LUA->PushCFunction(RT_IsValid);
+		LUA->SetField(-2, "IsValid");
+
+		LUA->PushCFunction(RT_Resize);
+		LUA->SetField(-2, "Resize");
+
+		LUA->PushCFunction(RT_GetWidth);
+		LUA->SetField(-2, "GetWidth");
+		LUA->PushCFunction(RT_GetHeight);
+		LUA->SetField(-2, "GetHeight");
+		LUA->PushCFunction(RT_GetFormat);
+		LUA->SetField(-2, "GetFormat");
+
+		LUA->PushCFunction(RT_GetPixel);
+		LUA->SetField(-2, "GetPixel");
+		LUA->PushCFunction(RT_SetPixel);
+		LUA->SetField(-2, "SetPixel");
+	LUA->Pop();
+
 	TraceResult::id = LUA->CreateMetaTable("VisTraceResult");
 		LUA->Push(-1);
 		LUA->SetField(-2, "__index");
@@ -921,6 +1062,7 @@ GMOD_MODULE_OPEN()
 
 	LUA->PushSpecial(SPECIAL_GLOB);
 		LUA->CreateTable();
+			PUSH_C_FUNC(CreateRenderTarget);
 			PUSH_C_FUNC(CreateAccel);
 			PUSH_C_FUNC(CreateSampler);
 			PUSH_C_FUNC(CreateMaterial);
@@ -928,6 +1070,24 @@ GMOD_MODULE_OPEN()
 
 			PUSH_C_FUNC(CalcRayOrigin);
 		LUA->SetField(-2, "vistrace");
+
+		LUA->CreateTable();
+			LUA->PushNumber(0);
+			LUA->SetField(-2, "R8");
+			LUA->PushNumber(1);
+			LUA->SetField(-2, "RG88");
+			LUA->PushNumber(2);
+			LUA->SetField(-2, "RGB888");
+			LUA->PushNumber(3);
+			LUA->SetField(-2, "RGBFFF");
+			LUA->PushNumber(4);
+			LUA->SetField(-2, "Size");
+
+			LUA->PushNumber(3);
+			LUA->SetField(-2, "Albedo");
+			LUA->PushNumber(3);
+			LUA->SetField(-2, "Normal");
+		LUA->SetField(-2, "VisTraceRTFormat");
 	LUA->Pop();
 
 	printLua(LUA, "VisTrace Loaded!");

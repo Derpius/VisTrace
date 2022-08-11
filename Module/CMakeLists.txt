@@ -17,11 +17,15 @@ add_library(
 	${PROJECT_NAME} SHARED
 	"source/VisTrace.cpp"
 	"source/Utils.cpp"
-	"source/objects/AccelStruct.cpp"
+
+	"source/objects/Sampler.cpp"
+	"source/objects/RenderTarget.cpp"
+
 	"source/objects/TraceResult.cpp"
+	"source/objects/AccelStruct.cpp"
+
 	"source/objects/BSDF.cpp"
 	"source/objects/HDRI.cpp"
-	"source/objects/Sampler.cpp"
 	"source/objects/Tonemapper.cpp"
 )
 
