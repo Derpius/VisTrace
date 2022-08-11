@@ -185,7 +185,7 @@ return function(instance)
 	-- @return number Submat index
 	function traceresult_methods:subMaterialIndex()
 		canRun()
-		return uwrapResult(self):subMaterialIndex()
+		return uwrapResult(self):SubMaterialIndex()
 	end
 
 	--- Gets the albedo of the intersection after applying entity colour and base texture
