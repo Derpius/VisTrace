@@ -4,13 +4,13 @@
 
 using namespace RT;
 
-int Texture::id{ -1 };
+DLL_EXPORT int g_IRenderTargetID = -1;
 
 Texture::Texture(uint16_t width, uint16_t height, Format format)
-	: mFormat(format),
-	mChannelSize(STRIDES[static_cast<uint8_t>(format)]),
-	mPixelSize(STRIDES[static_cast<uint8_t>(format)] * CHANNELS[static_cast<uint8_t>(format)])
 {
+	mFormat = format;
+	mChannelSize = STRIDES[static_cast<uint8_t>(mFormat)];
+	mPixelSize = mChannelSize * CHANNELS[static_cast<uint8_t>(mFormat)];
 	Resize(width, height);
 }
 
