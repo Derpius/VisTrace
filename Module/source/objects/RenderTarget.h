@@ -43,7 +43,7 @@ namespace RT
 		1,
 		2,
 		3,
-		4
+		3
 	};
 
 	static const size_t STRIDES[static_cast<size_t>(Format::Size)] = {
@@ -73,7 +73,10 @@ namespace RT
 		uint16_t GetWidth() const;
 		uint16_t GetHeight() const;
 		Format GetFormat() const;
+
 		uint8_t* GetRawData();
+		size_t GetPixelSize() const;
+		size_t GetSize() const;
 
 		Pixel GetPixel(uint16_t x, uint16_t y) const;
 		void SetPixel(uint16_t x, uint16_t y, const Pixel& pixel);

@@ -1,5 +1,7 @@
 #include "RenderTarget.h"
 
+#include <algorithm>
+
 using namespace RT;
 
 int Texture::id{ -1 };
@@ -17,15 +19,25 @@ Texture::~Texture()
 	if (pBuffer != nullptr) {
 		free(pBuffer);
 		pBuffer = nullptr;
-		mWidth = mHeight = 0;
 	}
+	mWidth = mHeight = 0;
 }
 
 bool Texture::Resize(uint16_t width, uint16_t height)
 {
-	mWidth = width;
-	mHeight = height;
-	pBuffer = static_cast<uint8_t*>(realloc(pBuffer, mPixelSize * mWidth * mHeight));
+	printf("\n\n\n%ux%u\n\n\n", width, height);
+
+	if (width * height == 0) {
+		if (pBuffer != nullptr) {
+			free(pBuffer);
+			pBuffer = nullptr;
+		}
+		mWidth = mHeight = 0;
+	} else {
+		mWidth = width;
+		mHeight = height;
+		pBuffer = static_cast<uint8_t*>(realloc(pBuffer, mPixelSize * mWidth * mHeight));
+	}
 
 	return IsValid();
 }
@@ -37,7 +49,10 @@ bool Texture::IsValid() const {
 uint16_t Texture::GetWidth() const { return mWidth; }
 uint16_t Texture::GetHeight() const { return mHeight; }
 Format Texture::GetFormat() const { return mFormat; }
-uint8_t* Texture::GetRawData() { return reinterpret_cast<uint8_t*>(pBuffer); }
+
+uint8_t* Texture::GetRawData() { return pBuffer; }
+size_t Texture::GetPixelSize() const { return mPixelSize; }
+size_t Texture::GetSize() const { return mPixelSize * mWidth * mHeight; }
 
 Pixel Texture::GetPixel(uint16_t x, uint16_t y) const
 {
@@ -49,24 +64,24 @@ Pixel Texture::GetPixel(uint16_t x, uint16_t y) const
 	switch (mFormat) {
 	case Format::R8:
 		return Pixel{
-			static_cast<float>(pBuffer[offset])
+			static_cast<float>(pBuffer[offset]) / 255.f
 		};
 	case Format::RG88:
 		return Pixel{
-			static_cast<float>(pBuffer[offset]),
-			static_cast<float>(pBuffer[offset + mChannelSize])
+			static_cast<float>(pBuffer[offset]) / 255.f,
+			static_cast<float>(pBuffer[offset + mChannelSize]) / 255.f
 		};
 	case Format::RGB888:
 		return Pixel{
-			static_cast<float>(pBuffer[offset]),
-			static_cast<float>(pBuffer[offset + mChannelSize]),
-			static_cast<float>(pBuffer[offset + mChannelSize * 2])
+			static_cast<float>(pBuffer[offset]) / 255.f,
+			static_cast<float>(pBuffer[offset + mChannelSize]) / 255.f,
+			static_cast<float>(pBuffer[offset + mChannelSize * 2]) / 255.f
 		};
 	case Format::RGBFFF:
 		return Pixel{
-			*reinterpret_cast<float*>(pBuffer[offset]),
-			*reinterpret_cast<float*>(pBuffer[offset + mChannelSize]),
-			*reinterpret_cast<float*>(pBuffer[offset + mChannelSize * 2])
+			*reinterpret_cast<float*>(pBuffer + offset),
+			*reinterpret_cast<float*>(pBuffer + offset + mChannelSize),
+			*reinterpret_cast<float*>(pBuffer + offset + mChannelSize * 2)
 		};
 	default:
 		return Pixel{};
@@ -81,19 +96,18 @@ void Texture::SetPixel(uint16_t x, uint16_t y, const Pixel& pixel)
 	if (offset >= mPixelSize * mWidth * mHeight) return;
 
 	switch (mFormat) {
-	case Format::R8:
-		pBuffer[offset]                    = pixel.r;
-	case Format::RG88:
-		pBuffer[offset]                    = pixel.r;
-		pBuffer[offset + mChannelSize]     = pixel.g;
 	case Format::RGB888:
-		pBuffer[offset]                    = pixel.r;
-		pBuffer[offset + mChannelSize]     = pixel.g;
-		pBuffer[offset + mChannelSize * 2] = pixel.b;
+		pBuffer[offset + mChannelSize * 2] = std::clamp(pixel.b * 255.f, 0.f, 255.f);
+	case Format::RG88:
+		pBuffer[offset + mChannelSize]     = std::clamp(pixel.g * 255.f, 0.f, 255.f);
+	case Format::R8:
+		pBuffer[offset]                    = std::clamp(pixel.r * 255.f, 0.f, 255.f);
+		return;
 	case Format::RGBFFF:
 		*reinterpret_cast<float*>(pBuffer + offset)                    = pixel.r;
 		*reinterpret_cast<float*>(pBuffer + offset + mChannelSize)     = pixel.g;
 		*reinterpret_cast<float*>(pBuffer + offset + mChannelSize * 2) = pixel.b;
+		return;
 	default:
 		return;
 	}

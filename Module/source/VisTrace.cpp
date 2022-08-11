@@ -73,7 +73,7 @@ LUA_FUNCTION(Sampler_tostring)
 */
 LUA_FUNCTION(CreateRenderTarget)
 {
-	uint8_t width = LUA->CheckNumber(1), height = LUA->CheckNumber(2);
+	uint16_t width = LUA->CheckNumber(1), height = LUA->CheckNumber(2);
 	RT::Format format = static_cast<RT::Format>(LUA->CheckNumber(3));
 
 	switch (format) {
@@ -146,10 +146,10 @@ LUA_FUNCTION(RT_GetPixel)
 	if (x >= pRt->GetWidth() || y >= pRt->GetHeight()) LUA->ThrowError("Pixel coordinate out of range");
 	RT::Pixel pixel = pRt->GetPixel(x, y);
 
-	for (int channel = 0; channel < RT::CHANNELS[static_cast<size_t>(pRt->GetFormat())]; channel++) {
+	for (int channel = 0; channel < RT::CHANNELS[static_cast<uint8_t>(pRt->GetFormat())]; channel++) {
 		LUA->PushNumber(pixel[channel]);
 	}
-	return RT::CHANNELS[static_cast<size_t>(pRt->GetFormat())];
+	return RT::CHANNELS[static_cast<uint8_t>(pRt->GetFormat())];
 }
 LUA_FUNCTION(RT_SetPixel)
 {
@@ -161,8 +161,8 @@ LUA_FUNCTION(RT_SetPixel)
 	if (x >= pRt->GetWidth() || y >= pRt->GetHeight()) LUA->ThrowError("Pixel coordinate out of range");
 
 	RT::Pixel pixel{};
-	for (int channel = 0; channel < RT::CHANNELS[static_cast<size_t>(pRt->GetFormat())]; channel++) {
-		pixel[channel] = LUA->GetNumber(3 + channel);
+	for (int channel = 0; channel < RT::CHANNELS[static_cast<uint8_t>(pRt->GetFormat())]; channel++) {
+		pixel[channel] = LUA->GetNumber(4 + channel);
 	}
 	pRt->SetPixel(x, y, pixel);
 
