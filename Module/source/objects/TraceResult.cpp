@@ -265,3 +265,9 @@ float TraceResult::GetRoughness()
 	CalcShadingData();
 	return roughness;
 }
+
+float TraceResult::GetBaseMIPLevel()
+{
+	CalcFootprint();
+	return mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture, textureLodInfo);
+}

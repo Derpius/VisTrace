@@ -197,6 +197,13 @@ LUA_FUNCTION(TraceResult_Pos)
 	LUA->PushVector(MakeVector(pResult->GetPos().x, pResult->GetPos().y, pResult->GetPos().z));
 	return 1;
 }
+LUA_FUNCTION(TraceResult_Distance)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	LUA->PushNumber(pResult->distance);
+	return 1;
+}
 
 LUA_FUNCTION(TraceResult_Entity)
 {
@@ -351,6 +358,14 @@ LUA_FUNCTION(TraceResult_FrontFacing)
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
 	LUA->PushBool(pResult->frontFacing);
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_BaseMIPLevel)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	LUA->PushNumber(pResult->GetBaseMIPLevel());
 	return 1;
 }
 
@@ -945,6 +960,8 @@ GMOD_MODULE_OPEN()
 
 		LUA->PushCFunction(TraceResult_Pos);
 		LUA->SetField(-2, "Pos");
+		LUA->PushCFunction(TraceResult_Distance);
+		LUA->SetField(-2, "Distance");
 
 		LUA->PushCFunction(TraceResult_Entity);
 		LUA->SetField(-2, "Entity");
@@ -987,6 +1004,9 @@ GMOD_MODULE_OPEN()
 
 		LUA->PushCFunction(TraceResult_FrontFacing);
 		LUA->SetField(-2, "FrontFacing");
+
+		LUA->PushCFunction(TraceResult_BaseMIPLevel);
+		LUA->SetField(-2, "BaseMIPLevel");
 
 		LUA->PushCFunction(TraceResult_SampleBSDF);
 		LUA->SetField(-2, "SampleBSDF");

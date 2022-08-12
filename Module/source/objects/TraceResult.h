@@ -100,4 +100,6 @@ public:
 
 	float GetMetalness();
 	float GetRoughness();
+
+	float GetBaseMIPLevel();
 };
