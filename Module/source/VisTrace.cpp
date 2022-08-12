@@ -82,7 +82,7 @@ LUA_FUNCTION(CreateRenderTarget)
 	case RT::Format::RG88:
 	case RT::Format::RGB888:
 	case RT::Format::RGBFFF:
-		LUA->PushUserType_Value(new RT::Texture(width, height, format), g_IRenderTargetID);
+		LUA->PushUserType_Value(new RT::Texture(width, height, format), RT::Texture::id);
 		return 1;
 	default:
 		LUA->ArgError(3, "Invalid format");
@@ -91,8 +91,8 @@ LUA_FUNCTION(CreateRenderTarget)
 }
 LUA_FUNCTION(RT_gc)
 {
-	LUA->CheckType(1, g_IRenderTargetID);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, g_IRenderTargetID);
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
 
 	LUA->SetUserType(1, NULL);
 	delete pRt;
@@ -102,45 +102,45 @@ LUA_FUNCTION(RT_gc)
 
 LUA_FUNCTION(RT_IsValid)
 {
-	RT::Texture** ppRt = LUA->GetUserType<RT::Texture*>(1, g_IRenderTargetID);
+	RT::Texture** ppRt = LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
 	LUA->PushBool(ppRt != nullptr && (*ppRt)->IsValid());
 	return 1;
 }
 
 LUA_FUNCTION(RT_Resize)
 {
-	LUA->CheckType(1, g_IRenderTargetID);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, g_IRenderTargetID);
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
 	LUA->PushBool(pRt->Resize(LUA->CheckNumber(2), LUA->CheckNumber(3)));
 	return 1;
 }
 
 LUA_FUNCTION(RT_GetWidth)
 {
-	LUA->CheckType(1, g_IRenderTargetID);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, g_IRenderTargetID);
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
 	LUA->PushNumber(pRt->GetWidth());
 	return 1;
 }
 LUA_FUNCTION(RT_GetHeight)
 {
-	LUA->CheckType(1, g_IRenderTargetID);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, g_IRenderTargetID);
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
 	LUA->PushNumber(pRt->GetHeight());
 	return 1;
 }
 LUA_FUNCTION(RT_GetFormat)
 {
-	LUA->CheckType(1, g_IRenderTargetID);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, g_IRenderTargetID);
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
 	LUA->PushNumber(static_cast<double>(pRt->GetFormat()));
 	return 1;
 }
 
 LUA_FUNCTION(RT_GetPixel)
 {
-	LUA->CheckType(1, g_IRenderTargetID);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, g_IRenderTargetID);
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 
 	uint16_t x = LUA->CheckNumber(2), y = LUA->CheckNumber(3);
@@ -154,8 +154,8 @@ LUA_FUNCTION(RT_GetPixel)
 }
 LUA_FUNCTION(RT_SetPixel)
 {
-	LUA->CheckType(1, g_IRenderTargetID);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, g_IRenderTargetID);
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 
 	uint16_t x = LUA->CheckNumber(2), y = LUA->CheckNumber(3);
@@ -172,8 +172,8 @@ LUA_FUNCTION(RT_SetPixel)
 
 LUA_FUNCTION(RT_Tonemap)
 {
-	LUA->CheckType(1, g_IRenderTargetID);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, g_IRenderTargetID);
+	LUA->CheckType(1, RT::Texture::id);
+	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 	if (pRt->GetFormat() != RT::Format::RGBFFF) LUA->ThrowError("Render target's format must be RGBFFF");
 
@@ -897,6 +897,15 @@ LUA_FUNCTION(GM_Initialize)
 	}
 
 	printLua(LUA, "VisTrace: Map loaded successfully!");
+
+	// Call init hook to tell extensions to load
+	LUA->PushSpecial(SPECIAL_GLOB);
+	LUA->GetField(-1, "hook");
+	LUA->GetField(-1, "Call");
+	LUA->PushString("VisTraceInit");
+	LUA->Call(1, 0);
+	LUA->Pop(2);
+
 	return 0;
 }
 
@@ -922,7 +931,11 @@ GMOD_MODULE_OPEN()
 	LUA->Call(3, 0);
 	LUA->Pop(2); // _G and hook
 
-	g_IRenderTargetID = LUA->CreateMetaTable("VisTraceRT");
+	RT::Texture::id = LUA->CreateMetaTable("VisTraceRT");
+	LUA->PushSpecial(SPECIAL_REG);
+	LUA->PushNumber(RT::Texture::id);
+	LUA->SetField(-2, "VisTraceRT_id");
+	LUA->Pop(); // Pop the registry
 		LUA->Push(-1);
 		LUA->SetField(-2, "__index");
 		LUA->PushCFunction(RT_tostring);
@@ -1126,14 +1139,6 @@ GMOD_MODULE_OPEN()
 	LUA->Pop();
 
 	printLua(LUA, "VisTrace Loaded!");
-
-	LUA->PushSpecial(SPECIAL_GLOB);
-	LUA->GetField(-1, "hook");
-	LUA->GetField(-1, "Call");
-	LUA->PushString("VisTraceInit");
-	LUA->Call(1, 0);
-	LUA->Pop(2);
-
 	return 0;
 }
 

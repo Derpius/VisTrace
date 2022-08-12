@@ -20,13 +20,15 @@ TraceResult::TraceResult(
 	distance(distance),
 	coneWidth(coneWidth), coneAngle(coneAngle), mipOverride(coneWidth < 0.f || coneAngle <= 0.f),
 	materialFlags(mat.flags), surfaceFlags(mat.surfFlags), maskedBlending(mat.maskedBlending),
-	baseTexture(mat.baseTexture), mrao(mat.mrao),
-	baseTexture2(mat.baseTexture2), mrao2(mat.mrao2),
-	blendTexture(mat.blendTexture)
+	baseTexture(mat.baseTexture), baseTexMat(mat.baseTexMat), mrao(mat.mrao),
+	baseTexture2(mat.baseTexture2), baseTexMat2(mat.baseTexMat2), mrao2(mat.mrao2),
+	blendTexture(mat.blendTexture), blendTexMat(mat.blendTexMat)
 {
 	if (!triData.ignoreNormalMap) {
 		normalMap = mat.normalMap;
+		normalMapMat = mat.normalMapMat;
 		normalMap2 = mat.normalMap2;
+		normalMapMat2 = mat.normalMapMat2;
 	}
 
 	wo = -direction;
@@ -94,8 +96,9 @@ void TraceResult::CalcBlendFactor()
 	if (blendTexture != nullptr) {
 		CalcFootprint();
 
+		glm::vec2 scaled = blendTexMat * texUV;
 		VTFPixel pixelBlend = blendTexture->Sample(
-			texUV.x, texUV.y,
+			scaled.x, scaled.y,
 			mipOverride ? 0 : TriUVInfoToTexLOD(blendTexture, textureLodInfo)
 		);
 
@@ -123,15 +126,17 @@ void TraceResult::CalcTBN()
 		CalcFootprint();
 		CalcBlendFactor();
 
+		glm::vec2 scaled = normalMapMat * texUV;
 		VTFPixel pixelNormal = normalMap->Sample(
-			texUV.x, texUV.y,
+			scaled.x, scaled.y,
 			mipOverride ? 0 : TriUVInfoToTexLOD(normalMap, textureLodInfo)
 		);
 		glm::vec3 mappedNormal = glm::vec3(pixelNormal.r, pixelNormal.g, pixelNormal.b) * 2.f - 1.f;
 
 		if (normalMap2 != nullptr) {
+			scaled = normalMapMat2 * texUV;
 			pixelNormal = normalMap2->Sample(
-				texUV.x, texUV.y,
+				scaled.x, scaled.y,
 				mipOverride ? 0 : TriUVInfoToTexLOD(normalMap2, textureLodInfo)
 			);
 			glm::vec3 mappedNormal2 = glm::vec3(pixelNormal.r, pixelNormal.g, pixelNormal.b) * 2.f - 1.f;
@@ -176,15 +181,19 @@ void TraceResult::CalcShadingData()
 	CalcFootprint();
 	CalcBlendFactor();
 
+	// Cache the scaled textures for both here cause we might use them again on the MRAO
+	glm::vec2 scaled = baseTexMat * texUV;
+	glm::vec2 scaled2 = baseTexMat2 * texUV;
+
 	VTFPixel pixelColour = baseTexture->Sample(
-		texUV.x, texUV.y,
+		scaled.x, scaled.y,
 		mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture, textureLodInfo)
 	);
 	glm::vec4 colour(pixelColour.r, pixelColour.g, pixelColour.b, pixelColour.a);
 
 	if (baseTexture2 != nullptr) {
 		pixelColour = baseTexture2->Sample(
-			texUV.x, texUV.y,
+			scaled2.x, scaled2.y,
 			mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture2, textureLodInfo)
 		);
 		glm::vec4 colour2(pixelColour.r, pixelColour.g, pixelColour.b, pixelColour.a);
@@ -197,14 +206,14 @@ void TraceResult::CalcShadingData()
 
 	if (mrao != nullptr) {
 		VTFPixel pixelMRAO = mrao->Sample(
-			texUV.x, texUV.y,
+			scaled.x, scaled.y,
 			mipOverride ? 0 : TriUVInfoToTexLOD(mrao, textureLodInfo)
 		);
 		glm::vec2 metalnessRoughness(pixelMRAO.r, pixelMRAO.g);
 
 		if (mrao2 != nullptr) {
 			pixelMRAO = mrao2->Sample(
-				texUV.x, texUV.y,
+				scaled2.x, scaled2.y,
 				mipOverride ? 0 : TriUVInfoToTexLOD(mrao2, textureLodInfo)
 			);
 			glm::vec2 metalnessRoughness2(pixelMRAO.r, pixelMRAO.g);

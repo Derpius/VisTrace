@@ -20,6 +20,20 @@ void normalise(Vector3& v)
 	v[2] /= length;
 }
 
+VMatrix* VMatrix::FromMaterial(ILuaBase* LUA, const std::string& key)
+{
+	VMatrix* pMat = nullptr;
+
+	LUA->GetField(-1, "GetMatrix");
+	LUA->Push(-2);
+	LUA->PushString(key.c_str());
+	LUA->Call(2, 1);
+	if (LUA->IsType(-1, Type::Matrix)) pMat = LUA->GetUserType<VMatrix>(-1, Type::Matrix);
+	LUA->Pop();
+
+	return pMat;
+}
+
 VTFTexture* CacheTexture(
 	const std::string& path,
 	std::unordered_map<std::string, VTFTexture*>& cache,
@@ -169,6 +183,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 				std::string baseTexture2 = getMaterialString(LUA, "$basetexture2");
 				std::string normalMap2 = getMaterialString(LUA, "$bumpmap2");
+
 				std::string blendTexture = getMaterialString(LUA, "$blendmodulatetexture");
 
 				mat.baseTexture = CacheTexture(baseTexture, textureCache, textureCache[MISSING_TEXTURE]);
@@ -180,6 +195,19 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				if (!baseTexture2.empty()) mat.mrao2 = CacheTexture("vistrace/pbr/" + baseTexture2 + "_mrao", textureCache);
 
 				mat.blendTexture = CacheTexture(blendTexture, textureCache);
+
+				const VMatrix* pMat = VMatrix::FromMaterial(LUA, "$basetexturetransform");
+				if (pMat != nullptr) mat.baseTexMat = pMat->To2x4();
+				pMat = VMatrix::FromMaterial(LUA, "$bumptransform");
+				if (pMat != nullptr) mat.normalMapMat = pMat->To2x4();
+
+				pMat = VMatrix::FromMaterial(LUA, "$basetexturetransform2");
+				if (pMat != nullptr) mat.baseTexMat2 = pMat->To2x4();
+				pMat = VMatrix::FromMaterial(LUA, "$bumptransform2");
+				if (pMat != nullptr) mat.normalMapMat2 = pMat->To2x4();
+
+				pMat = VMatrix::FromMaterial(LUA, "$blendmasktransform");
+				if (pMat != nullptr) mat.blendTexMat = pMat->To2x4();
 			} else {
 				mat.water = true;
 				std::string normalMap = getMaterialString(LUA, "$normalmap");
@@ -382,18 +410,8 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 
 			glm::mat4 transform = glm::identity<glm::mat4>();
 			if (LUA->IsType(-1, Type::Matrix)) {
-				for (unsigned char row = 0; row < 4; row++) {
-					for (unsigned char col = 0; col < 4; col++) {
-						LUA->GetField(-1, "GetField");
-						LUA->Push(-2);
-						LUA->PushNumber(row + 1);
-						LUA->PushNumber(col + 1);
-						LUA->Call(3, 1);
-
-						transform[col][row] = LUA->GetNumber();
-						LUA->Pop();
-					}
-				}
+				const VMatrix* pMat = LUA->GetUserType<VMatrix>(-1, Type::Matrix);
+				transform = pMat->To4x4();
 			}
 			LUA->Pop();
 
@@ -430,18 +448,8 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 
 			glm::mat4 transform = glm::identity<glm::mat4>();
 			if (LUA->IsType(-1, Type::Matrix)) {
-				for (unsigned char row = 0; row < 4; row++) {
-					for (unsigned char col = 0; col < 4; col++) {
-						LUA->GetField(-1, "GetField");
-						LUA->Push(-2);
-						LUA->PushNumber(row + 1);
-						LUA->PushNumber(col + 1);
-						LUA->Call(3, 1);
-
-						transform[col][row] = LUA->GetNumber();
-						LUA->Pop();
-					}
-				}
+				const VMatrix* pMat = LUA->GetUserType<VMatrix>(-1, Type::Matrix);
+				transform = pMat->To4x4();
 			}
 			LUA->Pop(2);
 
@@ -641,6 +649,11 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				mat.baseTexture = CacheTexture(baseTexture, mTextureCache, mTextureCache[MISSING_TEXTURE]);
 				mat.normalMap = CacheTexture(normalMap, mTextureCache);
 				if (!baseTexture.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + baseTexture + "_mrao", mTextureCache);
+
+				const VMatrix* pMat = VMatrix::FromMaterial(LUA, "$basetexturetransform");
+				if (pMat != nullptr) mat.baseTexMat = pMat->To2x4();
+				pMat = VMatrix::FromMaterial(LUA, "$bumptransform");
+				if (pMat != nullptr) mat.normalMapMat = pMat->To2x4();
 
 				LUA->GetField(-1, "GetInt");
 				LUA->Push(-2);

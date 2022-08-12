@@ -4,7 +4,7 @@
 
 using namespace RT;
 
-DLL_EXPORT int g_IRenderTargetID = -1;
+int Texture::id{ -1 };
 
 Texture::Texture(uint16_t width, uint16_t height, Format format)
 {

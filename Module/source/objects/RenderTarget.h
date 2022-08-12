@@ -3,14 +3,13 @@
 #include <cstdint>
 #include "IRenderTarget.h"
 
-#include "GarrysMod/Lua/Interface.h"
-DLL_EXPORT int g_IRenderTargetID;
-
 namespace RT
 {
 	class Texture : public ITexture
 	{
 	public:
+		static int id;
+
 		Texture(uint16_t width, uint16_t height, Format format);
 		~Texture();
 

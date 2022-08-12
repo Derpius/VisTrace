@@ -14,14 +14,20 @@ class TraceResult
 {
 private:
 	VTFTexture* baseTexture  = nullptr;
+	glm::mat2x4 baseTexMat;
 	VTFTexture* normalMap    = nullptr;
+	glm::mat2x4 normalMapMat;
 	VTFTexture* mrao         = nullptr;
 
 	VTFTexture* baseTexture2 = nullptr;
+	glm::mat2x4 baseTexMat2;
 	VTFTexture* normalMap2   = nullptr;
+	glm::mat2x4 normalMapMat2;
 	VTFTexture* mrao2        = nullptr;
 
 	VTFTexture* blendTexture = nullptr;
+	glm::mat2x4 blendTexMat;
+
 	bool blendFactorSet = false;
 	bool maskedBlending;
 	float blendFactor;

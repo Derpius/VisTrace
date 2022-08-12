@@ -175,17 +175,58 @@ struct TriangleData
 	bool ignoreNormalMap;
 };
 
+// Minimal implementation of Valve's matrix type for efficiently reading from the stack
+struct VMatrix
+{
+	typedef float vec_t;
+	vec_t m[4][4];
+
+	inline glm::mat2x4 To2x4() const
+	{
+		return glm::mat2x4(
+			m[0][0], m[0][1], m[0][2], m[0][3],
+			m[1][0], m[1][1], m[1][2], m[1][3]
+		);
+	}
+
+	inline glm::mat4 To4x4() const
+	{
+		return glm::mat4(
+			m[0][0], m[1][0], m[2][0], m[3][0],
+			m[0][1], m[1][1], m[2][1], m[3][1],
+			m[0][2], m[1][2], m[2][2], m[3][2],
+			m[0][3], m[1][3], m[2][3], m[3][3]
+		);
+	}
+
+	/// <summary>
+	/// Gets a VMatrix from the material at the top of the stack
+	/// </summary>
+	/// <param name="LUA">Lua instance</param>
+	/// <param name="key">Material key</param>
+	/// <returns>VMatrix pointer on success or nullptr on failure</returns>
+	static VMatrix* FromMaterial(GarrysMod::Lua::ILuaBase* LUA, const std::string& key);
+};
+
 struct Material
 {
 	glm::vec4 colour = glm::vec4(1, 1, 1, 1);
-	VTFTexture* baseTexture  = nullptr;
-	VTFTexture* normalMap    = nullptr;
+	VTFTexture* baseTexture   = nullptr;
+	glm::mat2x4 baseTexMat    = glm::identity<glm::mat2x4>();
+	VTFTexture* normalMap     = nullptr;
+	glm::mat2x4 normalMapMat  = glm::identity<glm::mat2x4>();
 	VTFTexture* mrao          = nullptr;
+	//glm::mat2x4 mraoMat     = glm::identity<glm::mat2x4>(); MRAO texture lookups are driven by the base texture
 
-	VTFTexture* baseTexture2 = nullptr;
-	VTFTexture* normalMap2   = nullptr;
-	VTFTexture* mrao2        = nullptr;
-	VTFTexture* blendTexture = nullptr;
+	VTFTexture* baseTexture2  = nullptr;
+	glm::mat2x4 baseTexMat2   = glm::identity<glm::mat2x4>();
+	VTFTexture* normalMap2    = nullptr;
+	glm::mat2x4 normalMapMat2 = glm::identity<glm::mat2x4>();
+	VTFTexture* mrao2         = nullptr;
+	//glm::mat2x4 mraoMat2    = glm::identity<glm::mat2x4>(); MRAO texture lookups are driven by the base texture
+
+	VTFTexture* blendTexture  = nullptr;
+	glm::mat2x4 blendTexMat   = glm::identity<glm::mat2x4>();
 	bool maskedBlending;
 
 	MaterialFlags flags      = MaterialFlags::NONE;
