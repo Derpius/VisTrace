@@ -438,10 +438,10 @@ LUA_FUNCTION(RebuildAccel)
 	Vector      direction
 	float       tMin = 0
 	float       tMax = FLT_MAX
-	bool        hitWorld = true
-	bool        hitWater = false
+	float       coneWidth = -1
+	float       coneAngle = -1
 
-	returns modified TraceResult struct (https://wiki.facepunch.com/gmod/Structures/TraceResult)
+	returns TraceResult
 */
 LUA_FUNCTION(TraverseScene)
 {

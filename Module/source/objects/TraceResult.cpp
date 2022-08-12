@@ -4,12 +4,21 @@
 
 int TraceResult::id = -1;
 
+// Ray Tracing Gems 2 - Chapter 7
+inline float TriUVInfoToTexLOD(uint32_t width, uint32_t height, glm::vec2 uvInfo)
+{
+	return uvInfo.x + 0.5f * log2(width * height * uvInfo.y);
+}
+
 TraceResult::TraceResult(
-	const glm::vec3& direction,
+	const glm::vec3& direction, float distance,
+	float coneWidth, float coneAngle,
 	const Triangle& tri, const TriangleData& triData,
 	const glm::vec2& uv,
 	const Entity& ent, const Material& mat
 ) :
+	distance(distance),
+	coneWidth(coneWidth), coneAngle(coneAngle), mipOverride(coneWidth < 0.f || coneAngle <= 0.f),
 	materialFlags(mat.flags), surfaceFlags(mat.surfFlags), maskedBlending(mat.maskedBlending),
 	baseTexture(mat.baseTexture), mrao(mat.mrao),
 	baseTexture2(mat.baseTexture2), mrao2(mat.mrao2),
@@ -26,6 +35,7 @@ TraceResult::TraceResult(
 		vN[i] = triData.normals[i];
 		vT[i] = triData.tangents[i];
 		vB[i] = triData.binormals[i];
+		vUV[i] = triData.uvs[i];
 	}
 
 	v[0] = glm::vec3(tri.p0[0], tri.p0[1], tri.p0[2]);
@@ -37,7 +47,7 @@ TraceResult::TraceResult(
 	geometricNormal = glm::vec3(tri.n[0], tri.n[1], tri.n[2]);
 
 	blendFactor = uvw.z * triData.alphas[0] + uvw.x * triData.alphas[1] + uvw.y * triData.alphas[2];
-	texUV = uvw[2] * triData.uvs[0] + uvw[0] * triData.uvs[1] + uvw[1] * triData.uvs[2];
+	texUV = uvw[2] * vUV[0] + uvw[0] * vUV[1] + uvw[1] * vUV[2];
 
 	entIdx = ent.id;
 	rawEnt = ent.rawEntity;
@@ -52,13 +62,45 @@ TraceResult::TraceResult(
 	frontFacing = glm::dot(wo, geometricNormal) >= 0.f;
 }
 
+// Ray Tracing Gems 2 - Chapter 7
+void TraceResult::CalcFootprint()
+{
+	if (textureLodSet || mipOverride) return;
+	using namespace glm;
+
+	// Propagate cone given input parameters from starting width and angle to hit point
+	coneWidth = coneAngle * distance + coneWidth;
+
+	vec2 uv10 = vUV[1] - vUV[0];
+	vec2 uv20 = vUV[2] - vUV[0];
+	float triUVArea = abs(uv10.x * uv20.y - uv20.x * uv10.y);
+
+	vec3 edge10 = v[1] - v[0];
+	vec3 edge20 = v[2] - v[0];
+	vec3 faceNrmWorld = cross(edge10, edge20);
+
+	float triLoDOffset = 0.5f * log2(triUVArea / length(faceNrmWorld));
+	float normalTerm = dot(wo, faceNrmWorld);
+
+	textureLodInfo = glm::vec2(
+		triLoDOffset,
+		(coneWidth * coneWidth) / (normalTerm / normalTerm)
+	);
+	textureLodSet = true;
+}
+
 void TraceResult::CalcBlendFactor()
 {
 	if (blendFactorSet) return;
 
 	if (maskedBlending) blendFactor = 0.5f;
 	if (blendTexture != nullptr) {
-		VTFPixel pixelBlend = blendTexture->Sample(texUV.x, texUV.y, 0);
+		CalcFootprint();
+
+		VTFPixel pixelBlend = blendTexture->Sample(
+			texUV.x, texUV.y,
+			mipOverride ? 0 : TriUVInfoToTexLOD(blendTexture->GetWidth(), blendTexture->GetHeight(), textureLodInfo)
+		);
 
 		if (maskedBlending) {
 			blendFactor = pixelBlend.g;
@@ -81,13 +123,20 @@ void TraceResult::CalcTBN()
 	binormal = uvw[2] * vB[0] + uvw[0] * vB[1] + uvw[1] * vB[2];
 
 	if (normalMap != nullptr) {
+		CalcFootprint();
 		CalcBlendFactor();
 
-		VTFPixel pixelNormal = normalMap->Sample(texUV.x, texUV.y, 0);
+		VTFPixel pixelNormal = normalMap->Sample(
+			texUV.x, texUV.y,
+			mipOverride ? 0 : TriUVInfoToTexLOD(normalMap->GetWidth(), normalMap->GetHeight(), textureLodInfo)
+		);
 		glm::vec3 mappedNormal = glm::vec3(pixelNormal.r, pixelNormal.g, pixelNormal.b) * 2.f - 1.f;
 
 		if (normalMap2 != nullptr) {
-			pixelNormal = normalMap2->Sample(texUV.x, texUV.y, 0);
+			pixelNormal = normalMap2->Sample(
+				texUV.x, texUV.y,
+				mipOverride ? 0 : TriUVInfoToTexLOD(normalMap2->GetWidth(), normalMap2->GetHeight(), textureLodInfo)
+			);
 			glm::vec3 mappedNormal2 = glm::vec3(pixelNormal.r, pixelNormal.g, pixelNormal.b) * 2.f - 1.f;
 
 			mappedNormal = glm::normalize(glm::lerp(mappedNormal, mappedNormal2, blendFactor));
@@ -127,13 +176,20 @@ void TraceResult::CalcTBN()
 void TraceResult::CalcShadingData()
 {
 	if (shadingDataSet) return;
+	CalcFootprint();
 	CalcBlendFactor();
 
-	VTFPixel pixelColour = baseTexture->Sample(texUV.x, texUV.y, 0);
+	VTFPixel pixelColour = baseTexture->Sample(
+		texUV.x, texUV.y,
+		mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture->GetWidth(), baseTexture->GetHeight(), textureLodInfo)
+	);
 	glm::vec4 colour(pixelColour.r, pixelColour.g, pixelColour.b, pixelColour.a);
 
 	if (baseTexture2 != nullptr) {
-		pixelColour = baseTexture2->Sample(texUV.x, texUV.y, 0);
+		pixelColour = baseTexture2->Sample(
+			texUV.x, texUV.y,
+			mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture2->GetWidth(), baseTexture2->GetHeight(), textureLodInfo)
+		);
 		glm::vec4 colour2(pixelColour.r, pixelColour.g, pixelColour.b, pixelColour.a);
 
 		colour = glm::lerp(colour, colour2, blendFactor);
@@ -143,11 +199,17 @@ void TraceResult::CalcShadingData()
 	alpha *= colour.a;
 
 	if (mrao != nullptr) {
-		VTFPixel pixelMRAO = mrao->Sample(texUV.x, texUV.y, 0);
+		VTFPixel pixelMRAO = mrao->Sample(
+			texUV.x, texUV.y,
+			mipOverride ? 0 : TriUVInfoToTexLOD(mrao->GetWidth(), mrao->GetHeight(), textureLodInfo)
+		);
 		glm::vec2 metalnessRoughness(pixelMRAO.r, pixelMRAO.g);
 
 		if (mrao2 != nullptr) {
-			pixelMRAO = mrao2->Sample(texUV.x, texUV.y, 0);
+			pixelMRAO = mrao2->Sample(
+				texUV.x, texUV.y,
+				mipOverride ? 0 : TriUVInfoToTexLOD(mrao2->GetWidth(), mrao2->GetHeight(), textureLodInfo)
+			);
 			glm::vec2 metalnessRoughness2(pixelMRAO.r, pixelMRAO.g);
 
 			metalnessRoughness = glm::lerp(metalnessRoughness, metalnessRoughness2, blendFactor);

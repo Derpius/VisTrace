@@ -699,6 +699,15 @@ int AccelStruct::Traverse(ILuaBase* LUA)
 	float tMax = FLT_MAX;
 	if (numArgs > 4 && !LUA->IsType(5, Type::Nil)) tMax = static_cast<float>(LUA->CheckNumber(5));
 
+	float coneWidth = -1; // Negatives will only sample mip level 0
+	if (numArgs > 5 && !LUA->IsType(6, Type::Nil)) coneWidth = static_cast<float>(LUA->CheckNumber(6));
+
+	float coneAngle = -1; // < 0 will only sample mip level 0
+	if (numArgs > 6 && !LUA->IsType(7, Type::Nil)) coneAngle = static_cast<float>(LUA->CheckNumber(7));
+
+	if (coneWidth >= 0 && coneAngle <= 0.f) LUA->ThrowError("Valid cone width but invalid cone angle passed");
+	if (coneWidth < 0 && coneAngle > 0.f) LUA->ThrowError("Valid cone angle but invalid cone width passed");
+
 	if (tMin < 0.f) LUA->ArgError(4, "tMin cannot be less than 0");
 	if (tMax <= tMin) LUA->ArgError(5, "tMax must be greater than tMin");
 
@@ -721,7 +730,8 @@ int AccelStruct::Traverse(ILuaBase* LUA)
 		const Material& mat = mMaterials[ent.materials[triData.submatIdx]];
 
 		TraceResult res(
-			glm::normalize(glm::vec3(direction.x, direction.y, direction.z)),
+			glm::normalize(glm::vec3(direction.x, direction.y, direction.z)), hit->distance(),
+			coneWidth, coneAngle,
 			tri, triData,
 			glm::vec2(hit->intersection.u, hit->intersection.v),
 			ent, mat

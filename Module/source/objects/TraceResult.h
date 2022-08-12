@@ -30,6 +30,7 @@ private:
 	glm::vec3 vN[3];
 	glm::vec3 vT[3];
 	glm::vec3 vB[3];
+	glm::vec2 vUV[3];
 
 	bool posSet = false;
 	glm::vec3 pos;
@@ -42,12 +43,19 @@ private:
 	glm::vec3 tangent;
 	glm::vec3 binormal;
 
+	bool mipOverride;
+	float coneWidth;
+	float coneAngle;
+	bool textureLodSet = false;
+	glm::vec2 textureLodInfo;
+
 	bool shadingDataSet = false;
 	glm::vec3 albedo;
 	float alpha;
 	float metalness = 0;
 	float roughness = 1;
 
+	void CalcFootprint();
 	void CalcBlendFactor();
 	void CalcTBN();
 	void CalcShadingData();
@@ -55,6 +63,7 @@ private:
 public:
 	static int id;
 
+	float distance;
 	glm::vec3 wo;
 
 	glm::vec3 uvw;
@@ -72,7 +81,8 @@ public:
 	bool frontFacing;
 
 	TraceResult(
-		const glm::vec3& direction,
+		const glm::vec3& direction, float distance,
+		float coneWidth, float coneAngle,
 		const Triangle& tri, const TriangleData& triData,
 		const glm::vec2& uv,
 		const Entity& ent, const Material& mat
