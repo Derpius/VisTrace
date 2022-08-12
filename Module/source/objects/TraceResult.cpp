@@ -84,7 +84,7 @@ void TraceResult::CalcFootprint()
 
 	textureLodInfo = glm::vec2(
 		triLoDOffset,
-		(coneWidth * coneWidth) / (normalTerm / normalTerm)
+		(coneWidth * coneWidth) / (normalTerm * normalTerm)
 	);
 	textureLodSet = true;
 }
