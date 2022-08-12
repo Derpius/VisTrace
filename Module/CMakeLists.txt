@@ -33,7 +33,7 @@ target_include_directories(
 	${PROJECT_NAME} PRIVATE
 	"source"
 	"source/objects"
-	"include"
+	"include/vistrace"
 	"libs/BSPParser"
 	"libs/bvh/include"
 	"libs/glm"
