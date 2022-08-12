@@ -4,10 +4,10 @@
 
 int TraceResult::id = -1;
 
-// Ray Tracing Gems 2 - Chapter 7
-inline float TriUVInfoToTexLOD(uint32_t width, uint32_t height, glm::vec2 uvInfo)
+// Ray Tracing Gems
+inline float TriUVInfoToTexLOD(const VTFTexture* pTex, glm::vec2 uvInfo)
 {
-	return uvInfo.x + 0.5f * log2(width * height * uvInfo.y);
+	return uvInfo.x + 0.5f * log2(pTex->GetWidth() * pTex->GetHeight() * uvInfo.y);
 }
 
 TraceResult::TraceResult(
@@ -44,7 +44,8 @@ TraceResult::TraceResult(
 	v[2] = glm::vec3(p2[0], p2[1], p2[2]);
 
 	uvw = glm::vec3(uv, 1.f - uv[0] - uv[1]);
-	geometricNormal = glm::vec3(tri.n[0], tri.n[1], tri.n[2]);
+	geometricNormalWorld = glm::vec3(tri.n[0], tri.n[1], tri.n[2]);
+	geometricNormal = glm::normalize(geometricNormalWorld);
 
 	blendFactor = uvw.z * triData.alphas[0] + uvw.x * triData.alphas[1] + uvw.y * triData.alphas[2];
 	texUV = uvw[2] * vUV[0] + uvw[0] * vUV[1] + uvw[1] * vUV[2];
@@ -62,7 +63,7 @@ TraceResult::TraceResult(
 	frontFacing = glm::dot(wo, geometricNormal) >= 0.f;
 }
 
-// Ray Tracing Gems 2 - Chapter 7
+// Ray Tracing Gems
 void TraceResult::CalcFootprint()
 {
 	if (textureLodSet || mipOverride) return;
@@ -75,12 +76,8 @@ void TraceResult::CalcFootprint()
 	vec2 uv20 = vUV[2] - vUV[0];
 	float triUVArea = abs(uv10.x * uv20.y - uv20.x * uv10.y);
 
-	vec3 edge10 = v[1] - v[0];
-	vec3 edge20 = v[2] - v[0];
-	vec3 faceNrmWorld = cross(edge10, edge20);
-
-	float triLoDOffset = 0.5f * log2(triUVArea / length(faceNrmWorld));
-	float normalTerm = dot(wo, faceNrmWorld);
+	float triLoDOffset = 0.5f * log2(triUVArea / length(geometricNormalWorld));
+	float normalTerm = dot(wo, geometricNormal);
 
 	textureLodInfo = glm::vec2(
 		triLoDOffset,
@@ -99,7 +96,7 @@ void TraceResult::CalcBlendFactor()
 
 		VTFPixel pixelBlend = blendTexture->Sample(
 			texUV.x, texUV.y,
-			mipOverride ? 0 : TriUVInfoToTexLOD(blendTexture->GetWidth(), blendTexture->GetHeight(), textureLodInfo)
+			mipOverride ? 0 : TriUVInfoToTexLOD(blendTexture, textureLodInfo)
 		);
 
 		if (maskedBlending) {
@@ -128,14 +125,14 @@ void TraceResult::CalcTBN()
 
 		VTFPixel pixelNormal = normalMap->Sample(
 			texUV.x, texUV.y,
-			mipOverride ? 0 : TriUVInfoToTexLOD(normalMap->GetWidth(), normalMap->GetHeight(), textureLodInfo)
+			mipOverride ? 0 : TriUVInfoToTexLOD(normalMap, textureLodInfo)
 		);
 		glm::vec3 mappedNormal = glm::vec3(pixelNormal.r, pixelNormal.g, pixelNormal.b) * 2.f - 1.f;
 
 		if (normalMap2 != nullptr) {
 			pixelNormal = normalMap2->Sample(
 				texUV.x, texUV.y,
-				mipOverride ? 0 : TriUVInfoToTexLOD(normalMap2->GetWidth(), normalMap2->GetHeight(), textureLodInfo)
+				mipOverride ? 0 : TriUVInfoToTexLOD(normalMap2, textureLodInfo)
 			);
 			glm::vec3 mappedNormal2 = glm::vec3(pixelNormal.r, pixelNormal.g, pixelNormal.b) * 2.f - 1.f;
 
@@ -181,14 +178,14 @@ void TraceResult::CalcShadingData()
 
 	VTFPixel pixelColour = baseTexture->Sample(
 		texUV.x, texUV.y,
-		mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture->GetWidth(), baseTexture->GetHeight(), textureLodInfo)
+		mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture, textureLodInfo)
 	);
 	glm::vec4 colour(pixelColour.r, pixelColour.g, pixelColour.b, pixelColour.a);
 
 	if (baseTexture2 != nullptr) {
 		pixelColour = baseTexture2->Sample(
 			texUV.x, texUV.y,
-			mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture2->GetWidth(), baseTexture2->GetHeight(), textureLodInfo)
+			mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture2, textureLodInfo)
 		);
 		glm::vec4 colour2(pixelColour.r, pixelColour.g, pixelColour.b, pixelColour.a);
 
@@ -201,14 +198,14 @@ void TraceResult::CalcShadingData()
 	if (mrao != nullptr) {
 		VTFPixel pixelMRAO = mrao->Sample(
 			texUV.x, texUV.y,
-			mipOverride ? 0 : TriUVInfoToTexLOD(mrao->GetWidth(), mrao->GetHeight(), textureLodInfo)
+			mipOverride ? 0 : TriUVInfoToTexLOD(mrao, textureLodInfo)
 		);
 		glm::vec2 metalnessRoughness(pixelMRAO.r, pixelMRAO.g);
 
 		if (mrao2 != nullptr) {
 			pixelMRAO = mrao2->Sample(
 				texUV.x, texUV.y,
-				mipOverride ? 0 : TriUVInfoToTexLOD(mrao2->GetWidth(), mrao2->GetHeight(), textureLodInfo)
+				mipOverride ? 0 : TriUVInfoToTexLOD(mrao2, textureLodInfo)
 			);
 			glm::vec2 metalnessRoughness2(pixelMRAO.r, pixelMRAO.g);
 
@@ -229,15 +226,6 @@ const glm::vec3& TraceResult::GetPos()
 		posSet = true;
 	}
 	return pos;
-}
-
-const glm::vec3& TraceResult::GetGeometricNormal()
-{
-	if (!geoNormSet) {
-		geometricNormal = glm::normalize(geometricNormal);
-		geoNormSet = true;
-	}
-	return geometricNormal;
 }
 
 const glm::vec3& TraceResult::GetNormal()

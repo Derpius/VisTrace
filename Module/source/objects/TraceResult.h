@@ -35,8 +35,7 @@ private:
 	bool posSet = false;
 	glm::vec3 pos;
 
-	bool geoNormSet = false;
-	glm::vec3 geometricNormal;
+	glm::vec3 geometricNormalWorld;
 
 	bool tbnSet = false;
 	glm::vec3 normal;
@@ -66,6 +65,8 @@ public:
 	float distance;
 	glm::vec3 wo;
 
+	glm::vec3 geometricNormal;
+
 	glm::vec3 uvw;
 	glm::vec2 texUV;
 
@@ -89,7 +90,6 @@ public:
 	);
 
 	const glm::vec3& GetPos();
-	const glm::vec3& GetGeometricNormal();
 
 	const glm::vec3& GetNormal();
 	const glm::vec3& GetTangent();

@@ -223,7 +223,7 @@ LUA_FUNCTION(TraceResult_GeometricNormal)
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
 
-	LUA->PushVector(MakeVector(pResult->GetGeometricNormal().x, pResult->GetGeometricNormal().y, pResult->GetGeometricNormal().z));
+	LUA->PushVector(MakeVector(pResult->geometricNormal.x, pResult->geometricNormal.y, pResult->geometricNormal.z));
 	return 1;
 }
 
