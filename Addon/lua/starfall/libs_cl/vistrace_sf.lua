@@ -199,7 +199,7 @@ return function(instance)
 
 	--- Gets the format of the render target
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @return VisTraceRTFormat
+	-- @return number VisTraceRTFormat
 	function vistracert_methods:getFormat()
 		canRun()
 		return uwrapRT(self):GetFormat()
