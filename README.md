@@ -25,6 +25,15 @@ If you do make such modifications in addition to still letting the file work on 
 3. Select a preset to compile (`relwithsymbols` for debugging as building with full debug mode breaks ABI compatibility with Source)
 4. Compile (compiled dll can be found in `Module/out/build/{presetname}`)
 
+## Extensions
+VisTrace versions v0.10.0 and newer support user made extensions that can interface with VisTrace's objects via interfaces in `Module/include`, or using the GLua API.  
+You should `require()` any binary modules and initialise your extension from the `VisTraceInit` hook, which will be called by the binary if everything loaded correctly.  
+
+Additionally, an svg badge is provided to include in your readmes to show that your addon/binary module is VisTrace compatible:  
+| Markdown | Preview |
+|----------|---------|
+| `[![VisTrace EXTENSION](https://github.com/Derpius/VisTrace/blob/master/Branding/extension.svg?raw=true)](https://github.com/Derpius/VisTrace)` | [![VisTrace EXTENSION](https://github.com/Derpius/VisTrace/blob/master/Branding/extension.svg?raw=true)](https://github.com/Derpius/VisTrace) |
+
 ## Usage
 MOVING TO WIKI
 
