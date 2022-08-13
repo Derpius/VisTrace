@@ -1,12 +1,3 @@
----
-name: Standard Pull Request
-about: Standard pull request for anything other than showcase additions
-title: ""
-labels: ""
-assignees: ""
-
----
-
 *Link to issue if applicable, e.g. Fixes #issuenumber*
 
 **PR Type (tick all that are applicable)**
