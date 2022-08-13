@@ -1,5 +1,5 @@
 <p align="center">
-<img src="https://github.com/Derpius/VisTrace/blob/master/Branding/banner.png?raw=true" />
+<img src="https://github.com/Derpius/VisTrace/blob/branding/banner.png?raw=true" />
 </p>
 
 # VisTrace Branding
