@@ -209,7 +209,7 @@ return function(instance)
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number x X coordinate of the pixel
 	-- @param number y Y coordinate of the pixel
-	-- @return number...
+	-- @return ...number Values of each channel
 	function vistracert_methods:getPixel(x, y)
 		canRun()
 		return uwrapRT(self):GetPixel(x, y)
@@ -219,7 +219,7 @@ return function(instance)
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number x X coordinate of the pixel
 	-- @param number y Y coordinate of the pixel
-	-- @param number... Values of each channel
+	-- @param ...number Values of each channel
 	function vistracert_methods:setPixel(x, y, ...)
 		canRun()
 		return uwrapRT(self):SetPixel(x, y, ...)
