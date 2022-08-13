@@ -11,6 +11,7 @@ end
 local checkLuaType = SF.CheckLuaType
 local debug_getmetatable = debug.getmetatable
 
+SF.Permissions.registerPrivilege("vistrace.rendertarget", "Create VisTrace Render Targets", "Allows the user to create render targets", { client = {default = 1} })
 SF.Permissions.registerPrivilege("vistrace.accel", "Create VisTrace AccelStructs", "Allows the user to build acceleration structures and traverse scenes", { client = {default = 1} })
 SF.Permissions.registerPrivilege("vistrace.hdri", "Load VisTrace HDRI Samplers", "Allows the user to load HDRIs and sample them", { client = {default = 1} })
 
@@ -21,6 +22,14 @@ SF.Permissions.registerPrivilege("vistrace.hdri", "Load VisTrace HDRI Samplers",
 -- @class library
 -- @libtbl vistrace_library
 SF.RegisterLibrary("vistrace")
+
+--- VisTrace render target object returned by vistrace.createRenderTarget
+-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+-- @name VisTraceRT
+-- @class type
+-- @libtbl vistracert_methods
+-- @libtbl vistracert_meta
+SF.RegisterType("VisTraceRT", true, false, debug.getregistry().VisTraceRT)
 
 --- VisTrace TraceResult object returned by AccelStruct:traverse
 -- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
@@ -66,6 +75,9 @@ return function(instance)
 	local checkPermission = instance.player ~= SF.Superuser and SF.Permissions.check or function() end
 	local vistrace_library = instance.Libraries.vistrace
 
+	local vistracert_methods, vistracert_meta = instance.Types.VisTraceRT.Methods, instance.Types.VisTraceRT
+	local wrapRT, uwrapRT = instance.Types.VisTraceRT.Wrap, instance.Types.VisTraceRT.Unwrap
+
 	local accelstruct_methods, accelstruct_meta = instance.Types.AccelStruct.Methods, instance.Types.AccelStruct
 	local wrapAccel, uwrapAccel = instance.Types.AccelStruct.Wrap, instance.Types.AccelStruct.Unwrap
 
@@ -89,6 +101,10 @@ return function(instance)
 
 	local function checkVector(v)
 		if debug_getmetatable(v) ~= vecMetaTbl then SF.ThrowTypeError("Vector", SF.GetType(v), 3) end
+	end
+
+	function vistracert_meta.__tostring()
+		return "VisTraceRT"
 	end
 
 	function accelstruct_meta.__tostring()
@@ -117,6 +133,108 @@ return function(instance)
 		end
 	end
 
+--#region VisTraceRT
+
+	--- Render target image formats
+	-- @name vistrace_library.VisTraceRTFormat
+	-- @class table
+	-- @field R8
+	-- @field RG88
+	-- @field RGB888
+	-- @field RGBFFF
+	-- @field Albedo
+	-- @field Normal
+	instance.env.VisTraceRTFormat = VisTraceRTFormat
+
+	--- Creates a render target designed for high performance image processing
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number width
+	-- @param number height
+	-- @param VisTraceRTFormat format Image format to use for the underlying pixel data
+	-- @return VisTraceRT
+	function vistrace_library.createRenderTarget(width, height, format)
+		checkPermission(instance, nil, "vistrace.rendertarget")
+		canRun()
+
+		checkLuaType(width, TYPE_NUMBER)
+		checkLuaType(height, TYPE_NUMBER)
+		checkLuaType(format, TYPE_NUMBER)
+
+		return wrapRT(vistrace.CreateRenderTarget(width, height, format))
+	end
+
+	--- Returns true if the render target is valid, false otherwise
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return boolean
+	function vistracert_methods:isValid()
+		canRun()
+		return uwrapRT(self):IsValid()
+	end
+
+	--- Resizes the render target and returns true if the resize was successful
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number width New width
+	-- @param number height New height
+	-- @return boolean
+	function vistracert_methods:resize(width, height)
+		canRun()
+		return uwrapRT(self):Resize(width, height)
+	end
+
+	--- Gets the width of the render target in pixels
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number
+	function vistracert_methods:getWidth()
+		canRun()
+		return uwrapRT(self):GetWidth()
+	end
+
+	--- Gets the height of the render target in pixels
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number
+	function vistracert_methods:getHeight()
+		canRun()
+		return uwrapRT(self):GetHeight()
+	end
+
+	--- Gets the format of the render target
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return VisTraceRTFormat
+	function vistracert_methods:getFormat()
+		canRun()
+		return uwrapRT(self):GetFormat()
+	end
+
+	--- Gets the colour values of each channel of the pixel, normalised to 0-1
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number x X coordinate of the pixel
+	-- @param number y Y coordinate of the pixel
+	-- @return number...
+	function vistracert_methods:getPixel(x, y)
+		canRun()
+		return uwrapRT(self):GetPixel(x, y)
+	end
+
+	--- Sets the colour values of each channel of the pixel, normalised to 0-1
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number x X coordinate of the pixel
+	-- @param number y Y coordinate of the pixel
+	-- @param number... Values of each channel
+	function vistracert_methods:setPixel(x, y, ...)
+		canRun()
+		return uwrapRT(self):SetPixel(x, y, ...)
+	end
+
+	--- Tonemaps a HDR render target using ACES fitted  
+	--- Apply exposure before calling this and gamma correction after
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	function vistracert_methods:tonemap()
+		canRun()
+		return uwrapRT(self):Tonemap()
+	end
+
+--#endregion
+
 --#region VisTraceResult
 
 	--- Gets the hit pos of the result
@@ -125,6 +243,15 @@ return function(instance)
 	function traceresult_methods:pos()
 		canRun()
 		return wrapVec(uwrapResult(self):Pos())
+	end
+
+	--- Gets the distance from the ray origin to the hit pos of the result  
+	--- This is extremely fast compared to computing the distance between origin and pos yourself, as it's calculated during triangle intersection
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number Distance to the point of intersection
+	function traceresult_methods:distance()
+		canRun()
+		return uwrapResult(self):Distance()
 	end
 
 	--- Gets the entity the ray hit
@@ -254,6 +381,15 @@ return function(instance)
 	function traceresult_methods:frontFacing()
 		canRun()
 		return uwrapResult(self):FrontFacing()
+	end
+
+	--- Gets the floating point MIP level that was sampled from the base texture  
+	--- Mainly used for debugging texture LoD calculation
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number Floating point MIP level (where 0 is the highest resolution)
+	function traceresult_methods:baseMIPLevel()
+		canRun()
+		return uwrapResult(self):BaseMIPLevel()
 	end
 
 --#endregion
