@@ -45,6 +45,9 @@ For more detailed examples, see the [Examples](https://github.com/Derpius/VisTra
 
 This will load the module, build the acceleration structure from all `prop_physics` entities (and the world), get an entity to use as a hit marker, and traverse the scene each frame placing the hit marker at the trace hit position if we hit:
 ```lua
+-- Instead of manually checking realm/vistrace version, and requiring by hand
+-- You could use the VisTraceInit hook which will be called by the binary if
+-- everything loaded OK (this however needs the VisTrace addon to be installed)
 if SERVER then error("VisTrace can only be used on the client!") end
 require("VisTrace-vX.X") -- Put current version here
 local accel = vistrace.CreateAccel(ents.FindByClass("prop_physics")--[[, false]]) -- Pass false here to disable tracing world (useful if you just want to interact with entities)
