@@ -1,4 +1,7 @@
-# VisTrace  
+<p align="center">
+<img src="https://github.com/Derpius/VisTrace/blob/master/Branding/banner.png?raw=true" />
+</p>
+
 VisTrace allows tracing visual meshes in Garry's Mod at high speeds on the CPU using https://github.com/madmann91/bvh, allowing for far higher fidelity scenes in Lua tracers without the massive performance cost of Lua mesh intersection.  
 
 ## Installation
