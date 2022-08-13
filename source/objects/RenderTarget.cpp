@@ -1,6 +1,8 @@
 #include "RenderTarget.h"
 
 #include <algorithm>
+#include <cstdio>
+#include <cstring>
 
 using namespace RT;
 

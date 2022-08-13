@@ -5,7 +5,7 @@ project("VisTrace" CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-find_package(OpenMP)
+find_package(OpenMP QUIET)
 
 unset(MSVC) # Unset MSVC var to force the library to compile with OpenMP under clang with the MSVC toolset
 add_subdirectory("libs/bvh")
@@ -46,13 +46,19 @@ target_include_directories(
 	"libs/GMFS"
 )
 
+if (OpenMP_CXX_FOUND)
+	target_link_libraries(
+		${PROJECT_NAME} PRIVATE
+		OpenMP::OpenMP_CXX
+		libomp.lib
+	)
+endif()
+
 target_link_libraries(
-	${PROJECT_NAME}
+	${PROJECT_NAME} PRIVATE
 	BSPParser
 	bvh
 	glm
 	VTFParser
 	GMFS
-	OpenMP::OpenMP_CXX
-	libomp.lib
 )

@@ -1,6 +1,8 @@
 #include "Utils.h"
 #include "GMFS.h"
 
+#include <cmath>
+
 using namespace GarrysMod::Lua;
 
 void printLua(ILuaBase* LUA, const char* text)
@@ -133,6 +135,6 @@ bool validVector(const glm::vec3& v)
 	return (
 		!(v.x == 0.f && v.y == 0.f && v.z == 0.f) &&
 		(v.x == v.x && v.y == v.y && v.z == v.z) &&
-		!(isinf(v.x) || isinf(v.y) || isinf(v.z))
+		!(std::isinf(v.x) || std::isinf(v.y) || std::isinf(v.z))
 	);
 }
