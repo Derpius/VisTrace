@@ -81,7 +81,7 @@
     <text
        xml:space="preserve"
        id="text2647"
-       style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:21.3333px;line-height:1.6;font-family:'Franklin Gothic Heavy';-inkscape-font-specification:'Franklin Gothic Heavy,  Italic';text-align:center;white-space:pre;shape-inside:url(#rect128);display:inline;fill:#ff6600"
+       style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:21.3333px;line-height:1.6;font-family:'Franklin Gothic Heavy', Arial, sans-serif;-inkscape-font-specification:'Franklin Gothic Heavy,  Italic';text-align:center;white-space:pre;shape-inside:url(#rect128);display:inline;fill:#ff6600"
        x="41.515556"
        y="0"
        inkscape:label="VisTrace"><tspan
@@ -91,7 +91,7 @@
     <text
        xml:space="preserve"
        id="text2875"
-       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:13.3333px;line-height:2.6;font-family:Verdana;-inkscape-font-specification:'Verdana Bold';text-align:center;white-space:pre;shape-inside:url(#rect352);display:inline;fill:#ececec"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:13.3333px;line-height:2.6;font-family:Verdana, 'Verdana Ref', sans-serif;-inkscape-font-specification:'Verdana Bold';text-align:center;white-space:pre;shape-inside:url(#rect352);display:inline;fill:#ececec"
        inkscape:label="EXTENSION"><tspan
          x="99.924591"
          y="21.16435"
