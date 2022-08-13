@@ -893,7 +893,7 @@ LUA_FUNCTION(GM_Initialize)
 	if (!g_pWorld->IsValid()) {
 		delete g_pWorld;
 		g_pWorld = nullptr;
-		LUA->ThrowError("Failed to load map, accelerations structures will only trace props");
+		LUA->ThrowError("Failed to load map, acceleration structures will only trace props");
 	}
 
 	printLua(LUA, "VisTrace: Map loaded successfully!");

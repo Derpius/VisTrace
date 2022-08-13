@@ -334,6 +334,14 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 		}
 
 		mMaterials = pWorld->materials;
+	} else {
+		{
+			VTFTexture* pTexture;
+			if (!readTexture(MISSING_TEXTURE, &pTexture)) {
+				LUA->ThrowError("Failed to read missing texture");
+			}
+			mTextureCache.emplace(MISSING_TEXTURE, pTexture);
+		}
 	}
 
 	// Iterate over entities
