@@ -35,7 +35,12 @@ You should `require()` any binary modules and initialise your extension from the
 Additionally, an svg badge is provided to include in your readmes to show that your addon/binary module is VisTrace compatible:  
 | Markdown | Preview |
 |----------|---------|
-| `[![VisTrace EXTENSION](https://github.com/Derpius/VisTrace/blob/master/Branding/extension.svg?raw=true)](https://github.com/Derpius/VisTrace)` | [![VisTrace EXTENSION](https://github.com/Derpius/VisTrace/blob/master/Branding/extension.svg?raw=true)](https://github.com/Derpius/VisTrace) |
+| `[![VisTrace EXTENSION](https://github.com/Derpius/VisTrace/blob/branding/extension.svg?raw=true)](https://github.com/Derpius/VisTrace)` | [![VisTrace EXTENSION](https://github.com/Derpius/VisTrace/blob/master/Branding/extension.svg?raw=true)](https://github.com/Derpius/VisTrace) |
+
+## Showcase
+If you'd like to submit any images/videos showcasing your use of VisTrace, please submit a PR/Issue on the [branding branch](https://github.com/Derpius/VisTrace/tree/branding).  
+Please note that any content submitted may be used on VisTrace's GitHub and Workshop pages, and any potential future website or marketing.  
+Additionally please credit yourself in the image with a watermark (SVG badge for this coming soon).  
 
 ## Usage
 MOVING TO WIKI
