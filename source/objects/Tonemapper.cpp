@@ -1,7 +1,9 @@
 #include "Tonemapper.h"
 
+#include <omp.h>
+
 #include "glm/glm.hpp"
-#include <glm/gtx/compatibility.hpp>
+#include "glm/gtx/compatibility.hpp"
 using namespace glm;
 
 // All credit to https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/ACES.hlsl
