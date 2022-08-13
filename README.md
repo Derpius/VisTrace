@@ -14,19 +14,14 @@ For a more user friendly experience, get the [Steam Workshop addon](https://stea
 While it's recommended to just download the latest release binary, if you want to test WIP features before a full release, or you want to help develop the module, then you'll need to set up your toolchain to compile VisTrace and its dependencies.  
 
 ### Prerequesits
-* Visual Studio 2019 or Visual Studio Code with the CMake tools extension and Visual Studio 2019 Build Tools installed
-* clang-cl - MSVC version of Clang to use OpenMP while being ABI compatible with source (you can install this as part of the Visual Studio build tools)
-* Ninja (again can be installed as part of the VS build tools, you could likely build using another system, but untested)
-* CMake
-* premake5 installed and on path (for building GMFS)
-* msbuild installed and on path (for building GMFS, part of the VS build tools)
-
-The GMFS submodule is not set up to invoke premake with anything other than vs2019, so you'll need to modify its CMakeLists.txt if you want to compile with an older version of VS, or on Linux.  
-If you do make such modifications in addition to still letting the file work on Windows with vs2019, then please submit a PR with your new CMakeLists.txt at https://github.com/Derpius/GMFS.  
+* CMake 3.20 or newer
+* Ninja
+* clang-cl - MSVC version of Clang to use OpenMP while being ABI compatible with source
+* MSVC standard library available to the linker
 
 ### First time setup
-1. Clone the repository with the `--recursive` flag to init all submodules (check that submodules of submodules like `sourcedk-minimal` in `garrysmod_common` in `GMFS` have files in them)
-2. Open the `Module` directory in either vs2019 or vscode (other editors can probably be used but dont have as good of an integration with CMake)  
+1. Clone the repository with the `--recursive` flag to init all submodules
+2. Open the cloned folder in your editor of choice
 3. Select a preset to compile (`relwithsymbols` for debugging as building with full debug mode breaks ABI compatibility with Source)
 4. Compile (compiled dll can be found in `out/build/{presetname}`)
 

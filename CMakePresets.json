@@ -18,7 +18,6 @@
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
 				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
-				"ARCHITECTURE": "x64",
 				"CMAKE_C_COMPILER": "clang-cl",
 				"CMAKE_CXX_COMPILER": "clang-cl"
 			},
@@ -42,7 +41,6 @@
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
 				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
-				"ARCHITECTURE": "x64",
 				"CMAKE_C_COMPILER": "clang-cl",
 				"CMAKE_CXX_COMPILER": "clang-cl"
 			},
@@ -66,7 +64,6 @@
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
 				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
-				"ARCHITECTURE": "x86",
 				"CMAKE_C_COMPILER": "clang-cl",
 				"CMAKE_CXX_COMPILER": "clang-cl"
 			},
@@ -90,7 +87,6 @@
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
 				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
-				"ARCHITECTURE": "x86",
 				"CMAKE_C_COMPILER": "clang-cl",
 				"CMAKE_CXX_COMPILER": "clang-cl"
 			},
