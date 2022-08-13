@@ -5,6 +5,8 @@
 	"ignore": [
 		"*.git*",
 		"*.md",
-		"*LICENSE"
+		"*LICENSE",
+		"*.gitignore",
+		"*.bat"
 	]
 }
