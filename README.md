@@ -1,5 +1,7 @@
 <p align="center">
-<img src="https://github.com/Derpius/VisTrace/blob/branding/banner.png?raw=true" />
+	<a href="https://steamcommunity.com/sharedfiles/filedetails/?id=2531198548">
+		<img src="https://github.com/Derpius/VisTrace/blob/branding/banner.png?raw=true" />
+	</a>
 </p>
 
 VisTrace allows tracing visual meshes in Garry's Mod at high speeds on the CPU using https://github.com/madmann91/bvh, allowing for far higher fidelity scenes in Lua tracers without the massive performance cost of Lua mesh intersection.  
