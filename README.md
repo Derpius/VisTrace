@@ -28,10 +28,10 @@ If you do make such modifications in addition to still letting the file work on 
 1. Clone the repository with the `--recursive` flag to init all submodules (check that submodules of submodules like `sourcedk-minimal` in `garrysmod_common` in `GMFS` have files in them)
 2. Open the `Module` directory in either vs2019 or vscode (other editors can probably be used but dont have as good of an integration with CMake)  
 3. Select a preset to compile (`relwithsymbols` for debugging as building with full debug mode breaks ABI compatibility with Source)
-4. Compile (compiled dll can be found in `Module/out/build/{presetname}`)
+4. Compile (compiled dll can be found in `out/build/{presetname}`)
 
 ## Extensions
-VisTrace versions v0.10.0 and newer support user made extensions that can interface with VisTrace's objects via interfaces in `Module/include`, or using the GLua API.  
+VisTrace versions v0.10.0 and newer support user made extensions that can interface with VisTrace's objects via interfaces in `include`, or using the GLua API.  
 You should `require()` any binary modules and initialise your extension from the `VisTraceInit` hook, which will be called by the binary if everything loaded correctly.  
 
 Additionally, an svg badge is provided to include in your readmes to show that your addon/binary module is VisTrace compatible:  
