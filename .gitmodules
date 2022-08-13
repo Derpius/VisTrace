@@ -1,26 +1,22 @@
-[submodule "Module/libs/glm"]
-	path = Module/libs/glm
+[submodule "libs/glm"]
+	path = libs/glm
 	url = https://github.com/g-truc/glm.git
-[submodule "Module/libs/bvh"]
-	path = Module/libs/bvh
+[submodule "libs/bvh"]
+	path = libs/bvh
 	url = https://github.com/madmann91/bvh.git
-[submodule "Module/libs/VTFParser"]
-	path = Module/libs/VTFParser
+[submodule "libs/VTFParser"]
+	path = libs/VTFParser
 	url = https://github.com/Derpius/VTFParser.git
-[submodule "Module/libs/stb"]
-	path = Module/libs/stb
+[submodule "libs/stb"]
+	path = libs/stb
 	url = https://github.com/nothings/stb.git
-[submodule "Module/libs/BSPParser"]
-	path = Module/libs/BSPParser
+[submodule "libs/BSPParser"]
+	path = libs/BSPParser
 	url = https://github.com/Derpius/BSPParser.git
-[submodule "Module/libs/gmod-module-base"]
-	path = Module/libs/gmod-module-base
+[submodule "libs/gmod-module-base"]
+	path = libs/gmod-module-base
 	url = https://github.com/Facepunch/gmod-module-base.git
 	branch = development
-[submodule "Module/libs/GMFS"]
-	path = Module/libs/GMFS
+[submodule "libs/GMFS"]
+	path = libs/GMFS
 	url = https://github.com/Derpius/GMFS.git
-[submodule "Addon/materials/vistrace/pbr"]
-	path = Addon/materials/vistrace/pbr
-	url = https://github.com/Derpius/gmod-pbr.git
-	branch = vtf

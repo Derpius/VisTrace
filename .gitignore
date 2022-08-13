@@ -34,9 +34,5 @@
 # Visual Studio Directory
 .vs
 
-# Build Directories
-Module/out
-Release
-
-package.bat
-publish.bat
+# Build Directory
+out
