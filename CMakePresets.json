@@ -25,7 +25,9 @@
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
 					"hostOS": [
 						"Windows"
-					]
+					],
+					"intelliSenseMode": "windows-clang-x64",
+					"enableClangTidyCodeAnalysis": true
 				}
 			}
 		},
@@ -48,7 +50,9 @@
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
 					"hostOS": [
 						"Windows"
-					]
+					],
+					"intelliSenseMode": "windows-clang-x64",
+					"enableClangTidyCodeAnalysis": true
 				}
 			}
 		},
@@ -71,7 +75,9 @@
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
 					"hostOS": [
 						"Windows"
-					]
+					],
+					"intelliSenseMode": "windows-clang-x86",
+					"enableClangTidyCodeAnalysis": true
 				}
 			}
 		},
@@ -94,7 +100,105 @@
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
 					"hostOS": [
 						"Windows"
-					]
+					],
+					"intelliSenseMode": "windows-clang-x86",
+					"enableClangTidyCodeAnalysis": true
+				}
+			}
+		},
+		{
+			"name": "linux-x64-relwithsymbols",
+			"displayName": "Linux x64 RelWithSymbols",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/out/build/${presetName}",
+			"architecture": {
+				"value": "x64",
+				"strategy": "external"
+			},
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
+				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+				"CMAKE_C_COMPILER": "gcc",
+				"CMAKE_CXX_COMPILER": "g++"
+			},
+			"vendor": {
+				"microsoft.com/VisualStudioSettings/CMake/1.0": {
+					"hostOS": [
+						"Linux"
+					],
+					"intelliSenseMode": "linux-gcc-x64"
+				}
+			}
+		},
+		{
+			"name": "linux-x64-release",
+			"displayName": "Linux x64 Release",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/out/build/${presetName}",
+			"architecture": {
+				"value": "x64",
+				"strategy": "external"
+			},
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+				"CMAKE_C_COMPILER": "gcc",
+				"CMAKE_CXX_COMPILER": "g++"
+			},
+			"vendor": {
+				"microsoft.com/VisualStudioSettings/CMake/1.0": {
+					"hostOS": [
+						"Linux"
+					],
+					"intelliSenseMode": "linux-gcc-x64"
+				}
+			}
+		},
+		{
+			"name": "linux-x86-relwithsymbols",
+			"displayName": "Linux x86 RelWithSymbols",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/out/build/${presetName}",
+			"architecture": {
+				"value": "x86",
+				"strategy": "external"
+			},
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
+				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+				"CMAKE_C_COMPILER": "gcc",
+				"CMAKE_CXX_COMPILER": "g++"
+			},
+			"vendor": {
+				"microsoft.com/VisualStudioSettings/CMake/1.0": {
+					"hostOS": [
+						"Linux"
+					],
+					"intelliSenseMode": "linux-gcc-x86"
+				}
+			}
+		},
+		{
+			"name": "linux-x86-release",
+			"displayName": "Linux x86 Release",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/out/build/${presetName}",
+			"architecture": {
+				"value": "x86",
+				"strategy": "external"
+			},
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release",
+				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+				"CMAKE_C_COMPILER": "gcc",
+				"CMAKE_CXX_COMPILER": "g++"
+			},
+			"vendor": {
+				"microsoft.com/VisualStudioSettings/CMake/1.0": {
+					"hostOS": [
+						"Linux"
+					],
+					"intelliSenseMode": "linux-gcc-x86"
 				}
 			}
 		}
