@@ -40,7 +40,7 @@ target_include_directories(
 	"libs/stb"
 	"libs/VTFParser"
 	"libs/gmod-module-base/include"
-	"libs/GMFS/source"
+	"libs/GMFS"
 )
 
 target_link_libraries(
@@ -49,5 +49,5 @@ target_link_libraries(
 	bvh
 	glm
 	VTFParser
-	${GMFS_LIBS}
+	GMFS
 )
