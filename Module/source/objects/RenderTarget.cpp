@@ -39,7 +39,11 @@ bool Texture::Resize(uint16_t width, uint16_t height)
 		pBuffer = static_cast<uint8_t*>(realloc(pBuffer, mPixelSize * mWidth * mHeight));
 	}
 
-	return IsValid();
+	if (IsValid()) {
+		memset(pBuffer, 0, mPixelSize * mWidth * mHeight);
+		return true;
+	}
+	return false;
 }
 
 bool Texture::IsValid() const {
