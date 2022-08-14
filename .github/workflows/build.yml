@@ -6,12 +6,18 @@ on:
     paths:
       - "*.cpp"
       - "*.h"
+      - "*CMakePresets.json"
+      - "*CMakeLists.txt"
+      - ".gitmodules"
   pull_request:
     branches:
       - master
     paths:
       - "*.cpp"
       - "*.h"
+      - "*CMakePresets.json"
+      - "*CMakeLists.txt"
+      - ".gitmodules"
 env:
   API_VERSION: "0.10"
 
