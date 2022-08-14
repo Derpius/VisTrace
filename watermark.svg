@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<svg viewBox="0 0 256 32" xmlns="http://www.w3.org/2000/svg">
+	<style>
+		#username {
+			height: 100%;
+			width: 100%;
+			font-size: 14px;
+			transform: translate(calc((256px - 96px) / 2 + 96px), calc(0.4em + 50%));
+		}
+	</style>
+
+	<rect
+		style="fill:#4d4d4d"
+		class="background"
+		width="256"
+		height="32"
+		clip-path="polygon(0 0, 95% 0, 100% 40%, 100% 100%, 0 100%)"
+	/>
+	<rect
+		style="fill:#1a1a1a"
+		class="logo-background"
+		width="96"
+		height="32"
+	/>
+	<text
+		xml:space="preserve"
+		id="text2647"
+		style="font-style:italic;font-size:21.3333px;font-family:'Franklin Gothic Heavy', Arial, sans-serif;fill:#ff6600"
+		x="41.515556"
+		y="0"
+	><tspan x="5.578192" y="23.181094">VisTrace</tspan></text>
+	<text
+		id="username"
+		text-anchor="middle"
+		style="font-weight:bold;font-family:Verdana, 'Verdana Ref', sans-serif;fill:#ececec"
+	>
+		ERROR
+	</text>
+
+	<script>
+		const params = new Proxy(new URLSearchParams(window.location.search), {
+			get: (searchParams, prop) => searchParams.get(prop),
+		});
+		document.getElementById("username").textContent = params.username;
+	</script>
+</svg>

@@ -35,8 +35,4 @@
 .vs
 
 # Build Directories
-Module/out
-Release
-
-package.bat
-publish.bat
+out
