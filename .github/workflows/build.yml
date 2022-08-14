@@ -3,9 +3,15 @@ on:
   push:
     branches:
       - master
+    paths:
+      - "*.cpp"
+      - "*.h"
   pull_request:
     branches:
       - master
+    paths:
+      - "*.cpp"
+      - "*.h"
 env:
   API_VERSION: "0.10"
 
