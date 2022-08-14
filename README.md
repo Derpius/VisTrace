@@ -1,14 +1,14 @@
 <p align="center">
-	<a href="https://steamcommunity.com/sharedfiles/filedetails/?id=2531198548">
+	<a href="https://steamcommunity.com/sharedfiles/filedetails/?id=2531198548" style="text-decoration: none;">
 		<img src="https://github.com/Derpius/VisTrace/blob/branding/banner.png?raw=true" />
 	</a><br>
-	<a href="https://github.com/Derpius/VisTrace/actions/workflows/build.yml">
+	<a href="https://github.com/Derpius/VisTrace/actions/workflows/build.yml" style="text-decoration: none;">
 		<img alt="GitHub Workflow Status" src="https://img.shields.io/github/workflow/status/Derpius/VisTrace/CI%20Build?style=for-the-badge">
 	</a>
-	<a href="https://github.com/Derpius/VisTrace/releases/latest">
+	<a href="https://github.com/Derpius/VisTrace/releases/latest" style="text-decoration: none;">
 		<img alt="GitHub Release Downloads" src="https://img.shields.io/github/downloads/Derpius/VisTrace/total?style=for-the-badge">
 	</a>
-	<a href="https://github.com/Derpius/VisTrace/issues">
+	<a href="https://github.com/Derpius/VisTrace/issues" style="text-decoration: none;">
 		<img alt="GitHub Release Downloads" src="https://img.shields.io/github/issues/Derpius/VisTrace?style=for-the-badge">
 	</a>
 </p>
