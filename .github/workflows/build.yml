@@ -7,7 +7,7 @@ on:
     branches:
       - master
 env:
-  API_VERSION: 0.10
+  API_VERSION: "0.10"
 
 jobs:
   build:
