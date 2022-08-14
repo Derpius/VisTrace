@@ -13,6 +13,7 @@
 **Checklist**
 - [ ] I have read and understand the contributing guidelines
 - [ ] I have tested all aspects of this PR (not required)
+- [ ] I have added the watermark on the branding branch with my desired name to any content attached where applicable (only applies to showcase submissions)
 
 **Description**
 Description of any changes
