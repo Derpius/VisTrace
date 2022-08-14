@@ -57,13 +57,12 @@ jobs:
       - name: Rename dll
         id: rename
         run: |
-          mv out/build/${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}/VisTrace.dll \
-          out/build/${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}/gmcl_VisTrace-v${{ env.API_VERSION }}_${{ matrix.dll-platform }}${{ matrix.dll-arch }}.dll
+          mv out/build/${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}/VisTrace.dll gmcl_VisTrace-v${{ env.API_VERSION }}_${{ matrix.dll-platform }}${{ matrix.dll-arch }}.dll
         if: (matrix.target == 'release') && (steps.build.outcome == 'success') && (github.event_name == 'push')
         
       - name: Upload release binaries
         uses: actions/upload-artifact@v3
         with:
           name: gmcl_VisTrace-v${{ env.API_VERSION }}_${{ matrix.dll-platform }}${{ matrix.dll-arch }}.dll
-          path: out/build/${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}/gmcl_VisTrace-v${{ env.API_VERSION }}_${{ matrix.dll-platform }}${{ matrix.dll-arch }}.dll
+          path: gmcl_VisTrace-v${{ env.API_VERSION }}_${{ matrix.dll-platform }}${{ matrix.dll-arch }}.dll
         if: (matrix.target == 'release') && (steps.rename.outcome == 'success') && (github.event_name == 'push')
