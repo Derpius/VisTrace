@@ -12,7 +12,7 @@
 		<img alt="Steam Workshop Subscribers" src="https://img.shields.io/steam/subscriptions/2531198548?label=SUBSCRIBERS&logo=steam&style=for-the-badge" />
 	</a>
 	<a href="https://github.com/Derpius/VisTrace/issues" style="text-decoration: none;">
-		<img alt="GitHub Open Issues" src="https://img.shields.io/github/issues/Derpius/VisTrace?style=for-the-badge" />
+		<img alt="GitHub Open Issues" src="https://img.shields.io/github/issues/Derpius/VisTrace?logo=github&style=for-the-badge" />
 	</a>
 </p>
 
