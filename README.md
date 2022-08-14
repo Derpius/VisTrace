@@ -57,7 +57,8 @@ Also, please credit yourself in the image with the watermark found on the brandi
 MOVING TO WIKI
 
 ## Example Code
-For more detailed examples, see the [Examples](https://github.com/Derpius/VisTrace/tree/master/Examples) folder.  
+~~For more detailed examples, see the [Examples](https://github.com/Derpius/VisTrace/tree/master/Examples) folder.~~  
+Will be moving to a dedicated branch
 
 This will load the module, build the acceleration structure from all `prop_physics` entities (and the world), get an entity to use as a hit marker, and traverse the scene each frame placing the hit marker at the trace hit position if we hit:
 ```lua
