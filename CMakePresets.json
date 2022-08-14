@@ -11,13 +11,13 @@
 			"displayName": "Windows x64 RelWithSymbols",
 			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/out/build/${presetName}",
+			"installDir": "${sourceDir}/out/install/${presetName}",
 			"architecture": {
 				"value": "x64",
 				"strategy": "external"
 			},
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
-				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
 				"CMAKE_C_COMPILER": "clang-cl",
 				"CMAKE_CXX_COMPILER": "clang-cl"
 			},
@@ -36,13 +36,13 @@
 			"displayName": "Windows x64 Release",
 			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/out/build/${presetName}",
+			"installDir": "${sourceDir}/out/install/${presetName}",
 			"architecture": {
 				"value": "x64",
 				"strategy": "external"
 			},
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
-				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
 				"CMAKE_C_COMPILER": "clang-cl",
 				"CMAKE_CXX_COMPILER": "clang-cl"
 			},
@@ -61,13 +61,13 @@
 			"displayName": "Windows x86 RelWithSymbols",
 			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/out/build/${presetName}",
+			"installDir": "${sourceDir}/out/install/${presetName}",
 			"architecture": {
 				"value": "x86",
 				"strategy": "external"
 			},
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
-				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
 				"CMAKE_C_COMPILER": "clang-cl",
 				"CMAKE_CXX_COMPILER": "clang-cl",
 				"CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS /EHsc -m32",
@@ -88,13 +88,13 @@
 			"displayName": "Windows x86 Release",
 			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/out/build/${presetName}",
+			"installDir": "${sourceDir}/out/install/${presetName}",
 			"architecture": {
 				"value": "x86",
 				"strategy": "external"
 			},
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
-				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
 				"CMAKE_C_COMPILER": "clang-cl",
 				"CMAKE_CXX_COMPILER": "clang-cl",
 				"CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS /EHsc -m32",
@@ -115,13 +115,13 @@
 			"displayName": "Linux x64 RelWithSymbols",
 			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/out/build/${presetName}",
+			"installDir": "${sourceDir}/out/install/${presetName}",
 			"architecture": {
 				"value": "x64",
 				"strategy": "external"
 			},
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
-				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
 				"CMAKE_C_COMPILER": "gcc",
 				"CMAKE_CXX_COMPILER": "g++"
 			},
@@ -139,13 +139,13 @@
 			"displayName": "Linux x64 Release",
 			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/out/build/${presetName}",
+			"installDir": "${sourceDir}/out/install/${presetName}",
 			"architecture": {
 				"value": "x64",
 				"strategy": "external"
 			},
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
-				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
 				"CMAKE_C_COMPILER": "gcc",
 				"CMAKE_CXX_COMPILER": "g++"
 			},
@@ -163,13 +163,13 @@
 			"displayName": "Linux x86 RelWithSymbols",
 			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/out/build/${presetName}",
+			"installDir": "${sourceDir}/out/install/${presetName}",
 			"architecture": {
 				"value": "x86",
 				"strategy": "external"
 			},
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
-				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
 				"CMAKE_C_COMPILER": "gcc",
 				"CMAKE_CXX_COMPILER": "g++"
 			},
@@ -187,13 +187,13 @@
 			"displayName": "Linux x86 Release",
 			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/out/build/${presetName}",
+			"installDir": "${sourceDir}/out/install/${presetName}",
 			"architecture": {
 				"value": "x86",
 				"strategy": "external"
 			},
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
-				"CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
 				"CMAKE_C_COMPILER": "gcc",
 				"CMAKE_CXX_COMPILER": "g++"
 			},
@@ -205,6 +205,41 @@
 					"intelliSenseMode": "linux-gcc-x86"
 				}
 			}
+		}
+	],
+	"buildPresets": [
+		{
+			"name": "windows-x64-relwithsymbols",
+			"configurePreset": "windows-x64-relwithsymbols"
+		},
+		{
+			"name": "windows-x64-release",
+			"configurePreset": "windows-x64-release"
+		},
+		{
+			"name": "windows-x86-relwithsymbols",
+			"configurePreset": "windows-x86-relwithsymbols"
+		},
+		{
+			"name": "windows-x86-release",
+			"configurePreset": "windows-x86-release"
+		},
+
+		{
+			"name": "linux-x64-relwithsymbols",
+			"configurePreset": "linux-x64-relwithsymbols"
+		},
+		{
+			"name": "linux-x64-release",
+			"configurePreset": "linux-x64-release"
+		},
+		{
+			"name": "linux-x86-relwithsymbols",
+			"configurePreset": "linux-x86-relwithsymbols"
+		},
+		{
+			"name": "linux-x86-release",
+			"configurePreset": "linux-x86-release"
 		}
 	]
 }

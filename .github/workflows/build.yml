@@ -1,0 +1,60 @@
+name: CI Build
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build-module:
+    strategy:
+      matrix:
+        os-prefix: [windows]
+        arch: [x86, x64]
+        target: [release, relwithsymbols]
+        include:
+          - os-prefix: windows
+            os: windows-latest
+            dll-platform: win
+          #- os-prefix: linux
+          #  os: ubuntu-latest
+          #  dll-platform: linux
+
+          - arch: x86
+            msvc-arch: amd64_x86
+            dll-arch: 32
+          - arch: x64
+            msvc-arch: amd64
+            dll-arch: 64
+
+    name: Build module
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+        
+      - name: Get MSVC libs
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.msvc-arch }}
+
+      - name: Get latest CMake and ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Run CMake
+        id: build
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: "${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}"
+          buildPreset: "${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}"
+        
+      - name: Upload release binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: gmcl_VisTrace-v0.10_${{ matrix.dll-platform }}${{ matrix.dll-arch }}.dll
+          path: out/build/${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}/VisTrace.dll
+        if: (matrix.target == 'release') && (steps.build.outcome == 'success') && (github.event_name == 'push')

@@ -1,0 +1,20 @@
+name: CI Deploy
+on:
+  workflow_run:
+    workflows: ["CI Build"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: gmcl_VisTrace_win32.dll
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: gmcl_VisTrace_win64.dll
