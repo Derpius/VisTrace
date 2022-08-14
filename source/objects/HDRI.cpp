@@ -206,6 +206,7 @@ glm::vec4 HDRI::GetPixel(glm::vec3 direction) const
 	if (!IsValid()) return glm::vec4();
 
 	glm::uvec2 texel = DirToTexel(mAngleInverse * glm::vec4(direction, 0.f));
+	glm::clamp(texel, glm::uvec2(0, 0), glm::uvec2(mRes - 1, mRes - 1));
 	size_t offset = (texel.y * mRes + texel.x) * 4;
 
 	return glm::vec4(
@@ -244,7 +245,7 @@ bool HDRI::Sample(float& pdf, glm::vec3& sampleDir, glm::vec3& colour, Sampler* 
 		return false;
 	}
 
-	size_t binIndex = numBins * sg->GetFloat();
+	size_t binIndex = floor(numBins * sg->GetFloat());
 	if (binIndex >= numBins) binIndex = mSampleBins.size() - 1U;
 	const Bin& bin = mSampleBins[binIndex];
 
@@ -258,6 +259,7 @@ bool HDRI::Sample(float& pdf, glm::vec3& sampleDir, glm::vec3& colour, Sampler* 
 	};
 
 	uvec2 texel = floor(uv);
+	clamp(texel, uvec2(0, 0), uvec2(mRes - 1, mRes - 1));
 	sampleDir = mAngle * vec4(TexelToDir(texel), 0.f);
 
 	uint32_t offset = texel.y * mRes + texel.x;
