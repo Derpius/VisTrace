@@ -1,3 +1,5 @@
+#include "vistrace.h"
+
 #include "Utils.h"
 
 #include "VTFParser.h"
@@ -15,6 +17,7 @@
 #include "Tonemapper.h"
 
 using namespace GarrysMod::Lua;
+using namespace VisTrace;
 
 #pragma region Sampler
 static int Sampler_id;
@@ -75,14 +78,14 @@ LUA_FUNCTION(Sampler_tostring)
 LUA_FUNCTION(CreateRenderTarget)
 {
 	uint16_t width = LUA->CheckNumber(1), height = LUA->CheckNumber(2);
-	RT::Format format = static_cast<RT::Format>(LUA->CheckNumber(3));
+	RTFormat format = static_cast<RTFormat>(LUA->CheckNumber(3));
 
 	switch (format) {
-	case RT::Format::R8:
-	case RT::Format::RG88:
-	case RT::Format::RGB888:
-	case RT::Format::RGBFFF:
-		LUA->PushUserType_Value(new RT::Texture(width, height, format), RT::Texture::id);
+	case RTFormat::R8:
+	case RTFormat::RG88:
+	case RTFormat::RGB888:
+	case RTFormat::RGBFFF:
+		LUA->PushUserType_Value(new RenderTarget(width, height, format), RenderTarget::id);
 		return 1;
 	default:
 		LUA->ArgError(3, "Invalid format");
@@ -91,8 +94,8 @@ LUA_FUNCTION(CreateRenderTarget)
 }
 LUA_FUNCTION(RT_gc)
 {
-	LUA->CheckType(1, RT::Texture::id);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->CheckType(1, RenderTarget::id);
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
 
 	LUA->SetUserType(1, NULL);
 	delete pRt;
@@ -102,67 +105,67 @@ LUA_FUNCTION(RT_gc)
 
 LUA_FUNCTION(RT_IsValid)
 {
-	RT::Texture** ppRt = LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	RenderTarget** ppRt = LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
 	LUA->PushBool(ppRt != nullptr && (*ppRt)->IsValid());
 	return 1;
 }
 
 LUA_FUNCTION(RT_Resize)
 {
-	LUA->CheckType(1, RT::Texture::id);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->CheckType(1, RenderTarget::id);
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
 	LUA->PushBool(pRt->Resize(LUA->CheckNumber(2), LUA->CheckNumber(3)));
 	return 1;
 }
 
 LUA_FUNCTION(RT_GetWidth)
 {
-	LUA->CheckType(1, RT::Texture::id);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->CheckType(1, RenderTarget::id);
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
 	LUA->PushNumber(pRt->GetWidth());
 	return 1;
 }
 LUA_FUNCTION(RT_GetHeight)
 {
-	LUA->CheckType(1, RT::Texture::id);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->CheckType(1, RenderTarget::id);
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
 	LUA->PushNumber(pRt->GetHeight());
 	return 1;
 }
 LUA_FUNCTION(RT_GetFormat)
 {
-	LUA->CheckType(1, RT::Texture::id);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->CheckType(1, RenderTarget::id);
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
 	LUA->PushNumber(static_cast<double>(pRt->GetFormat()));
 	return 1;
 }
 
 LUA_FUNCTION(RT_GetPixel)
 {
-	LUA->CheckType(1, RT::Texture::id);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->CheckType(1, RenderTarget::id);
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 
 	uint16_t x = LUA->CheckNumber(2), y = LUA->CheckNumber(3);
 	if (x >= pRt->GetWidth() || y >= pRt->GetHeight()) LUA->ThrowError("Pixel coordinate out of range");
-	RT::Pixel pixel = pRt->GetPixel(x, y);
+	Pixel pixel = pRt->GetPixel(x, y);
 
-	for (int channel = 0; channel < RT::CHANNELS[static_cast<uint8_t>(pRt->GetFormat())]; channel++) {
+	for (int channel = 0; channel < CHANNELS[static_cast<uint8_t>(pRt->GetFormat())]; channel++) {
 		LUA->PushNumber(pixel[channel]);
 	}
-	return RT::CHANNELS[static_cast<uint8_t>(pRt->GetFormat())];
+	return CHANNELS[static_cast<uint8_t>(pRt->GetFormat())];
 }
 LUA_FUNCTION(RT_SetPixel)
 {
-	LUA->CheckType(1, RT::Texture::id);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->CheckType(1, RenderTarget::id);
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 
 	uint16_t x = LUA->CheckNumber(2), y = LUA->CheckNumber(3);
 	if (x >= pRt->GetWidth() || y >= pRt->GetHeight()) LUA->ThrowError("Pixel coordinate out of range");
 
-	RT::Pixel pixel{};
-	for (int channel = 0; channel < RT::CHANNELS[static_cast<uint8_t>(pRt->GetFormat())]; channel++) {
+	Pixel pixel{};
+	for (int channel = 0; channel < CHANNELS[static_cast<uint8_t>(pRt->GetFormat())]; channel++) {
 		pixel[channel] = LUA->GetNumber(4 + channel);
 	}
 	pRt->SetPixel(x, y, pixel);
@@ -172,10 +175,10 @@ LUA_FUNCTION(RT_SetPixel)
 
 LUA_FUNCTION(RT_Tonemap)
 {
-	LUA->CheckType(1, RT::Texture::id);
-	RT::Texture* pRt = *LUA->GetUserType<RT::Texture*>(1, RT::Texture::id);
+	LUA->CheckType(1, RenderTarget::id);
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
-	if (pRt->GetFormat() != RT::Format::RGBFFF) LUA->ThrowError("Render target's format must be RGBFFF");
+	if (pRt->GetFormat() != RTFormat::RGBFFF) LUA->ThrowError("Render target's format must be RGBFFF");
 
 	Tonemap(pRt);
 	return 0;
@@ -932,9 +935,9 @@ GMOD_MODULE_OPEN()
 	LUA->Call(3, 0);
 	LUA->Pop(2); // _G and hook
 
-	RT::Texture::id = LUA->CreateMetaTable("VisTraceRT");
+	RenderTarget::id = LUA->CreateMetaTable("VisTraceRT");
 	LUA->PushSpecial(SPECIAL_REG);
-	LUA->PushNumber(RT::Texture::id);
+	LUA->PushNumber(RenderTarget::id);
 	LUA->SetField(-2, "VisTraceRT_id");
 	LUA->Pop(); // Pop the registry
 		LUA->Push(-1);
@@ -1121,17 +1124,17 @@ GMOD_MODULE_OPEN()
 		LUA->SetField(-2, "vistrace");
 
 		LUA->CreateTable();
-			PUSH_ENUM(RT::Format, R8);
-			PUSH_ENUM(RT::Format, RG88);
-			PUSH_ENUM(RT::Format, RGB888);
-			PUSH_ENUM(RT::Format, RF);
-			PUSH_ENUM(RT::Format, RGFF);
-			PUSH_ENUM(RT::Format, RGBFFF);
+			PUSH_ENUM(RTFormat, R8);
+			PUSH_ENUM(RTFormat, RG88);
+			PUSH_ENUM(RTFormat, RGB888);
+			PUSH_ENUM(RTFormat, RF);
+			PUSH_ENUM(RTFormat, RGFF);
+			PUSH_ENUM(RTFormat, RGBFFF);
 
-			PUSH_ENUM(RT::Format, Size);
+			PUSH_ENUM(RTFormat, Size);
 
-			PUSH_ENUM(RT::Format, Albedo);
-			PUSH_ENUM(RT::Format, Normal);
+			PUSH_ENUM(RTFormat, Albedo);
+			PUSH_ENUM(RTFormat, Normal);
 		LUA->SetField(-2, "VisTraceRTFormat");
 	LUA->Pop();
 

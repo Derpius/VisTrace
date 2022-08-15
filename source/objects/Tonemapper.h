@@ -2,4 +2,4 @@
 
 #include "RenderTarget.h"
 
-void Tonemap(RT::Texture* pRt);
+void Tonemap(RenderTarget* pRt);

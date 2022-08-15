@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace RT
+namespace VisTrace
 {
 	constexpr uint8_t MAX_MIPS = 32;
 
@@ -27,7 +27,7 @@ namespace RT
 		}
 	};
 
-	enum class Format : uint8_t
+	enum class RTFormat : uint8_t
 	{
 		R8,
 		RG88,
@@ -41,29 +41,11 @@ namespace RT
 		Normal = RGBFFF
 	};
 
-	static const uint8_t CHANNELS[static_cast<size_t>(Format::Size)] = {
-		1,
-		2,
-		3,
-		1,
-		2,
-		3
-	};
-
-	static const size_t STRIDES[static_cast<size_t>(Format::Size)] = {
-		sizeof(uint8_t),
-		sizeof(uint8_t),
-		sizeof(uint8_t),
-		sizeof(float),
-		sizeof(float),
-		sizeof(float)
-	};
-
-	class ITexture
+	class IRenderTarget
 	{
 	public:
-		ITexture() {};
-		virtual ~ITexture() {};
+		IRenderTarget() {};
+		virtual ~IRenderTarget() {};
 
 		virtual bool Resize(uint16_t width, uint16_t height, uint8_t mips = 1) = 0;
 
@@ -71,7 +53,7 @@ namespace RT
 		virtual uint16_t GetWidth() const = 0;
 		virtual uint16_t GetHeight() const = 0;
 		virtual uint8_t GetMIPs() const = 0;
-		virtual Format GetFormat() const = 0;
+		virtual RTFormat GetFormat() const = 0;
 
 		virtual uint8_t* GetRawData(uint8_t mip = 1) = 0;
 		virtual size_t GetPixelSize() const = 0;

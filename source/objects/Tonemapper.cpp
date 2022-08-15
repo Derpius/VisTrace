@@ -6,6 +6,9 @@
 #include "glm/gtx/compatibility.hpp"
 using namespace glm;
 
+#include "vistrace/IRenderTarget.h"
+using namespace VisTrace;
+
 // All credit to https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/ACES.hlsl
 
 // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
@@ -37,9 +40,9 @@ inline vec3 ACESFitted(vec3 colour)
 	return saturate(colour);
 }
 
-void Tonemap(RT::Texture* pRt)
+void Tonemap(RenderTarget* pRt)
 {
-	if (pRt->GetFormat() != RT::Format::RGBFFF) return;
+	if (pRt->GetFormat() != RTFormat::RGBFFF) return;
 	vec3* pData = reinterpret_cast<vec3*>(pRt->GetRawData());
 	size_t size = pRt->GetWidth() * pRt->GetHeight();
 

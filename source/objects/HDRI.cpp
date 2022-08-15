@@ -8,6 +8,8 @@
 
 #include "glm/gtx/euler_angles.hpp"
 
+using namespace VisTrace;
+
 int HDRI::id{ -1 };
 
 constexpr float M_1_4PI = 1.0 / (4.0 * M_PI);
@@ -107,7 +109,7 @@ HDRI::HDRI(
 	// https://github.com/NVIDIAGameWorks/Falcor/blob/master/Source/Falcor/Rendering/Lights/EnvMapSamplerSetup.cs.slang
 	mImportanceBaseMip = log2(mImportanceRes);
 	uint8_t mips = mImportanceBaseMip + 1;
-	mpImportanceMap = new RT::Texture(mImportanceRes, mImportanceRes, RT::Format::RF, mips);
+	mpImportanceMap = new RenderTarget(mImportanceRes, mImportanceRes, RTFormat::RF, mips);
 	if (mpImportanceMap == nullptr || !mpImportanceMap->IsValid()) {
 		free(mpData);
 		mpData = nullptr;
@@ -150,7 +152,7 @@ HDRI::HDRI(
 				}
 			}
 
-			mpImportanceMap->SetPixel(x, y, RT::Pixel{ luminance * invSamples });
+			mpImportanceMap->SetPixel(x, y, Pixel{ luminance * invSamples });
 		}
 	}
 

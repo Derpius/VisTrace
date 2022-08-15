@@ -25,7 +25,7 @@ private:
 	uint16_t mImportanceRes, mImportanceSamples;
 	uint8_t mImportanceBaseMip = 0;
 	glm::vec2 mImportanceInvDim;
-	RT::Texture* mpImportanceMap;
+	RenderTarget* mpImportanceMap;
 
 	glm::vec3 mAngleEuler = glm::vec3(0.f);
 	glm::mat4 mAngle;

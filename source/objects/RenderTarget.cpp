@@ -4,11 +4,11 @@
 #include <cstdio>
 #include <cstring>
 
-using namespace RT;
+using namespace VisTrace;
 
-int Texture::id{ -1 };
+int RenderTarget::id{ -1 };
 
-Texture::Texture(uint16_t width, uint16_t height, Format format, uint8_t mips)
+RenderTarget::RenderTarget(uint16_t width, uint16_t height, RTFormat format, uint8_t mips)
 {
 	mFormat = format;
 	mChannelSize = STRIDES[static_cast<uint8_t>(mFormat)];
@@ -16,7 +16,7 @@ Texture::Texture(uint16_t width, uint16_t height, Format format, uint8_t mips)
 	Resize(width, height, mips);
 }
 
-Texture::~Texture()
+RenderTarget::~RenderTarget()
 {
 	if (mpBuffer != nullptr) {
 		free(mpBuffer);
@@ -25,7 +25,7 @@ Texture::~Texture()
 	mWidth = mHeight = 0;
 }
 
-bool Texture::Resize(uint16_t width, uint16_t height, uint8_t mips)
+bool RenderTarget::Resize(uint16_t width, uint16_t height, uint8_t mips)
 {
 	mSize = mPixelSize * width * height;
 
@@ -61,24 +61,24 @@ bool Texture::Resize(uint16_t width, uint16_t height, uint8_t mips)
 	return false;
 }
 
-bool Texture::IsValid() const {
+bool RenderTarget::IsValid() const {
 	return mpBuffer != nullptr && mSize > 0;
 }
 
-uint16_t Texture::GetWidth() const { return mWidth; }
-uint16_t Texture::GetHeight() const { return mHeight; }
-uint8_t Texture::GetMIPs() const { return mMips; }
-Format Texture::GetFormat() const { return mFormat; }
+uint16_t RenderTarget::GetWidth() const { return mWidth; }
+uint16_t RenderTarget::GetHeight() const { return mHeight; }
+uint8_t RenderTarget::GetMIPs() const { return mMips; }
+RTFormat RenderTarget::GetFormat() const { return mFormat; }
 
-uint8_t* Texture::GetRawData(uint8_t mip) {
+uint8_t* RenderTarget::GetRawData(uint8_t mip) {
 	if (!IsValid() || mip >= mMips) return nullptr;
 	return mpBuffer + mMipOffsets[mip];
 }
 
-size_t Texture::GetPixelSize() const { return mPixelSize; }
-size_t Texture::GetSize() const { return mSize; }
+size_t RenderTarget::GetPixelSize() const { return mPixelSize; }
+size_t RenderTarget::GetSize() const { return mSize; }
 
-Pixel Texture::GetPixel(uint16_t x, uint16_t y, uint8_t mip) const
+Pixel RenderTarget::GetPixel(uint16_t x, uint16_t y, uint8_t mip) const
 {
 	if (!IsValid() || mip >= mMips) return Pixel{};
 
@@ -94,19 +94,19 @@ Pixel Texture::GetPixel(uint16_t x, uint16_t y, uint8_t mip) const
 	Pixel pixel{};
 
 	switch (mFormat) {
-	case Format::RGB888:
+	case RTFormat::RGB888:
 		pixel.b = static_cast<float>(mpBuffer[offset + 2]) / 255.f;
-	case Format::RG88:
+	case RTFormat::RG88:
 		pixel.g = static_cast<float>(mpBuffer[offset + 1]) / 255.f;
-	case Format::R8:
+	case RTFormat::R8:
 		pixel.r = static_cast<float>(mpBuffer[offset]) / 255.f;
 		return pixel;
 
-	case Format::RGBFFF:
+	case RTFormat::RGBFFF:
 		pixel.b = *reinterpret_cast<float*>(mpBuffer + offset + mChannelSize * 2);
-	case Format::RGFF:
+	case RTFormat::RGFF:
 		pixel.g = *reinterpret_cast<float*>(mpBuffer + offset + mChannelSize);
-	case Format::RF:
+	case RTFormat::RF:
 		pixel.r = *reinterpret_cast<float*>(mpBuffer + offset);
 		return pixel;
 
@@ -115,7 +115,7 @@ Pixel Texture::GetPixel(uint16_t x, uint16_t y, uint8_t mip) const
 	}
 }
 
-void Texture::SetPixel(uint16_t x, uint16_t y, const Pixel& pixel, uint8_t mip)
+void RenderTarget::SetPixel(uint16_t x, uint16_t y, const Pixel& pixel, uint8_t mip)
 {
 	if (!IsValid() || mip >= mMips) return;
 
@@ -129,19 +129,19 @@ void Texture::SetPixel(uint16_t x, uint16_t y, const Pixel& pixel, uint8_t mip)
 	if (offset >= mSize) return;
 
 	switch (mFormat) {
-	case Format::RGB888:
+	case RTFormat::RGB888:
 		mpBuffer[offset + 2] = std::clamp(pixel.b * 255.f, 0.f, 255.f);
-	case Format::RG88:
+	case RTFormat::RG88:
 		mpBuffer[offset + 1] = std::clamp(pixel.g * 255.f, 0.f, 255.f);
-	case Format::R8:
+	case RTFormat::R8:
 		mpBuffer[offset] = std::clamp(pixel.r * 255.f, 0.f, 255.f);
 		return;
 
-	case Format::RGBFFF:
+	case RTFormat::RGBFFF:
 		*reinterpret_cast<float*>(mpBuffer + offset + mChannelSize * 2) = pixel.b;
-	case Format::RGFF:
+	case RTFormat::RGFF:
 		*reinterpret_cast<float*>(mpBuffer + offset + mChannelSize) = pixel.g;
-	case Format::RF:
+	case RTFormat::RF:
 		*reinterpret_cast<float*>(mpBuffer + offset) = pixel.r;
 		return;
 
@@ -154,7 +154,7 @@ inline int intmod(int a, int b)
 {
 	return (a % b + b) % b;
 }
-Pixel Texture::SampleBilinear(float u, float v, uint8_t mip) const
+Pixel RenderTarget::SampleBilinear(float u, float v, uint8_t mip) const
 {
 	uint32_t offset = mMipOffsets[mip];
 
@@ -210,7 +210,7 @@ Pixel Texture::SampleBilinear(float u, float v, uint8_t mip) const
 }
 
 
-void Texture::GenerateMIPs()
+void RenderTarget::GenerateMIPs()
 {
 	if (!IsValid()) return;
 
