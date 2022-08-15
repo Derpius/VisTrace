@@ -69,16 +69,34 @@ glm::vec2 OctahedralDirToTexel(glm::vec3 direction)
 	return uv;
 }
 
+// https://stackoverflow.com/questions/4398711/round-to-the-nearest-power-of-two
+uint16_t NearestPowerOfTwo(uint16_t n)
+{
+	uint16_t v = n;
+
+	v--;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+	v++; // next power of 2
+
+	uint16_t x = v >> 1; // previous power of 2
+
+	return (v - n) > (n - x) ? x : v;
+}
+
 HDRI::HDRI(
 	const uint8_t* pFileData, const size_t size,
 	const uint16_t importanceRes, const uint16_t importanceSamples
-) : mImportanceRes(importanceRes), mImportanceSamples(importanceSamples)
+) : mImportanceRes(NearestPowerOfTwo(importanceRes)), mImportanceSamples(importanceSamples)
 {
 	// Load equirectangular image (TODO: handle errors from stb_image)
 	mpData = stbi_loadf_from_memory(pFileData, size, &mResX, &mResY, &mChannels, 0);
 	if (mpData == nullptr) return;
 
-	if (mResX <= 0 || mResY <= 0) {
+	if (mResX <= 0 || mResY <= 0 || mImportanceRes < 2) {
 		free(mpData);
 		mpData = nullptr;
 		return;
