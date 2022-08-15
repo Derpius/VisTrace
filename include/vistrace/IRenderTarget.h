@@ -55,7 +55,7 @@ namespace VisTrace
 		virtual uint8_t GetMIPs() const = 0;
 		virtual RTFormat GetFormat() const = 0;
 
-		virtual uint8_t* GetRawData(uint8_t mip = 1) = 0;
+		virtual uint8_t* GetRawData(uint8_t mip = 0) = 0;
 		virtual size_t GetPixelSize() const = 0;
 		virtual size_t GetSize() const = 0;
 
