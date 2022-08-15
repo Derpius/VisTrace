@@ -211,7 +211,8 @@ bool HDRI::Sample(float& pdf, glm::vec3& sampleDir, glm::vec3& colour, Sampler* 
 		return false;
 	}
 
-	vec2 p = sg->GetFloat2D();
+	vec2 p;
+	sg->GetFloat2D(p.x, p.y);
 	uvec2 pos = uvec2(0);
 
 	for (int mip = mImportanceBaseMip - 1; mip >= 0; mip--) {

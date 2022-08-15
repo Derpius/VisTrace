@@ -20,22 +20,20 @@ using namespace GarrysMod::Lua;
 using namespace VisTrace;
 
 #pragma region Sampler
-static int Sampler_id;
-
 LUA_FUNCTION(CreateSampler)
 {
 	uint32_t seed = time(NULL);
 	if (LUA->IsType(1, Type::Number)) seed = LUA->GetNumber(1);
 
 	Sampler* pSampler = new Sampler(seed);
-	LUA->PushUserType_Value(pSampler, Sampler_id);
+	LUA->PushUserType_Value(pSampler, Sampler::id);
 	return 1;
 }
 
 LUA_FUNCTION(Sampler_gc)
 {
-	LUA->CheckType(1, Sampler_id);
-	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler_id);
+	LUA->CheckType(1, Sampler::id);
+	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler::id);
 
 	LUA->SetUserType(1, NULL);
 	delete pSampler;
@@ -45,20 +43,21 @@ LUA_FUNCTION(Sampler_gc)
 
 LUA_FUNCTION(Sampler_GetFloat)
 {
-	LUA->CheckType(1, Sampler_id);
-	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler_id);
+	LUA->CheckType(1, Sampler::id);
+	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler::id);
 	LUA->PushNumber(pSampler->GetFloat());
 	return 1;
 }
 
 LUA_FUNCTION(Sampler_GetFloat2D)
 {
-	LUA->CheckType(1, Sampler_id);
-	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler_id);
+	LUA->CheckType(1, Sampler::id);
+	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler::id);
 
-	glm::vec2 sample = pSampler->GetFloat2D();
-	LUA->PushNumber(sample.x);
-	LUA->PushNumber(sample.y);
+	float x, y;
+	pSampler->GetFloat2D(x, y);
+	LUA->PushNumber(x);
+	LUA->PushNumber(y);
 	return 2;
 }
 
@@ -583,11 +582,11 @@ LUA_FUNCTION(Material_tostring)
 LUA_FUNCTION(TraceResult_SampleBSDF)
 {
 	LUA->CheckType(1, TraceResult::id);
-	LUA->CheckType(2, Sampler_id);
+	LUA->CheckType(2, Sampler::id);
 	LUA->CheckType(3, BSDFMaterial::id);
 
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
-	Sampler* pSampler = *LUA->GetUserType<Sampler*>(2, Sampler_id);
+	Sampler* pSampler = *LUA->GetUserType<Sampler*>(2, Sampler::id);
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(3, BSDFMaterial::id);
 	pMat->PrepShadingData(
@@ -781,10 +780,10 @@ LUA_FUNCTION(HDRI_EvalPDF)
 LUA_FUNCTION(HDRI_Sample)
 {
 	LUA->CheckType(1, HDRI::id);
-	LUA->CheckType(2, Sampler_id);
+	LUA->CheckType(2, Sampler::id);
 
 	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI::id);
-	Sampler* pSampler = *LUA->GetUserType<Sampler*>(2, Sampler_id);
+	Sampler* pSampler = *LUA->GetUserType<Sampler*>(2, Sampler::id);
 
 	float pdf = 0.f;
 	glm::vec3 sampleDir{ 0.f };
@@ -1047,7 +1046,11 @@ GMOD_MODULE_OPEN()
 		LUA->SetField(-2, "Traverse");
 	LUA->Pop();
 
-	Sampler_id = LUA->CreateMetaTable("Sampler");
+	Sampler::id = LUA->CreateMetaTable("Sampler");
+	LUA->PushSpecial(SPECIAL_REG);
+	LUA->PushNumber(Sampler::id);
+	LUA->SetField(-2, "Sampler::id");
+	LUA->Pop(); // Pop the registry
 		LUA->Push(-1);
 		LUA->SetField(-2, "__index");
 		LUA->PushCFunction(Sampler_tostring);

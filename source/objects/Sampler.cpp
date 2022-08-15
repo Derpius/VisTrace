@@ -1,5 +1,7 @@
 #include "Sampler.h"
 
+int Sampler::id{ -1 };
+
 Sampler::Sampler(uint32_t seed)
 {
 	mGenerator = std::mt19937(seed);
@@ -11,10 +13,8 @@ float Sampler::GetFloat()
 	return static_cast<float>(mDistribution(mGenerator));
 }
 
-glm::vec2 Sampler::GetFloat2D()
+void Sampler::GetFloat2D(float& r1, float& r2)
 {
-	return glm::vec2(
-		static_cast<float>(mDistribution(mGenerator)),
-		static_cast<float>(mDistribution(mGenerator))
-	);
+	r1 = mDistribution(mGenerator);
+	r2 = mDistribution(mGenerator);
 }

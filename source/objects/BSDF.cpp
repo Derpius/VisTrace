@@ -189,7 +189,9 @@ public:
 
 	bool sample(const vec3 wi, vec3& wo, float& pdf, vec3& weight, uint& lobe, Sampler* sg)
 	{
-		wo = sample_cosine_hemisphere_concentric(sg->GetFloat2D(), pdf);
+		vec2 r;
+		sg->GetFloat2D(r.x, r.y);
+		wo = sample_cosine_hemisphere_concentric(r, pdf);
 		lobe = (uint)LobeType::DiffuseReflection;
 
 		if (min(wi.z, wo.z) < kMinCosTheta) {
@@ -236,7 +238,9 @@ public:
 
 	bool sample(const vec3 wi, vec3& wo, float& pdf, vec3& weight, uint& lobe, Sampler* sg)
 	{
-		wo = sample_cosine_hemisphere_concentric(sg->GetFloat2D(), pdf);
+		vec2 r;
+		sg->GetFloat2D(r.x, r.y);
+		wo = sample_cosine_hemisphere_concentric(r, pdf);
 		wo.z = -wo.z;
 		lobe = (uint)LobeType::DiffuseTransmission;
 
@@ -309,7 +313,9 @@ public:
 		if (!hasLobe(LobeType::SpecularReflection)) return false;
 
 		// Sample the GGX distribution to find a microfacet normal (half vector).
-		vec3 h = sampleGGX_VNDF(alpha, wi, sg->GetFloat2D(), pdf);    // pdf = G1(wi) * D(h) * max(0,dot(wi,h)) / wi.z
+		vec2 r;
+		sg->GetFloat2D(r.x, r.y);
+		vec3 h = sampleGGX_VNDF(alpha, wi, r, pdf);    // pdf = G1(wi) * D(h) * max(0,dot(wi,h)) / wi.z
 
 		// Reflect the incident direction to find the outgoing direction.
 		float wiDotH = dot(wi, h);
@@ -431,7 +437,9 @@ public:
 		if (!(hasReflection || hasTransmission)) return false;
 
 		// Sample the GGX distribution of (visible) normals. This is our half vector.
-		vec3 h = sampleGGX_VNDF(alpha, wi, sg->GetFloat2D(), pdf);    // pdf = G1(wi) * D(h) * max(0,dot(wi,h)) / wi.z
+		vec2 r;
+		sg->GetFloat2D(r.x, r.y);
+		vec3 h = sampleGGX_VNDF(alpha, wi, r, pdf);    // pdf = G1(wi) * D(h) * max(0,dot(wi,h)) / wi.z
 
 		// Reflect/refract the incident direction to find the outgoing direction.
 		float wiDotH = dot(wi, h);
