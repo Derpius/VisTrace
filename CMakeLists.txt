@@ -3,7 +3,6 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 
 project("VisTrace" CXX)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 find_package(OpenMP QUIET)
 

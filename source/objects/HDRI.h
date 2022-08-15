@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "Sampler.h"
+#include "RenderTarget.h"
 
 struct Bin
 {
@@ -18,34 +19,27 @@ struct Bin
 class HDRI
 {
 private:
-	float* mpImageData;
-	float* mpPdfData;
+	float* mpData;
+	int mResX = 0, mResY = 0, mChannels = 0;
 
-	std::vector<Bin> mSampleBins;
-	float mRadianceThreshold;
-	uint32_t mAreaThreshold;
-
-	uint32_t mRes = 0;
-	int32_t mChannels = 0;
+	uint16_t mImportanceRes, mImportanceSamples;
+	uint8_t mImportanceBaseMip = 0;
+	glm::vec2 mImportanceInvDim;
+	RT::Texture* mpImportanceMap;
 
 	glm::vec3 mAngleEuler = glm::vec3(0.f);
 	glm::mat4 mAngle;
 	glm::mat4 mAngleInverse;
 
-	glm::vec3 TexelToDir(glm::vec2 texel) const;
-	glm::uvec2 DirToTexel(glm::vec3 direction) const;
-
-	void ProcessBins(float radiancePrev, Bin lastBin);
-
-	void CachePDF();
-
 public:
-	HDRI(const uint8_t* pFileData, const size_t size, const float radianceThreshold, const uint32_t areaThreshold);
+	static int id;
+
+	HDRI(const uint8_t* pFileData, const size_t size, const uint16_t importanceRes, const uint16_t importanceSamples);
 	~HDRI();
 
 	bool IsValid() const;
 
-	glm::vec4 GetPixel(glm::vec3 direction) const;
+	glm::vec3 GetPixel(glm::vec3 direction) const;
 
 	float EvalPDF(glm::vec3 direction) const;
 

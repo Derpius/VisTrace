@@ -708,20 +708,18 @@ LUA_FUNCTION(TraceResult_EvalPDF)
 #pragma endregion
 
 #pragma region HDRI API
-static int HDRI_id;
-
 LUA_FUNCTION(LoadHDRI)
 {
 	LUA->CheckString(1);
 
-	float radianceThresh = 1000.f;
-	if (LUA->IsType(2, Type::Number)) {
-		radianceThresh = LUA->GetNumber(2);
+	uint16_t importanceDim = 512;
+	if (LUA->IsType(2, Type::Number) && LUA->GetNumber(2) > 0) {
+		importanceDim = LUA->GetNumber(2);
 	}
 
-	uint32_t areaThresh = 8 * 8;
-	if (LUA->IsType(3, Type::Number)) {
-		areaThresh = LUA->GetNumber(3);
+	uint16_t importanceSamples = 64;
+	if (LUA->IsType(3, Type::Number) && LUA->GetNumber(3) > 0) {
+		importanceSamples = LUA->GetNumber(3);
 	}
 
 	std::string texturePath = "vistrace_hdris/" + std::string(LUA->GetString(1)) + ".hdr";
@@ -736,8 +734,8 @@ LUA_FUNCTION(LoadHDRI)
 	FileSystem::Read(data, filesize, file);
 	FileSystem::Close(file);
 
-	HDRI* pHDRI = new HDRI(data, filesize, radianceThresh, areaThresh);
-	LUA->PushUserType_Value(pHDRI, HDRI_id);
+	HDRI* pHDRI = new HDRI(data, filesize, importanceDim, importanceSamples);
+	LUA->PushUserType_Value(pHDRI, HDRI::id);
 	free(data);
 
 	return 1;
@@ -745,32 +743,31 @@ LUA_FUNCTION(LoadHDRI)
 
 LUA_FUNCTION(HDRI_IsValid)
 {
-	LUA->CheckType(1, HDRI_id);
-	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI_id);
+	LUA->CheckType(1, HDRI::id);
+	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI::id);
 	LUA->PushBool(pHDRI->IsValid());
 	return 1;
 }
 
 LUA_FUNCTION(HDRI_GetPixel)
 {
-	LUA->CheckType(1, HDRI_id);
+	LUA->CheckType(1, HDRI::id);
 	LUA->CheckType(2, Type::Vector);
 
-	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI_id);
+	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI::id);
 	Vector direction = LUA->GetVector(2);
 
-	glm::vec4 colour = pHDRI->GetPixel(glm::vec3(direction.x, direction.y, direction.z));
+	glm::vec3 colour = pHDRI->GetPixel(glm::vec3(direction.x, direction.y, direction.z));
 	LUA->PushVector(MakeVector(colour.r, colour.g, colour.b));
-	LUA->PushNumber(colour.a); // Radiance
-	return 2;
+	return 1;
 }
 
 LUA_FUNCTION(HDRI_EvalPDF)
 {
-	LUA->CheckType(1, HDRI_id);
+	LUA->CheckType(1, HDRI::id);
 	LUA->CheckType(2, Type::Vector);
 
-	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI_id);
+	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI::id);
 	Vector direction = LUA->GetVector(2);
 
 	float pdf = pHDRI->EvalPDF(glm::vec3(direction.x, direction.y, direction.z));
@@ -780,10 +777,10 @@ LUA_FUNCTION(HDRI_EvalPDF)
 
 LUA_FUNCTION(HDRI_Sample)
 {
-	LUA->CheckType(1, HDRI_id);
+	LUA->CheckType(1, HDRI::id);
 	LUA->CheckType(2, Sampler_id);
 
-	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI_id);
+	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI::id);
 	Sampler* pSampler = *LUA->GetUserType<Sampler*>(2, Sampler_id);
 
 	float pdf = 0.f;
@@ -806,10 +803,10 @@ LUA_FUNCTION(HDRI_Sample)
 
 LUA_FUNCTION(HDRI_SetAngles)
 {
-	LUA->CheckType(1, HDRI_id);
+	LUA->CheckType(1, HDRI::id);
 	LUA->CheckType(2, Type::Angle);
 
-	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI_id);
+	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI::id);
 	QAngle ang = LUA->GetAngle(2);
 
 	pHDRI->SetAngle(glm::vec3(ang.x, ang.y, ang.z));
@@ -825,8 +822,8 @@ LUA_FUNCTION(HDRI_tostring)
 
 LUA_FUNCTION(HDRI_gc)
 {
-	LUA->CheckType(1, HDRI_id);
-	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI_id);
+	LUA->CheckType(1, HDRI::id);
+	HDRI* pHDRI = *LUA->GetUserType<HDRI*>(1, HDRI::id);
 	delete pHDRI;
 	return 0;
 }
@@ -877,8 +874,6 @@ LUA_FUNCTION(CalcRayOrigin)
 }
 #pragma endregion
 
-#define PUSH_C_FUNC(function) LUA->PushCFunction(function); LUA->SetField(-2, #function)
-
 LUA_FUNCTION(GM_Initialize)
 {
 	printLua(LUA, "VisTrace: Loading map...");
@@ -908,6 +903,12 @@ LUA_FUNCTION(GM_Initialize)
 
 	return 0;
 }
+
+#define PUSH_C_FUNC(function) LUA->PushCFunction(function); LUA->SetField(-2, #function)
+
+#define PUSH_ENUM(enum, field) \
+LUA->PushNumber(static_cast<double>(enum::field)); \
+LUA->SetField(-2, #field)
 
 GMOD_MODULE_OPEN()
 {
@@ -1057,7 +1058,7 @@ GMOD_MODULE_OPEN()
 		LUA->SetField(-2, "GetFloat2D");
 	LUA->Pop();
 
-	HDRI_id = LUA->CreateMetaTable("HDRI");
+	HDRI::id = LUA->CreateMetaTable("HDRI");
 		LUA->Push(-1);
 		LUA->SetField(-2, "__index");
 		LUA->PushCFunction(HDRI_tostring);
@@ -1120,21 +1121,17 @@ GMOD_MODULE_OPEN()
 		LUA->SetField(-2, "vistrace");
 
 		LUA->CreateTable();
-			LUA->PushNumber(0);
-			LUA->SetField(-2, "R8");
-			LUA->PushNumber(1);
-			LUA->SetField(-2, "RG88");
-			LUA->PushNumber(2);
-			LUA->SetField(-2, "RGB888");
-			LUA->PushNumber(3);
-			LUA->SetField(-2, "RGBFFF");
-			LUA->PushNumber(4);
-			LUA->SetField(-2, "Size");
+			PUSH_ENUM(RT::Format, R8);
+			PUSH_ENUM(RT::Format, RG88);
+			PUSH_ENUM(RT::Format, RGB888);
+			PUSH_ENUM(RT::Format, RF);
+			PUSH_ENUM(RT::Format, RGFF);
+			PUSH_ENUM(RT::Format, RGBFFF);
 
-			LUA->PushNumber(3);
-			LUA->SetField(-2, "Albedo");
-			LUA->PushNumber(3);
-			LUA->SetField(-2, "Normal");
+			PUSH_ENUM(RT::Format, Size);
+
+			PUSH_ENUM(RT::Format, Albedo);
+			PUSH_ENUM(RT::Format, Normal);
 		LUA->SetField(-2, "VisTraceRTFormat");
 	LUA->Pop();
 
