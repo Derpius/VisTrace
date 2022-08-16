@@ -83,6 +83,8 @@ LUA_FUNCTION(CreateRenderTarget)
 	case RTFormat::R8:
 	case RTFormat::RG88:
 	case RTFormat::RGB888:
+	case RTFormat::RF:
+	case RTFormat::RGFF:
 	case RTFormat::RGBFFF:
 		LUA->PushUserType_Value(new RenderTarget(width, height, format), RenderTarget::id);
 		return 1;
