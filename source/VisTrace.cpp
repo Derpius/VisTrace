@@ -927,15 +927,6 @@ GMOD_MODULE_OPEN()
 		printLua(LUA, "VisTrace: Loaded filesystem interface successfully");
 	}
 
-	LUA->PushSpecial(SPECIAL_GLOB);
-	LUA->GetField(-1, "hook");
-	LUA->GetField(-1, "Add");
-	LUA->PushString("Initialize");
-	LUA->PushString("VisTrace.LoadWorld");
-	LUA->PushCFunction(GM_Initialize);
-	LUA->Call(3, 0);
-	LUA->Pop(2); // _G and hook
-
 	RenderTarget::id = LUA->CreateMetaTable("VisTraceRT");
 	LUA->PushSpecial(SPECIAL_REG);
 	LUA->PushNumber(RenderTarget::id);
@@ -1142,6 +1133,33 @@ GMOD_MODULE_OPEN()
 			PUSH_ENUM(RTFormat, Normal);
 		LUA->SetField(-2, "VisTraceRTFormat");
 	LUA->Pop();
+
+	LUA->PushSpecial(SPECIAL_GLOB);
+	LUA->GetField(-1, "game");
+	LUA->GetField(-1, "GetMap");
+	LUA->Call(0, 1);
+	const std::string mapName = LUA->GetString();
+	LUA->Pop(2); // game and string
+
+	/*
+		According to the wiki:
+		> In Multiplayer this does not return the current map in the CLIENT realm before GM:Initialize.
+
+		However in testing on a local server I was unable to actually get it to return an invalid value,
+		but this is here just in case (checking against menu, we'll see if any map mismatches appear)
+	*/
+	if (mapName == "menu") {
+		LUA->GetField(-1, "hook");
+		LUA->GetField(-1, "Add");
+		LUA->PushString("Initialize");
+		LUA->PushString("VisTrace.LoadWorld");
+		LUA->PushCFunction(GM_Initialize);
+		LUA->Call(3, 0);
+		LUA->Pop(2); // hook and _G
+	} else { // Map is valid, call the initialise hook directly
+		LUA->Pop(); // _G
+		GM_Initialize__Imp(LUA);
+	}
 
 	printLua(LUA, "VisTrace Loaded!");
 	return 0;
