@@ -209,7 +209,6 @@ Pixel RenderTarget::SampleBilinear(float u, float v, uint8_t mip) const
 	};
 }
 
-
 void RenderTarget::GenerateMIPs()
 {
 	if (!IsValid()) return;
@@ -224,6 +223,7 @@ void RenderTarget::GenerateMIPs()
 		if (height < 1) height = 1;
 
 		// For each pixel in the mip
+		#pragma omp parallel for collapse(2)
 		for (uint16_t y = 0; y < height; y++) {
 			for (uint16_t x = 0; x < width; x++) {
 				// Calculate uv offset to centre of pixel (this way when we sample the higher mip we get a proper average)

@@ -130,6 +130,7 @@ HDRI::HDRI(
 	mAngleInverse = glm::inverse(mAngle);
 
 	// Calculate luminance and save to importance map
+	#pragma omp parallel for collapse(2)
 	for (uint16_t y = 0; y < mImportanceRes; y++) {
 		for (uint16_t x = 0; x < mImportanceRes; x++) {
 			float luminance = 0.f;
