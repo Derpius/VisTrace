@@ -761,14 +761,11 @@ return function(instance)
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Vector direction Direction to get the colour of
 	-- @return Vector Colour value
-	-- @return number Radiance
 	function hdri_methods:getPixel(direction)
 		canRun()
 		checkVector(direction)
 		validateVector(direction)
-
-		local colour, radiance = uwrapHDRI(self):GetPixel(uwrapVec(direction))
-		return wrapVec(colour), radiance
+		return wrapVec(uwrapHDRI(self):GetPixel(uwrapVec(direction)))
 	end
 
 	--- Calculates the probability of sampling this direction
