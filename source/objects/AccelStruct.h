@@ -229,6 +229,8 @@ struct Material
 	glm::mat2x4 blendTexMat   = glm::identity<glm::mat2x4>();
 	bool maskedBlending;
 
+	float texScale = 1.f;
+
 	MaterialFlags flags      = MaterialFlags::NONE;
 	BSPEnums::SURF surfFlags = BSPEnums::SURF::NONE;
 	bool water = false;

@@ -75,6 +75,7 @@ public:
 
 	glm::vec3 uvw;
 	glm::vec2 texUV;
+	float texScale;
 
 	uint32_t entIdx;
 	CBaseEntity* rawEnt;

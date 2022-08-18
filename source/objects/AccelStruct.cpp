@@ -157,7 +157,14 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			LUA->GetField(-1, "Material");
 			LUA->PushString(tex.path);
 			LUA->Call(1, 1);
-			if (!LUA->IsType(-1, Type::Material)) LUA->ThrowError("Invalid material on world");
+			if (!LUA->IsType(-1, Type::Material)) {
+				delete pMap;
+				pMap = nullptr;
+				for (auto& [key, element] : textureCache) {
+					delete element;
+				}
+				LUA->ThrowError("Invalid material on world");
+			}
 
 			Material mat{};
 			mat.maskedBlending = false;
