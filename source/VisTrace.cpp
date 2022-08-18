@@ -79,6 +79,19 @@ LUA_FUNCTION(CreateRenderTarget)
 	uint16_t width = LUA->CheckNumber(1), height = LUA->CheckNumber(2);
 	RTFormat format = static_cast<RTFormat>(LUA->CheckNumber(3));
 
+	// Automatically determine correct number of mips to make the Lua API easier
+	uint8_t mips = 1;
+	if (LUA->GetBool(4)) { // false on failure which disables mips
+		while (width > 1 || height > 1) {
+			width >>= 1;
+			height >>= 1;
+			if (width < 1) width = 1;
+			if (height < 1) height = 1;
+
+			mips++;
+		}
+	}
+
 	switch (format) {
 	case RTFormat::R8:
 	case RTFormat::RG88:
@@ -86,7 +99,7 @@ LUA_FUNCTION(CreateRenderTarget)
 	case RTFormat::RF:
 	case RTFormat::RGFF:
 	case RTFormat::RGBFFF:
-		LUA->PushUserType_Value(new RenderTarget(width, height, format), RenderTarget::id);
+		LUA->PushUserType_Value(new RenderTarget(width, height, format, mips), RenderTarget::id);
 		return 1;
 	default:
 		LUA->ArgError(3, "Invalid format");
@@ -115,7 +128,23 @@ LUA_FUNCTION(RT_Resize)
 {
 	LUA->CheckType(1, RenderTarget::id);
 	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
-	LUA->PushBool(pRt->Resize(LUA->CheckNumber(2), LUA->CheckNumber(3)));
+
+	uint16_t width = LUA->CheckNumber(2), height = LUA->CheckNumber(3);
+
+	// Automatically determine correct number of mips to make the Lua API easier
+	uint8_t mips = 1;
+	if (LUA->GetBool(4)) { // false on failure which disables mips
+		while (width > 1 || height > 1) {
+			width >>= 1;
+			height >>= 1;
+			if (width < 1) width = 1;
+			if (height < 1) height = 1;
+
+			mips++;
+		}
+	}
+
+	LUA->PushBool(pRt->Resize(width, height, mips));
 	return 1;
 }
 
@@ -131,6 +160,13 @@ LUA_FUNCTION(RT_GetHeight)
 	LUA->CheckType(1, RenderTarget::id);
 	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
 	LUA->PushNumber(pRt->GetHeight());
+	return 1;
+}
+LUA_FUNCTION(RT_GetMIPs)
+{
+	LUA->CheckType(1, RenderTarget::id);
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	LUA->PushNumber(pRt->GetMIPs());
 	return 1;
 }
 LUA_FUNCTION(RT_GetFormat)
@@ -149,12 +185,15 @@ LUA_FUNCTION(RT_GetPixel)
 
 	uint16_t x = LUA->CheckNumber(2), y = LUA->CheckNumber(3);
 	if (x >= pRt->GetWidth() || y >= pRt->GetHeight()) LUA->ThrowError("Pixel coordinate out of range");
-	Pixel pixel = pRt->GetPixel(x, y);
 
-	for (int channel = 0; channel < CHANNELS[static_cast<uint8_t>(pRt->GetFormat())]; channel++) {
-		LUA->PushNumber(pixel[channel]);
-	}
-	return CHANNELS[static_cast<uint8_t>(pRt->GetFormat())];
+	uint8_t mip = LUA->GetNumber(4); // Returns 0 on failure which is the default mip, so no typechecking needed
+	if (mip >= pRt->GetMIPs()) LUA->ThrowError("MIP out of range");
+
+	Pixel pixel = pRt->GetPixel(x, y, mip);
+
+	LUA->PushVector(MakeVector(pixel.r, pixel.g, pixel.b));
+	LUA->PushNumber(pixel.a);
+	return 2;
 }
 LUA_FUNCTION(RT_SetPixel)
 {
@@ -165,12 +204,27 @@ LUA_FUNCTION(RT_SetPixel)
 	uint16_t x = LUA->CheckNumber(2), y = LUA->CheckNumber(3);
 	if (x >= pRt->GetWidth() || y >= pRt->GetHeight()) LUA->ThrowError("Pixel coordinate out of range");
 
-	Pixel pixel{};
-	for (int channel = 0; channel < CHANNELS[static_cast<uint8_t>(pRt->GetFormat())]; channel++) {
-		pixel[channel] = LUA->GetNumber(4 + channel);
-	}
-	pRt->SetPixel(x, y, pixel);
+	LUA->CheckType(4, Type::Vector);
+	Vector rgb = LUA->GetVector(4);
 
+	float a = 1.f;
+	if (LUA->IsType(5, Type::Number)) a = LUA->GetNumber(5);
+
+	uint8_t mip = LUA->GetNumber(6); // Returns 0 on failure which is the default mip, so no typechecking needed
+	if (mip >= pRt->GetMIPs()) LUA->ThrowError("MIP out of range");
+
+	pRt->SetPixel(x, y, Pixel{ rgb.x, rgb.y, rgb.z, a }, mip);
+
+	return 0;
+}
+
+LUA_FUNCTION(RT_GenerateMIPs)
+{
+	LUA->CheckType(1, RenderTarget::id);
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+
+	pRt->GenerateMIPs();
 	return 0;
 }
 
@@ -957,6 +1011,9 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(RT_SetPixel);
 		LUA->SetField(-2, "SetPixel");
 
+		LUA->PushCFunction(RT_GenerateMIPs);
+		LUA->SetField(-2, "GenerateMIPs");
+
 		LUA->PushCFunction(RT_Tonemap);
 		LUA->SetField(-2, "Tonemap");
 	LUA->Pop();
@@ -1042,7 +1099,7 @@ GMOD_MODULE_OPEN()
 	Sampler::id = LUA->CreateMetaTable("Sampler");
 	LUA->PushSpecial(SPECIAL_REG);
 	LUA->PushNumber(Sampler::id);
-	LUA->SetField(-2, "Sampler::id");
+	LUA->SetField(-2, "Sampler_id");
 	LUA->Pop(); // Pop the registry
 		LUA->Push(-1);
 		LUA->SetField(-2, "__index");

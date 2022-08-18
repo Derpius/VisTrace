@@ -8,7 +8,7 @@ namespace VisTrace
 
 	struct Pixel
 	{
-		float r = 0, g = 0, b = 0, a = 0;
+		float r = 0, g = 0, b = 0, a = 1;
 
 		float& operator[](size_t i)
 		{
