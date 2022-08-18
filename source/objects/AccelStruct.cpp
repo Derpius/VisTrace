@@ -7,6 +7,9 @@
 
 #include "TraceResult.h"
 
+#include "bvh/locally_ordered_clustering_builder.hpp"
+#include "bvh/leaf_collapser.hpp"
+
 #define MISSING_TEXTURE "debug/debugempty"
 #define WATER_BASE_TEXTURE "models/debug/debugwhite"
 
@@ -698,10 +701,13 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 
 	// Build BVH
 	mAccel = BVH();
-	bvh::SweepSahBuilder<BVH> builder(mAccel);
+	bvh::LocallyOrderedClusteringBuilder<BVH, uint32_t> builder(mAccel);
 	auto [bboxes, centers] = bvh::compute_bounding_boxes_and_centers(mTriangles.data(), mTriangles.size());
 	auto global_bbox = bvh::compute_bounding_boxes_union(bboxes.get(), mTriangles.size());
 	builder.build(global_bbox, bboxes.get(), centers.get(), mTriangles.size());
+
+	bvh::LeafCollapser collapser(mAccel);
+	collapser.collapse();
 
 	mpIntersector = new Intersector(mAccel, mTriangles.data());
 	mpTraverser = new Traverser(mAccel);
