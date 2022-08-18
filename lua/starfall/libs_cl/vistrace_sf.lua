@@ -150,17 +150,19 @@ return function(instance)
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number width
 	-- @param number height
-	-- @param VisTraceRTFormat format Image format to use for the underlying pixel data
+	-- @param number format Image format to use for the underlying pixel data (see VisTraceRTFormat)
+	-- @param boolean? createMips Create mip levels from the current resolution down to 1x1 (Defaults to false. Call generateMIPs to populate these automatically)
 	-- @return VisTraceRT
-	function vistrace_library.createRenderTarget(width, height, format)
+	function vistrace_library.createRenderTarget(width, height, format, createMIPs)
 		checkPermission(instance, nil, "vistrace.rendertarget")
 		canRun()
 
 		checkLuaType(width, TYPE_NUMBER)
 		checkLuaType(height, TYPE_NUMBER)
 		checkLuaType(format, TYPE_NUMBER)
+		if createMIPs ~= nil then checkLuaType(width, TYPE_BOOL) end
 
-		return wrapRT(vistrace.CreateRenderTarget(width, height, format))
+		return wrapRT(vistrace.CreateRenderTarget(width, height, format, createMIPs))
 	end
 
 	--- Returns true if the render target is valid, false otherwise
@@ -175,13 +177,19 @@ return function(instance)
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number width New width
 	-- @param number height New height
+	-- @param boolean? createMips Create mip levels from the current resolution down to 1x1 (Defaults to false. Call generateMIPs to populate these automatically)
 	-- @return boolean
-	function vistracert_methods:resize(width, height)
+	function vistracert_methods:resize(width, height, createMIPs)
 		canRun()
-		return uwrapRT(self):Resize(width, height)
+
+		checkLuaType(width, TYPE_NUMBER)
+		checkLuaType(height, TYPE_NUMBER)
+		if createMIPs ~= nil then checkLuaType(width, TYPE_BOOL) end
+
+		return uwrapRT(self):Resize(width, height, createMIPs)
 	end
 
-	--- Gets the width of the render target in pixels
+	--- Gets the width of the render target's largest MIP in pixels
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number
 	function vistracert_methods:getWidth()
@@ -189,12 +197,20 @@ return function(instance)
 		return uwrapRT(self):GetWidth()
 	end
 
-	--- Gets the height of the render target in pixels
+	--- Gets the height of the render target's largest MIP in pixels
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number
 	function vistracert_methods:getHeight()
 		canRun()
 		return uwrapRT(self):GetHeight()
+	end
+
+	--- Gets the number of MIP levels in this render target
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number
+	function vistracert_methods:getMIPs()
+		canRun()
+		return uwrapRT(self):GetMIPs()
 	end
 
 	--- Gets the format of the render target
@@ -209,20 +225,45 @@ return function(instance)
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number x X coordinate of the pixel
 	-- @param number y Y coordinate of the pixel
-	-- @return ...number Values of each channel
-	function vistracert_methods:getPixel(x, y)
+	-- @param number? mip MIP level to get the pixel from (Defaults to 0. This does not transform your X and Y coordinates automatically)
+	-- @return Vector RGB components of the image
+	-- @return number Alpha component of the image
+	function vistracert_methods:getPixel(x, y, mip)
 		canRun()
-		return uwrapRT(self):GetPixel(x, y)
+
+		checkLuaType(x, TYPE_NUMBER)
+		checkLuaType(y, TYPE_NUMBER)
+		if mip ~= nil then checkLuaType(mip, TYPE_NUMBER) end
+
+		local rgb, a = uwrapRT(self):GetPixel(x, y, mip)
+		return wrapVec(rgb), a
 	end
 
 	--- Sets the colour values of each channel of the pixel, normalised to 0-1
 	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number x X coordinate of the pixel
 	-- @param number y Y coordinate of the pixel
-	-- @param ...number Values of each channel
-	function vistracert_methods:setPixel(x, y, ...)
+	-- @param Vector rgb RGB components to write
+	-- @param number? a Alpha component to write (Defaults to 1)
+	-- @param number? mip MIP level to set the pixel in (Defaults to 0. This does not transform your X and Y coordinates automatically)
+	function vistracert_methods:setPixel(x, y, rgb, a, mip)
 		canRun()
-		return uwrapRT(self):SetPixel(x, y, ...)
+
+		checkLuaType(x, TYPE_NUMBER)
+		checkLuaType(y, TYPE_NUMBER)
+		checkVector(rgb)
+		if a ~= nil then checkLuaType(a, TYPE_NUMBER) end
+		if mip ~= nil then checkLuaType(mip, TYPE_NUMBER) end
+
+		return uwrapRT(self):SetPixel(x, y, uwrapVec(rgb), a, mip)
+	end
+
+	--- Automatically populates the mip levels below the highest with a scaled down version of the texture  
+	--- You need to have set createMIPs to true when creating/resizing this render target
+	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	function vistracert_methods:generateMIPs()
+		canRun()
+		return uwrapRT(self):GenerateMIPs()
 	end
 
 	--- Tonemaps a HDR render target using ACES fitted  
