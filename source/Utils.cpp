@@ -90,21 +90,6 @@ bool checkMaterialFlag(uint32_t flags, const MaterialFlags flag)
 	return (flags & static_cast<uint32_t>(flag)) == static_cast<uint32_t>(flag);
 }
 
-glm::vec3 transformToBone(
-	const Vector& vec,
-	const std::vector<glm::mat4>& bones, const std::vector<glm::mat4>& binds,
-	const std::vector<std::pair<size_t, float>>& weights,
-	const bool angleOnly
-)
-{
-	glm::vec4 final(0.f);
-	glm::vec4 vertex = glm::vec4(vec.x, vec.y, vec.z, angleOnly ? 0.f : 1.f);
-	for (size_t i = 0U; i < weights.size(); i++) {
-		final += bones[weights[i].first] * binds[weights[i].first] * vertex * weights[i].second;
-	}
-	return glm::vec3(final);
-}
-
 bool readTexture(const std::string& path, VTFTexture** ppTextureOut)
 {
 	std::string texturePath = "materials/" + path + ".vtf";

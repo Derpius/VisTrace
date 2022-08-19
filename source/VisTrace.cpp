@@ -940,7 +940,7 @@ LUA_FUNCTION(GM_Initialize)
 	LUA->GetField(-1, "GetMap");
 	LUA->Call(0, 1);
 	const char* mapName = LUA->GetString();
-	LUA->Pop(2); // _G and game
+	LUA->Pop(3); // _G, game, and string
 
 	g_pWorld = new World(LUA, mapName);
 	if (!g_pWorld->IsValid()) {

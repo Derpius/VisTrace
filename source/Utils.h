@@ -88,22 +88,6 @@ inline MaterialFlags operator|(MaterialFlags a, MaterialFlags b)
 bool checkMaterialFlag(MaterialFlags flags, const MaterialFlags flag);
 
 /// <summary>
-/// Skins a vertex to its bones
-/// </summary>
-/// <param name="vec">Vector to transform</param>
-/// <param name="bones">Bone list</param>
-/// <param name="binds">Binds list</param>
-/// <param name="weights">Bone vertex weights</param>
-/// <param name="angleOnly">Whether to just transform the angle of the input vector</param>
-/// <returns>The transformed vector</returns>
-glm::vec3 transformToBone(
-	const Vector& vec,
-	const std::vector<glm::mat4>& bones, const std::vector<glm::mat4>& binds,
-	const std::vector<std::pair<size_t, float>>& weights,
-	const bool angleOnly = false
-);
-
-/// <summary>
 /// Read a VTF texture at the given path
 /// </summary>
 /// <param name="path">Path to texture (without materials/ and .vtf)</param>
