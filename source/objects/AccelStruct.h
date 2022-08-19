@@ -237,7 +237,7 @@ struct TriangleBackfaceCull
 
 					// Was mipmapping here but with trilinear it looked like shit
 					float alpha = mat.baseTexture->Sample(texUV.x, texUV.y, 0.f).a;
-					if (alpha < 1.f) return std::nullopt;
+					if (alpha == 0.f) return std::nullopt;
 				}
 
 				return std::make_optional(Intersection{ t, u, v });

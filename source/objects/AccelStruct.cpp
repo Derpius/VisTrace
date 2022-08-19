@@ -304,6 +304,8 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			prop = pMap->GetStaticProp(i);
 		} catch (std::out_of_range e) {
 			LUA->ThrowError(e.what());
+		} catch (std::runtime_error e) {
+			LUA->ThrowError(e.what()); // This means we didn't check the map was valid first
 		}
 
 		glm::mat4 bone = glm::translate(glm::identity<glm::mat4>(), glm::vec3(prop.pos.x, prop.pos.y, prop.pos.z));
