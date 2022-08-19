@@ -74,9 +74,13 @@ enum class MaterialFlags : uint32_t
 	wireframe = 268435456,
 	allowalphatocoverage = 536870912
 };
-inline MaterialFlags operator|(MaterialFlags a, MaterialFlags b)
+inline MaterialFlags operator|(const MaterialFlags a, const MaterialFlags b)
 {
-	return static_cast<MaterialFlags>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+	return static_cast<MaterialFlags>(static_cast<const uint32_t>(a) | static_cast<const uint32_t>(b));
+}
+inline MaterialFlags operator&(const MaterialFlags a, const MaterialFlags b)
+{
+	return static_cast<MaterialFlags>(static_cast<const uint32_t>(a) & static_cast<const uint32_t>(b));
 }
 
 /// <summary>
@@ -101,3 +105,25 @@ bool readTexture(const std::string& path, VTFTexture** ppTextureOut);
 /// <param name="v">Vector to validate</param>
 /// <returns>Whether the vector was valid</returns>
 bool validVector(const glm::vec3& v);
+
+/// <summary>
+/// Transforms a texture coordinate with a material transform matrix and scale
+/// </summary>
+/// <param name="texcoord">UV coordinates to transform</param>
+/// <param name="transform">Transformation matrix from the material</param>
+/// <param name="scale">Scale value from the material (e.g. seamless_scale)</param>
+/// <returns>Transformed texcoord</returns>
+inline glm::vec2 TransformTexcoord(const glm::vec2& texcoord, const glm::mat2x4& transform, const float scale)
+{
+	glm::vec2 transformed;
+	transformed.x = glm::dot(glm::vec4(texcoord, 1.f, 1.f), transform[0]);
+	transformed.y = glm::dot(glm::vec4(texcoord, 1.f, 1.f), transform[1]);
+
+	return transformed;
+}
+
+// Ray Tracing Gems
+inline float TriUVInfoToTexLOD(const VTFTexture* pTex, glm::vec2 uvInfo)
+{
+	return uvInfo.x + 0.5f * log2(pTex->GetWidth() * pTex->GetHeight() * uvInfo.y);
+}

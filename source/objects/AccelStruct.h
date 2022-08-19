@@ -7,10 +7,36 @@
 
 #include "GarrysMod/Lua/Interface.h"
 
-#include "bvh/bvh.hpp"
+class AccelStruct;
+
+// Custom ray to pass additional data to the intersector
+#define BVH_RAY_HPP
 #include "bvh/vector.hpp"
+namespace bvh
+{
+	template <typename Scalar>
+	struct Ray
+	{
+		Vector3<Scalar> origin;
+		Vector3<Scalar> direction;
+		Scalar tmin;
+		Scalar tmax;
+
+		const AccelStruct* pAccel = nullptr;
+
+		Ray() = default;
+		Ray(const Vector3<Scalar>& origin,
+			const Vector3<Scalar>& direction,
+			Scalar tmin = Scalar(0),
+			Scalar tmax = std::numeric_limits<Scalar>::max())
+			: origin(origin), direction(direction), tmin(tmin), tmax(tmax)
+		{
+		}
+	};
+}
+
+#include "bvh/bvh.hpp"
 #include "bvh/triangle.hpp"
-#include "bvh/ray.hpp"
 #include "bvh/sweep_sah_builder.hpp"
 #include "bvh/single_ray_traverser.hpp"
 #include "bvh/primitive_intersectors.hpp"
@@ -22,13 +48,57 @@
 #include "BSPParser.h"
 
 #include "Utils.h"
+#include "vistrace/IRenderTarget.h"
 
 using Vector3 = bvh::Vector3<float>;
-using Ray = bvh::Ray<float>;
 using BVH = bvh::Bvh<float>;
+using Ray = bvh::Ray<float>;
+
+struct TriangleData
+{
+	glm::vec3 normals[3];
+	glm::vec3 tangents[3];
+	glm::vec3 binormals[3];
+
+	glm::vec2 uvs[3];
+	float alphas[3];
+
+	size_t entIdx;
+	uint32_t submatIdx;
+
+	bool ignoreNormalMap;
+};
+
+struct Material
+{
+	glm::vec4 colour = glm::vec4(1, 1, 1, 1);
+	VTFTexture* baseTexture = nullptr;
+	glm::mat2x4 baseTexMat = glm::identity<glm::mat2x4>();
+	VTFTexture* normalMap = nullptr;
+	glm::mat2x4 normalMapMat = glm::identity<glm::mat2x4>();
+	VTFTexture* mrao = nullptr;
+	//glm::mat2x4 mraoMat     = glm::identity<glm::mat2x4>(); MRAO texture lookups are driven by the base texture
+
+	VTFTexture* baseTexture2 = nullptr;
+	glm::mat2x4 baseTexMat2 = glm::identity<glm::mat2x4>();
+	VTFTexture* normalMap2 = nullptr;
+	glm::mat2x4 normalMapMat2 = glm::identity<glm::mat2x4>();
+	VTFTexture* mrao2 = nullptr;
+	//glm::mat2x4 mraoMat2    = glm::identity<glm::mat2x4>(); MRAO texture lookups are driven by the base texture
+
+	VTFTexture* blendTexture = nullptr;
+	glm::mat2x4 blendTexMat = glm::identity<glm::mat2x4>();
+	bool maskedBlending;
+
+	float texScale = 1.f;
+
+	MaterialFlags flags = MaterialFlags::NONE;
+	BSPEnums::SURF surfFlags = BSPEnums::SURF::NONE;
+	bool water = false;
+};
 
 /// <summary>
-/// Extension of BVH lib's Triangle primitive to implement backface culling
+/// Extension of BVH lib's Triangle primitive
 /// </summary>
 /// <typeparam name="Scalar"></typeparam>
 template <typename Scalar, bool LeftHandedNormal = true, bool NonZeroTolerance = false>
@@ -43,18 +113,29 @@ struct TriangleBackfaceCull
 	using ScalarType = Scalar;
 	using IntersectionType = Intersection;
 
-	bvh::Vector3<Scalar> p0, e1, e2, n;
+	bvh::Vector3<Scalar> p0, e1, e2, n, nNorm;
 	bool oneSided = false;
+	TriangleData data;
+	float lod;
 
 	TriangleBackfaceCull() = default;
 	TriangleBackfaceCull(
 		const bvh::Vector3<Scalar>& p0,
 		const bvh::Vector3<Scalar>& p1,
 		const bvh::Vector3<Scalar>& p2,
+		const TriangleData& triData,
 		const bool oneSided = false
-	) : p0(p0), e1(p0 - p1), e2(p2 - p0), oneSided(oneSided)
+	) : p0(p0), e1(p0 - p1), e2(p2 - p0), data(triData), oneSided(oneSided)
 	{
 		n = LeftHandedNormal ? cross(e1, e2) : cross(e2, e1);
+
+		glm::vec2 uv10 = data.uvs[1] - data.uvs[0];
+		glm::vec2 uv20 = data.uvs[2] - data.uvs[0];
+		float triUVArea = abs(uv10.x * uv20.y - uv20.x * uv10.y);
+
+		Scalar len = length(n);
+		lod = 0.5f * log2(triUVArea / len);
+		nNorm = bvh::Vector3<Scalar>(n[0] / len, n[1] / len, n[2] / len);
 	}
 
 	bvh::Vector3<Scalar> p1() const { return p0 - e1; }
@@ -123,10 +204,11 @@ struct TriangleBackfaceCull
 
 	std::optional<Intersection> intersect(const bvh::Ray<Scalar>& ray) const
 	{
+		const Material& mat = ray.pAccel->GetMaterial(data);
 		auto negate_when_right_handed = [](Scalar x) { return LeftHandedNormal ? x : -x; };
 
 		auto nDotDir = dot(n, ray.direction);
-		if (oneSided && nDotDir > 0) return std::nullopt;
+		if (oneSided && (mat.flags & MaterialFlags::nocull) == MaterialFlags::NONE && nDotDir > 0) return std::nullopt;
 
 		auto c = p0 - ray.origin;
 		auto r = cross(ray.direction, c);
@@ -146,6 +228,18 @@ struct TriangleBackfaceCull
 					u = robust_max(u, Scalar(0));
 					v = robust_max(v, Scalar(0));
 				}
+
+				// Material has alpha test flag, check the base texture and discard this hit if less than 255 alpha
+				if ((mat.flags & MaterialFlags::alphatest) != MaterialFlags::NONE) {
+					// Calculate texture UVs - Should these be cached in the primitive to avoid recalculation later, or left out to save memory?
+					glm::vec2 texUV = (1.f - u - v) * data.uvs[0] + u * data.uvs[1] + v * data.uvs[2];
+					texUV = TransformTexcoord(texUV, mat.baseTexMat, mat.texScale);
+
+					// Was mipmapping here but with trilinear it looked like shit
+					float alpha = mat.baseTexture->Sample(texUV.x, texUV.y, 0.f).a;
+					if (alpha == 0.f) return std::nullopt;
+				}
+
 				return std::make_optional(Intersection{ t, u, v });
 			}
 		}
@@ -159,21 +253,6 @@ using Intersector = bvh::ClosestPrimitiveIntersector<BVH, Triangle>;
 using Traverser = bvh::SingleRayTraverser<BVH>;
 
 typedef void CBaseEntity;
-
-struct TriangleData
-{
-	glm::vec3 normals[3];
-	glm::vec3 tangents[3];
-	glm::vec3 binormals[3];
-
-	glm::vec2 uvs[3];
-	float alphas[3];
-
-	size_t entIdx;
-	uint32_t submatIdx;
-
-	bool ignoreNormalMap;
-};
 
 // Minimal implementation of Valve's matrix type for efficiently reading from the stack
 struct VMatrix
@@ -208,34 +287,6 @@ struct VMatrix
 	static VMatrix* FromMaterial(GarrysMod::Lua::ILuaBase* LUA, const std::string& key);
 };
 
-struct Material
-{
-	glm::vec4 colour = glm::vec4(1, 1, 1, 1);
-	VTFTexture* baseTexture   = nullptr;
-	glm::mat2x4 baseTexMat    = glm::identity<glm::mat2x4>();
-	VTFTexture* normalMap     = nullptr;
-	glm::mat2x4 normalMapMat  = glm::identity<glm::mat2x4>();
-	VTFTexture* mrao          = nullptr;
-	//glm::mat2x4 mraoMat     = glm::identity<glm::mat2x4>(); MRAO texture lookups are driven by the base texture
-
-	VTFTexture* baseTexture2  = nullptr;
-	glm::mat2x4 baseTexMat2   = glm::identity<glm::mat2x4>();
-	VTFTexture* normalMap2    = nullptr;
-	glm::mat2x4 normalMapMat2 = glm::identity<glm::mat2x4>();
-	VTFTexture* mrao2         = nullptr;
-	//glm::mat2x4 mraoMat2    = glm::identity<glm::mat2x4>(); MRAO texture lookups are driven by the base texture
-
-	VTFTexture* blendTexture  = nullptr;
-	glm::mat2x4 blendTexMat   = glm::identity<glm::mat2x4>();
-	bool maskedBlending;
-
-	float texScale = 1.f;
-
-	MaterialFlags flags      = MaterialFlags::NONE;
-	BSPEnums::SURF surfFlags = BSPEnums::SURF::NONE;
-	bool water = false;
-};
-
 struct Entity
 {
 	CBaseEntity* rawEntity;
@@ -252,7 +303,6 @@ private:
 
 public:
 	std::vector<Triangle> triangles;
-	std::vector<TriangleData> triangleData;
 
 	std::vector<Entity> entities;
 
@@ -269,13 +319,13 @@ public:
 
 class AccelStruct
 {
+private:
 	bool mAccelBuilt;
 	BVH mAccel;
 	Intersector* mpIntersector;
 	Traverser* mpTraverser;
 
 	std::vector<Triangle> mTriangles;
-	std::vector<TriangleData> mTriangleData;
 
 	std::vector<Entity> mEntities;
 
@@ -290,4 +340,11 @@ public:
 
 	void PopulateAccel(GarrysMod::Lua::ILuaBase* LUA, const World* pWorld = nullptr);
 	int Traverse(GarrysMod::Lua::ILuaBase* LUA);
+
+	/// <summary>
+	/// Gets a material given a TriangleData object
+	/// </summary>
+	/// <param name="triData"></param>
+	/// <returns>Material</returns>
+	Material GetMaterial(const TriangleData& triData) const;
 };
