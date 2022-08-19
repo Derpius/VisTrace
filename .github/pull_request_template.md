@@ -8,7 +8,7 @@
 
 **Tested Targets (only applicable for changes to the binary module, delete otherwise)**
 - [ ] windows-x64-release
-- [ ] windows-x86-release (currently not possible)
+- [ ] windows-x86-release
 
 **Checklist**
 - [ ] I have read and understand the contributing guidelines
