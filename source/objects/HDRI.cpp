@@ -257,7 +257,7 @@ bool HDRI::Sample(float& pdf, glm::vec3& sampleDir, glm::vec3& colour, Sampler* 
 	}
 
 	vec2 uv = (static_cast<vec2>(pos) + p) * mImportanceInvDim;
-	sampleDir = OctahedralTexelToDir(uv);
+	sampleDir = mAngle * vec4(OctahedralTexelToDir(uv), 0.f);
 
 	float averageLuminance = mpImportanceMap->GetPixel(0, 0, mImportanceBaseMip).r;
 	pdf = mpImportanceMap->GetPixel(uv.x * mImportanceRes, uv.y * mImportanceRes, 0).r / averageLuminance;
