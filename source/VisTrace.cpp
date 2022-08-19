@@ -218,6 +218,48 @@ LUA_FUNCTION(RT_SetPixel)
 	return 0;
 }
 
+LUA_FUNCTION(RT_Load)
+{
+	LUA->CheckType(1, RenderTarget::id);
+	LUA->CheckType(2, Type::String);
+	// 3 and 4 are generateMips and scaleToRT respectively, they are both optional, but generateMips is true by default and cannot use the shorthand method for optional booleans.
+
+	const char* filepath = LUA->GetString(2);
+	bool generateMips = true;
+	if (LUA->IsType(3, Type::Bool)) {
+		generateMips = LUA->GetBool(3);
+	}
+
+	bool scaleToRT = LUA->GetBool(4);
+
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	bool loaded = pRt->Load(filepath, generateMips, scaleToRT);
+
+	if (!loaded) {
+		LUA->ThrowError("Failed to load the image into the render target!");
+	}
+
+	return 0;
+}
+
+LUA_FUNCTION(RT_Save)
+{
+	LUA->CheckType(1, RenderTarget::id);
+	LUA->CheckType(2, Type::String);
+	
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	const char* filepath = LUA->GetString(2);
+	uint8_t mip = LUA->GetNumber(3); // Returns 0 if not specified
+
+	bool wrote = pRt->Save(filepath, mip);
+
+	if (!wrote) {
+		LUA->ThrowError("Failed to write the render target into the image!");
+	}
+
+	return 0;
+}
+
 LUA_FUNCTION(RT_GenerateMIPs)
 {
 	LUA->CheckType(1, RenderTarget::id);
@@ -1010,6 +1052,11 @@ GMOD_MODULE_OPEN()
 		LUA->SetField(-2, "GetPixel");
 		LUA->PushCFunction(RT_SetPixel);
 		LUA->SetField(-2, "SetPixel");
+
+		LUA->PushCFunction(RT_Load);
+		LUA->SetField(-2, "Load");
+		LUA->PushCFunction(RT_Save);
+		LUA->SetField(-2, "Save");
 
 		LUA->PushCFunction(RT_GenerateMIPs);
 		LUA->SetField(-2, "GenerateMIPs");

@@ -1,10 +1,18 @@
 #include "RenderTarget.h"
+#include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb_image_resize.h"
 
+#include <filesystem>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <unordered_map>
 
 using namespace VisTrace;
+namespace fs = std::filesystem;
 
 int RenderTarget::id{ -1 };
 
@@ -207,6 +215,174 @@ Pixel RenderTarget::SampleBilinear(float u, float v, uint8_t mip) const
 		(corners[0][0].a * uFractInv + corners[1][0].a * uFract) * vFractInv +
 		(corners[0][1].a * uFractInv + corners[1][1].a * uFract) * vFract,
 	};
+}
+
+bool RenderTarget::Load(const char* filepath, bool generateMips, bool scaleToRT)
+{
+	if (!IsValid()) return false;
+
+	int imageWidth = 0;
+	int imageHeight = 0;
+	int channels = CHANNELS[static_cast<uint8_t>(GetFormat())];
+	size_t stride = STRIDES[static_cast<uint8_t>(GetFormat())];
+	
+	uint8_t* rtData = GetRawData();
+	const bool isFloat = stride == sizeof(float);
+
+	if (isFloat) {
+		float* imageData = stbi_loadf(filepath, &imageWidth, &imageHeight, nullptr, channels);
+		if (imageData) {
+			// Check if we require a resize to the RT's dimensions.
+			if (scaleToRT) {
+				uint16_t width = GetWidth();
+				uint16_t height = GetHeight();
+
+				// We can do a cool trick and skip any mediums and directly have the resized image be written into the RT's image buffer.
+				int resized = stbir_resize_float(imageData, imageWidth, imageHeight, channels * stride * imageWidth, reinterpret_cast<float*>(rtData), width, height, channels * stride * width, channels);
+				if (!resized) {
+					stbi_image_free(imageData);
+					return false;
+				}
+
+				stbi_image_free(imageData);
+			}
+			else {
+				// Resize the RT to fit the image.
+				bool resized = Resize(imageWidth, imageHeight);
+				if (!resized) {
+					stbi_image_free(imageData);
+					return false;
+				}
+
+				memcpy(reinterpret_cast<void*>(GetRawData()), reinterpret_cast<void*>(imageData), stride * imageWidth * imageHeight * channels);
+				stbi_image_free(imageData);
+			}
+		}
+		else {
+			return false;
+		}
+	}
+	else {
+		stbi_uc* imageData = stbi_load(filepath, &imageWidth, &imageHeight, nullptr, channels);
+		if (imageData) {
+			// Check if we require a resize to the RT's dimensions.
+			if (scaleToRT) {
+				uint16_t width = GetWidth();
+				uint16_t height = GetHeight();
+
+				// We can do a cool trick and skip any mediums and directly have the resized image be written into the RT's image buffer.
+				int resized = stbir_resize_uint8(imageData, imageWidth, imageHeight, channels * stride * imageWidth, reinterpret_cast<uint8_t*>(rtData), width, height, channels * stride * width, channels);
+				if (!resized) {
+					stbi_image_free(imageData);
+					return false;
+				}
+
+				stbi_image_free(imageData);
+			}
+			else {
+				// Resize the RT to fit the image.
+				bool resized = Resize(imageWidth, imageHeight);
+				if (!resized) {
+					stbi_image_free(imageData);
+					return false;
+				}
+
+				memcpy(reinterpret_cast<void*>(GetRawData()), reinterpret_cast<void*>(imageData), stride * imageWidth * imageHeight * channels);
+				stbi_image_free(imageData);
+			}
+		}
+		else {
+			return false;
+		}
+	}
+
+	// MIP generation works on any type of buffer.
+	if (generateMips) {
+		GenerateMIPs();
+	}
+
+	return true;
+}
+
+bool RenderTarget::Save(const char* filename, uint8_t mip)
+{
+	int channels = CHANNELS[static_cast<uint8_t>(GetFormat())];
+	if (GetMIPs() <= mip) {
+		return false;
+	}
+
+	fs::path filepath(filename);
+	filepath = filepath.make_preferred();
+
+	fs::path workingDir = fs::current_path();
+
+	workingDir += "/garrysmod/data";
+	workingDir = workingDir.make_preferred();
+	workingDir = workingDir.lexically_normal();
+
+	const bool isFloat = mChannelSize == sizeof(float);
+	std::string extension = isFloat ? "hdr" : "png";
+
+	bool createSubdirectories = filepath.has_parent_path(); // Returns true if the filename is like "renders/output.png"
+
+	if (filepath.has_extension()) {
+		fs::path fileExt = filepath.extension();
+		std::string ext = fileExt.string();
+		ext = ext.substr(1); // Extension returns the period along with the actual extension.
+
+		if (ext == "hdr" || ext == "png" || ext == "jpg" || ext == "bmp") {
+			extension = ext; // Change the default to the requested one
+		}
+		else {
+			// Append the default extension.
+			// Great for things like: "frame.001"
+			filepath += "." + extension;
+		}
+	}
+
+	fs::path finalPath = workingDir / filepath;
+	finalPath = finalPath.lexically_normal(); // Absolute.
+
+	// We can assure that the user did not go out of bounds by checking that the root is equal to the working directory.
+	std::string finalPathString = finalPath.string();
+	std::string workingDirString = workingDir.string();
+
+	std::string root = finalPathString.substr(0, workingDirString.length());
+	if (root != workingDirString) {
+		return false; // User exited the data directory.
+	}
+	
+	if (createSubdirectories) {
+		fs::create_directories(finalPath.parent_path());
+	}
+
+	const char* rawFilepath = finalPath.string().c_str();
+	
+	if (extension == "hdr") {
+		if (!stbi_write_hdr(rawFilepath, GetWidth(), GetHeight(), channels, reinterpret_cast<const float*>(GetRawData(mip)))) {
+			return false;
+		}
+	}
+	else if (extension == "png") {
+		if (!stbi_write_png(rawFilepath, GetWidth(), GetHeight(), channels, reinterpret_cast<const void*>(GetRawData(mip)), mPixelSize * GetWidth())) {
+			return false;
+		}
+	}
+	else if (extension == "jpg") {
+		if (!stbi_write_jpg(rawFilepath, GetWidth(), GetHeight(), channels, reinterpret_cast<const void*>(GetRawData(mip)), 50)) {
+			return false;
+		}
+	}
+	else if (extension == "bmp") {
+		if (!stbi_write_bmp(rawFilepath, GetWidth(), GetHeight(), channels, reinterpret_cast<const void*>(GetRawData(mip)))) {
+			return false;
+		}
+	}
+	else {
+		return false;
+	}
+
+	return true;
 }
 
 void RenderTarget::GenerateMIPs()
