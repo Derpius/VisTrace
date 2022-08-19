@@ -106,7 +106,6 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 	}
 
 	triangles = std::vector<Triangle>();
-	triangleData = std::vector<TriangleData>();
 
 	entities = std::vector<Entity>();
 
@@ -147,17 +146,6 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 	for (size_t triIdx = 0; triIdx < pMap->GetNumTris(); triIdx++) {
 		size_t vi0 = triIdx * 3;
 		size_t vi1 = vi0 + 1, vi2 = vi0 + 2;
-
-		// Construct bvh tri
-		triangles.push_back(Triangle{
-			Vector3{ vertices[vi0].x, vertices[vi0].y, vertices[vi0].z },
-			Vector3{ vertices[vi1].x, vertices[vi1].y, vertices[vi1].z },
-			Vector3{ vertices[vi2].x, vertices[vi2].y, vertices[vi2].z },
-
-			// Backface cull on the world to prevent z fighting on 2 sided water surfaces
-			// (given you shouldnt be refracting through any other brushes this should be fine)
-			true
-		});
 
 		// Construct tri data
 		TriangleData triData{};
@@ -288,7 +276,17 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 		}
 		triData.submatIdx = submatIds[strPath];
 
-		triangleData.push_back(triData);
+		// Construct bvh tri
+		triangles.push_back(Triangle(
+			Vector3{ vertices[vi0].x, vertices[vi0].y, vertices[vi0].z },
+			Vector3{ vertices[vi1].x, vertices[vi1].y, vertices[vi1].z },
+			Vector3{ vertices[vi2].x, vertices[vi2].y, vertices[vi2].z },
+			triData,
+
+			// Backface cull on the world to prevent z fighting on 2 sided water surfaces
+			// (given you shouldnt be refracting through any other brushes this should be fine)
+			true
+		));
 	}
 
 	entities.push_back(world);
@@ -417,20 +415,20 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 					Triangle builtTri(
 						Vector3{ tri[0].x, tri[0].y, tri[0].z },
 						Vector3{ tri[1].x, tri[1].y, tri[1].z },
-						Vector3{ tri[2].x, tri[2].y, tri[2].z }
+						Vector3{ tri[2].x, tri[2].y, tri[2].z },
+						triData
 					);
 
 					// Check if triangle is invalid and remove vertices if so
-					glm::vec3 geometricNormal{ builtTri.n[0], builtTri.n[1], builtTri.n[2] };
+					glm::vec3 geometricNormal{ builtTri.nNorm[0], builtTri.nNorm[1], builtTri.nNorm[2] };
 					if (!validVector(geometricNormal)) continue;
 
-
-					glm::vec3& n0 = triData.normals[0], & n1 = triData.normals[1], & n2 = triData.normals[2];
+					glm::vec3& n0 = builtTri.data.normals[0], & n1 = builtTri.data.normals[1], & n2 = builtTri.data.normals[2];
 					if (!validVector(n0) || glm::dot(n0, geometricNormal) < 0.01f) n0 = geometricNormal;
 					if (!validVector(n1) || glm::dot(n1, geometricNormal) < 0.01f) n1 = geometricNormal;
 					if (!validVector(n2) || glm::dot(n2, geometricNormal) < 0.01f) n2 = geometricNormal;
 
-					glm::vec3& t0 = triData.tangents[0], & t1 = triData.tangents[1], & t2 = triData.tangents[2];
+					glm::vec3& t0 = builtTri.data.tangents[0], & t1 = builtTri.data.tangents[1], & t2 = builtTri.data.tangents[2];
 					if (
 						!(
 							validVector(t0) &&
@@ -444,7 +442,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 						glm::vec3 edge1 = tri[1] - tri[0];
 						glm::vec3 edge2 = tri[2] - tri[0];
 
-						glm::vec2 uv0 = triData.uvs[0], uv1 = triData.uvs[1], uv2 = triData.uvs[2];
+						glm::vec2 uv0 = builtTri.data.uvs[0], uv1 = builtTri.data.uvs[1], uv2 = builtTri.data.uvs[2];
 						glm::vec2 dUV1 = uv1 - uv0;
 						glm::vec2 dUV2 = uv2 - uv0;
 
@@ -458,7 +456,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 						if (!validVector(geometricTangent)) {
 							// Set the tangent to one of the edges as a guess on the plane (this will only be reached if the uvs overlap)
 							geometricTangent = glm::normalize(edge1);
-							triData.ignoreNormalMap = true;
+							builtTri.data.ignoreNormalMap = true;
 						}
 
 						// Assign orthogonalised geometric tangent to vertices
@@ -467,13 +465,12 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 						t2 = glm::normalize(geometricTangent - n2 * glm::dot(geometricTangent, n2));
 					}
 
-					glm::vec3& b0 = triData.binormals[0], & b1 = triData.binormals[1], & b2 = triData.binormals[2];
+					glm::vec3& b0 = builtTri.data.binormals[0], & b1 = builtTri.data.binormals[1], & b2 = builtTri.data.binormals[2];
 					if (!validVector(b0)) b0 = -glm::cross(n0, t0);
 					if (!validVector(b1)) b1 = -glm::cross(n1, t1);
 					if (!validVector(b2)) b2 = -glm::cross(n2, t2);
 
 					triangles.push_back(builtTri);
-					triangleData.push_back(triData);
 				}
 			}
 
@@ -548,7 +545,6 @@ AccelStruct::AccelStruct()
 	mAccelBuilt = false;
 
 	mTriangles = std::vector<Triangle>();
-	mTriangleData = std::vector<TriangleData>();
 
 	mEntities = std::vector<Entity>();
 
@@ -584,7 +580,6 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 	}
 
 	mTriangles.erase(mTriangles.begin(), mTriangles.end());
-	mTriangleData.erase(mTriangleData.begin(), mTriangleData.end());
 
 	mEntities.erase(mEntities.begin(), mEntities.end());
 
@@ -595,8 +590,6 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 
 	if (pWorld != nullptr) {
 		mTriangles = pWorld->triangles;
-		mTriangleData = pWorld->triangleData;
-
 		mEntities = pWorld->entities;
 
 		for (auto& [path, texture] : pWorld->textureCache) { // Copy images into accelstruct
@@ -821,20 +814,21 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 					Triangle builtTri(
 						Vector3{ tri[0].x, tri[0].y, tri[0].z },
 						Vector3{ tri[1].x, tri[1].y, tri[1].z },
-						Vector3{ tri[2].x, tri[2].y, tri[2].z }
+						Vector3{ tri[2].x, tri[2].y, tri[2].z },
+						triData
 					);
 
 					// Check if triangle is invalid and remove vertices if so
-					glm::vec3 geometricNormal{ builtTri.n[0], builtTri.n[1], builtTri.n[2] };
+					glm::vec3 geometricNormal{ builtTri.nNorm[0], builtTri.nNorm[1], builtTri.nNorm[2] };
 					if (!validVector(geometricNormal)) continue;
 
 
-					glm::vec3& n0 = triData.normals[0], & n1 = triData.normals[1], & n2 = triData.normals[2];
+					glm::vec3& n0 = builtTri.data.normals[0], & n1 = builtTri.data.normals[1], & n2 = builtTri.data.normals[2];
 					if (!validVector(n0) || glm::dot(n0, geometricNormal) < 0.01f) n0 = geometricNormal;
 					if (!validVector(n1) || glm::dot(n1, geometricNormal) < 0.01f) n1 = geometricNormal;
 					if (!validVector(n2) || glm::dot(n2, geometricNormal) < 0.01f) n2 = geometricNormal;
 
-					glm::vec3& t0 = triData.tangents[0], & t1 = triData.tangents[1], & t2 = triData.tangents[2];
+					glm::vec3& t0 = builtTri.data.tangents[0], & t1 = builtTri.data.tangents[1], & t2 = builtTri.data.tangents[2];
 					if (
 						!(
 							validVector(t0) &&
@@ -848,7 +842,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 						glm::vec3 edge1 = tri[1] - tri[0];
 						glm::vec3 edge2 = tri[2] - tri[0];
 
-						glm::vec2 uv0 = triData.uvs[0], uv1 = triData.uvs[1], uv2 = triData.uvs[2];
+						glm::vec2 uv0 = builtTri.data.uvs[0], uv1 = builtTri.data.uvs[1], uv2 = builtTri.data.uvs[2];
 						glm::vec2 dUV1 = uv1 - uv0;
 						glm::vec2 dUV2 = uv2 - uv0;
 
@@ -862,7 +856,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 						if (!validVector(geometricTangent)) {
 							// Set the tangent to one of the edges as a guess on the plane (this will only be reached if the uvs overlap)
 							geometricTangent = glm::normalize(edge1);
-							triData.ignoreNormalMap = true;
+							builtTri.data.ignoreNormalMap = true;
 						}
 
 						// Assign orthogonalised geometric tangent to vertices
@@ -871,13 +865,12 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 						t2 = glm::normalize(geometricTangent - n2 * glm::dot(geometricTangent, n2));
 					}
 
-					glm::vec3& b0 = triData.binormals[0], & b1 = triData.binormals[1], & b2 = triData.binormals[2];
+					glm::vec3& b0 = builtTri.data.binormals[0], & b1 = builtTri.data.binormals[1], & b2 = builtTri.data.binormals[2];
 					if (!validVector(b0)) b0 = -glm::cross(n0, t0);
 					if (!validVector(b1)) b1 = -glm::cross(n1, t1);
 					if (!validVector(b2)) b2 = -glm::cross(n2, t2);
 
 					mTriangles.push_back(builtTri);
-					mTriangleData.push_back(triData);
 				}
 			}
 
@@ -1013,13 +1006,14 @@ int AccelStruct::Traverse(ILuaBase* LUA)
 		tMin,
 		tMax
 	);
+	ray.pAccel = this;
 
 	// Perform BVH traversal for mesh hit
 	auto hit = mpTraverser->traverse(ray, *mpIntersector);
 	if (hit) {
 		auto intersection = hit->intersection;
 		const Triangle& tri = mTriangles[hit->primitive_index];
-		const TriangleData& triData = mTriangleData[hit->primitive_index];
+		const TriangleData& triData = tri.data;
 		const Entity& ent = mEntities[triData.entIdx];
 		const Material& mat = mMaterials[ent.materials[triData.submatIdx]];
 
@@ -1036,4 +1030,9 @@ int AccelStruct::Traverse(ILuaBase* LUA)
 	}
 
 	return 0;
+}
+
+Material AccelStruct::GetMaterial(const TriangleData& triData) const
+{
+	return mMaterials[mEntities[triData.entIdx].materials[triData.submatIdx]];
 }

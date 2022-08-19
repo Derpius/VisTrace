@@ -1,24 +1,10 @@
 #include "TraceResult.h"
+#include "Utils.h"
 
 #include "glm/gtx/compatibility.hpp"
 using namespace glm;
 
 int TraceResult::id = -1;
-
-inline vec2 TransformTexcoord(const vec2& texcoord, const mat2x4& transform, const float scale)
-{
-	vec2 transformed;
-	transformed.x = dot(vec4(texcoord, 1.f, 1.f), transform[0]);
-	transformed.y = dot(vec4(texcoord, 1.f, 1.f), transform[1]);
-
-	return transformed;
-}
-
-// Ray Tracing Gems
-inline float TriUVInfoToTexLOD(const VTFTexture* pTex, vec2 uvInfo)
-{
-	return uvInfo.x + 0.5f * log2(pTex->GetWidth() * pTex->GetHeight() * uvInfo.y);
-}
 
 TraceResult::TraceResult(
 	const vec3& direction, float distance,
@@ -28,7 +14,7 @@ TraceResult::TraceResult(
 	const Entity& ent, const Material& mat
 ) :
 	distance(distance),
-	coneWidth(coneWidth), coneAngle(coneAngle), mipOverride(coneWidth < 0.f || coneAngle <= 0.f),
+	coneWidth(coneWidth), coneAngle(coneAngle), lodOffset(tri.lod), mipOverride(coneWidth < 0.f || coneAngle <= 0.f),
 	materialFlags(mat.flags), surfaceFlags(mat.surfFlags), maskedBlending(mat.maskedBlending),
 	baseTexture(mat.baseTexture), baseTexMat(mat.baseTexMat), mrao(mat.mrao),
 	baseTexture2(mat.baseTexture2), baseTexMat2(mat.baseTexMat2), mrao2(mat.mrao2),
@@ -57,8 +43,7 @@ TraceResult::TraceResult(
 	v[2] = vec3(p2[0], p2[1], p2[2]);
 
 	uvw = vec3(uv, 1.f - uv[0] - uv[1]);
-	geometricNormalWorld = vec3(tri.n[0], tri.n[1], tri.n[2]);
-	geometricNormal = normalize(geometricNormalWorld);
+	geometricNormal = vec3(tri.nNorm[0], tri.nNorm[1], tri.nNorm[2]);
 
 	blendFactor = uvw.z * triData.alphas[0] + uvw.x * triData.alphas[1] + uvw.y * triData.alphas[2];
 	texUV = uvw[2] * vUV[0] + uvw[0] * vUV[1] + uvw[1] * vUV[2];
@@ -85,15 +70,10 @@ void TraceResult::CalcFootprint()
 	// Propagate cone given input parameters from starting width and angle to hit point
 	coneWidth = coneAngle * distance + coneWidth;
 
-	vec2 uv10 = vUV[1] - vUV[0];
-	vec2 uv20 = vUV[2] - vUV[0];
-	float triUVArea = abs(uv10.x * uv20.y - uv20.x * uv10.y);
-
-	float triLoDOffset = 0.5f * log2(triUVArea / length(geometricNormalWorld));
 	float normalTerm = dot(wo, geometricNormal);
 
 	textureLodInfo = vec2(
-		triLoDOffset,
+		lodOffset,
 		(coneWidth * coneWidth) / (normalTerm * normalTerm)
 	);
 	textureLodSet = true;
