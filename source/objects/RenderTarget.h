@@ -57,7 +57,7 @@ public:
 	VisTrace::Pixel GetPixel(uint16_t x, uint16_t y, uint8_t mip = 0) const;
 	void SetPixel(uint16_t x, uint16_t y, const VisTrace::Pixel& pixel, uint8_t mip = 0);
 
-	bool Load(const char* filepath, bool generateMips = true, bool scaleToRT = false);
+	bool Load(const char* filepath, bool generateMips = false);
 	bool Save(const char* filename, uint8_t mip = 0);
 
 	void GenerateMIPs();

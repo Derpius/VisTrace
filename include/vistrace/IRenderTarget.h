@@ -62,7 +62,7 @@ namespace VisTrace
 		virtual Pixel GetPixel(uint16_t x, uint16_t y, uint8_t mip = 0) const = 0;
 		virtual void SetPixel(uint16_t x, uint16_t y, const Pixel& pixel, uint8_t mip = 0) = 0;
 
-		virtual bool Load(const char* filepath, bool generateMips = true, bool scaleToRT = false) = 0;
+		virtual bool Load(const char* filepath, bool generateMips = false) = 0;
 		virtual bool Save(const char* filename, uint8_t mip = 0) = 0;
 
 		virtual void GenerateMIPs() = 0;

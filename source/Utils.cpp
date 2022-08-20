@@ -85,6 +85,14 @@ std::string GetMaterialString(ILuaBase* LUA, const std::string& key)
 	return val;
 }
 
+uint8_t MipsFromDimensions(uint16_t width, uint16_t height) {
+	int widthMips = ceilf(log2(static_cast<float>(width)));
+	int heightMips = ceilf(log2(static_cast<float>(height)));
+
+	float floatMips = fmaxf(widthMips, heightMips) + 1.f;
+	return static_cast<uint8_t>(floatMips);
+}
+
 bool ReadTexture(const std::string& path, VTFTexture** ppTextureOut)
 {
 	std::string texturePath = "materials/" + path + ".vtf";
