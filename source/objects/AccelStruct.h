@@ -109,7 +109,7 @@ struct Material
 	VTFTexture* detail = nullptr;
 	glm::mat2x4 detailMat = glm::identity<glm::mat2x4>();
 	float detailScale = 4.f;
-	float detailBlendFactor = 0.f;
+	float detailBlendFactor = 1.f;
 	DetailBlendMode detailBlendMode = DetailBlendMode::DecalModulate;
 	glm::vec3 detailTint = glm::vec3(1.f);
 	bool detailAlphaMaskBaseTexture = false;
