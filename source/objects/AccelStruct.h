@@ -69,9 +69,25 @@ struct TriangleData
 	bool ignoreNormalMap;
 };
 
+enum class DetailBlendMode : uint8_t
+{
+	DecalModulate,
+	Additive,
+	TranslucentDetail,
+	BlendFactorFade,
+	TranslucentBase,
+	UnlitAdditive,
+	UnlitAdditiveThresholdFade,
+	TwoPatternDecalModulate,
+	Multiply,
+	BaseMaskDetailAlpha,
+	SSBump,
+	SSBumpAlbedo
+};
+
 struct Material
 {
-	glm::vec4 colour = glm::vec4(1, 1, 1, 1);
+	glm::vec4 colour = glm::vec4(1.f);
 	VTFTexture* baseTexture = nullptr;
 	glm::mat2x4 baseTexMat = glm::identity<glm::mat2x4>();
 	VTFTexture* normalMap = nullptr;
@@ -88,7 +104,15 @@ struct Material
 
 	VTFTexture* blendTexture = nullptr;
 	glm::mat2x4 blendTexMat = glm::identity<glm::mat2x4>();
-	bool maskedBlending;
+	bool maskedBlending = false;
+
+	VTFTexture* detail = nullptr;
+	glm::mat2x4 detailMat = glm::identity<glm::mat2x4>();
+	float detailScale = 4.f;
+	float detailBlendFactor = 0.f;
+	DetailBlendMode detailBlendMode = DetailBlendMode::DecalModulate;
+	glm::vec3 detailTint = glm::vec3(1.f);
+	bool detailAlphaMaskBaseTexture = false;
 
 	float texScale = 1.f;
 
@@ -320,6 +344,8 @@ public:
 class AccelStruct
 {
 private:
+	const World* mpWorld;
+
 	bool mAccelBuilt;
 	BVH mAccel;
 	Intersector* mpIntersector;

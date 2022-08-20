@@ -6,6 +6,40 @@ using namespace glm;
 
 int TraceResult::id = -1;
 
+vec4 TextureCombine(
+	vec4 baseColour, vec4 detailColour,
+	DetailBlendMode blendMode, float blendFactor
+)
+{
+	switch (blendMode) {
+	case DetailBlendMode::DecalModulate: {
+		return baseColour * vec4(lerp(vec3(1.f), 2.f * vec3(detailColour), blendFactor), 1.f);
+	} case DetailBlendMode::UnlitAdditive: // Given the lighting is entirely user implemented, these just fall through to standard additive
+	case DetailBlendMode::UnlitAdditiveThresholdFade:
+	case DetailBlendMode::Additive: {
+		return baseColour + vec4(blendFactor * vec3(detailColour), 0.f);
+	} case DetailBlendMode::TranslucentDetail: {
+		float blend = blendFactor * detailColour.a;
+		return vec4(lerp(vec3(baseColour), vec3(detailColour), blend), baseColour.a);
+	} case DetailBlendMode::BlendFactorFade: {
+		return lerp(baseColour, detailColour, blendFactor);
+	} case DetailBlendMode::TranslucentBase: {
+		float blend = blendFactor * (1.f - baseColour.a);
+		return vec4(lerp(vec3(baseColour), vec3(detailColour), blend), detailColour.a);
+	} case DetailBlendMode::TwoPatternDecalModulate: {
+		float dc = lerp(detailColour.r, detailColour.a, baseColour.a);
+		return baseColour * vec4(vec3(lerp(1.f, 2.f * dc, blendFactor)), 1.f);
+	} case DetailBlendMode::Multiply: {
+		return lerp(baseColour, baseColour * detailColour, blendFactor);
+	} case DetailBlendMode::BaseMaskDetailAlpha: {
+		return vec4(vec3(baseColour), lerp(baseColour.a, baseColour.a * detailColour.a, blendFactor));
+	} case DetailBlendMode::SSBump: // Self shadowing bump maps not implemented (and dont seem to be widely used anyway)
+	case DetailBlendMode::SSBumpAlbedo:
+	default:
+		return baseColour;
+	}
+}
+
 TraceResult::TraceResult(
 	const vec3& direction, float distance,
 	float coneWidth, float coneAngle,
@@ -19,6 +53,10 @@ TraceResult::TraceResult(
 	baseTexture(mat.baseTexture), baseTexMat(mat.baseTexMat), mrao(mat.mrao),
 	baseTexture2(mat.baseTexture2), baseTexMat2(mat.baseTexMat2), mrao2(mat.mrao2),
 	blendTexture(mat.blendTexture), blendTexMat(mat.blendTexMat),
+	detailTexture(mat.detail), detailTexMat(mat.detailMat),
+	detailScale(mat.detailScale), detailBlendFactor(mat.detailBlendFactor),
+	detailBlendMode(mat.detailBlendMode), detailTint(mat.detailTint),
+	detailAlphaMaskBaseTexture(mat.detailAlphaMaskBaseTexture),
 	texScale(mat.texScale)
 {
 	if (!triData.ignoreNormalMap) {
@@ -190,6 +228,19 @@ void TraceResult::CalcShadingData()
 		vec4 colour2(pixelColour.r, pixelColour.g, pixelColour.b, pixelColour.a);
 
 		colour = lerp(colour, colour2, blendFactor);
+	}
+
+	if (detailTexture != nullptr) {
+		vec2 detailUVs = TransformTexcoord(texUV, detailTexMat, detailScale);
+		VTFPixel detailColour = detailTexture->Sample(
+			detailUVs.x, detailUVs.y,
+			mipOverride ? 0 : TriUVInfoToTexLOD(detailTexture, textureLodInfo)
+		);
+
+		colour = clamp(TextureCombine(
+			colour, vec4(detailColour.r, detailColour.g, detailColour.b, detailColour.a),
+			detailBlendMode, detailBlendFactor
+		), 0.f, 1.f);
 	}
 
 	albedo *= vec3(colour.r, colour.g, colour.b);

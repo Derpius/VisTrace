@@ -74,7 +74,7 @@ VTFTexture* CacheTexture(
 
 	if (!path.empty()) {
 		VTFTexture* pTexture;
-		if (readTexture(path, &pTexture)) {
+		if (ReadTexture(path, &pTexture)) {
 			cache.emplace(path, pTexture);
 			return pTexture;
 		};
@@ -115,14 +115,14 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 	{
 		VTFTexture* pTexture;
-		if (!readTexture(MISSING_TEXTURE, &pTexture)) {
+		if (!ReadTexture(MISSING_TEXTURE, &pTexture)) {
 			delete pMap;
 			pMap = nullptr;
 			return;
 		}
 		textureCache.emplace(MISSING_TEXTURE, pTexture);
 
-		if (readTexture(WATER_BASE_TEXTURE, &pTexture)) {
+		if (ReadTexture(WATER_BASE_TEXTURE, &pTexture)) {
 			textureCache.emplace(WATER_BASE_TEXTURE, pTexture);
 		}
 	}
@@ -203,13 +203,15 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				if (LUA->IsType(-1, Type::Number)) mat.maskedBlending = LUA->GetNumber() != 0;
 				LUA->Pop();
 
-				std::string baseTexture = getMaterialString(LUA, "$basetexture");
-				std::string normalMap = getMaterialString(LUA, "$bumpmap");
+				std::string baseTexture = GetMaterialString(LUA, "$basetexture");
+				std::string normalMap = GetMaterialString(LUA, "$bumpmap");
 
-				std::string baseTexture2 = getMaterialString(LUA, "$basetexture2");
-				std::string normalMap2 = getMaterialString(LUA, "$bumpmap2");
+				std::string baseTexture2 = GetMaterialString(LUA, "$basetexture2");
+				std::string normalMap2 = GetMaterialString(LUA, "$bumpmap2");
 
-				std::string blendTexture = getMaterialString(LUA, "$blendmodulatetexture");
+				std::string blendTexture = GetMaterialString(LUA, "$blendmodulatetexture");
+
+				std::string detailTexture = GetMaterialString(LUA, "$detail");
 
 				mat.baseTexture = CacheTexture(baseTexture, textureCache, textureCache[MISSING_TEXTURE]);
 				mat.normalMap = CacheTexture(normalMap, textureCache);
@@ -220,6 +222,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				if (!baseTexture2.empty()) mat.mrao2 = CacheTexture("vistrace/pbr/" + baseTexture2 + "_mrao", textureCache);
 
 				mat.blendTexture = CacheTexture(blendTexture, textureCache);
+				mat.detail = CacheTexture(detailTexture, textureCache);
 
 				const VMatrix* pMat = VMatrix::FromMaterial(LUA, "$basetexturetransform");
 				if (pMat != nullptr) mat.baseTexMat = pMat->To2x4();
@@ -233,9 +236,50 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 				pMat = VMatrix::FromMaterial(LUA, "$blendmasktransform");
 				if (pMat != nullptr) mat.blendTexMat = pMat->To2x4();
+
+				pMat = VMatrix::FromMaterial(LUA, "$detailtexturetransform");
+				if (pMat != nullptr) mat.detailMat = pMat->To2x4();
+
+				LUA->GetField(-1, "GetFloat");
+				LUA->Push(-2);
+				LUA->PushString("$detailscale");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Number)) mat.detailScale = LUA->GetNumber();
+				LUA->Pop();
+
+				LUA->GetField(-1, "GetFloat");
+				LUA->Push(-2);
+				LUA->PushString("$detailblendfactor");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Number)) mat.detailBlendFactor = LUA->GetNumber();
+				LUA->Pop();
+
+				LUA->GetField(-1, "GetInt");
+				LUA->Push(-2);
+				LUA->PushString("$detailblendmode");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Number)) mat.detailBlendMode = static_cast<DetailBlendMode>(LUA->GetNumber());
+				LUA->Pop();
+
+				LUA->GetField(-1, "GetVector");
+				LUA->Push(-2);
+				LUA->PushString("$detailtint");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Vector)) {
+					Vector v = LUA->GetVector();
+					mat.detailTint = glm::vec4(v.x, v.y, v.z, 1);
+				}
+				LUA->Pop();
+
+				LUA->GetField(-1, "GetInt");
+				LUA->Push(-2);
+				LUA->PushString("$detail_alpha_mask_base_texture");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Number)) mat.detailAlphaMaskBaseTexture = LUA->GetNumber() != 0;
+				LUA->Pop();
 			} else {
 				mat.water = true;
-				std::string normalMap = getMaterialString(LUA, "$normalmap");
+				std::string normalMap = GetMaterialString(LUA, "$normalmap");
 
 				LUA->GetField(-1, "GetVector");
 				LUA->Push(-2);
@@ -249,7 +293,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 				// Not sure if any gmod materials will even implement water base textures
 				// Or if it's even available in gmod's engine version, but here just in case
-				std::string baseTexture = getMaterialString(LUA, "$basetexture");
+				std::string baseTexture = GetMaterialString(LUA, "$basetexture");
 
 				mat.baseTexture = CacheTexture(
 					baseTexture, textureCache,
@@ -423,19 +467,19 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 					// Check if triangle is invalid and remove vertices if so
 					glm::vec3 geometricNormal{ builtTri.nNorm[0], builtTri.nNorm[1], builtTri.nNorm[2] };
-					if (!validVector(geometricNormal)) continue;
+					if (!ValidVector(geometricNormal)) continue;
 
 					glm::vec3& n0 = builtTri.data.normals[0], & n1 = builtTri.data.normals[1], & n2 = builtTri.data.normals[2];
-					if (!validVector(n0) || glm::dot(n0, geometricNormal) < 0.01f) n0 = geometricNormal;
-					if (!validVector(n1) || glm::dot(n1, geometricNormal) < 0.01f) n1 = geometricNormal;
-					if (!validVector(n2) || glm::dot(n2, geometricNormal) < 0.01f) n2 = geometricNormal;
+					if (!ValidVector(n0) || glm::dot(n0, geometricNormal) < 0.01f) n0 = geometricNormal;
+					if (!ValidVector(n1) || glm::dot(n1, geometricNormal) < 0.01f) n1 = geometricNormal;
+					if (!ValidVector(n2) || glm::dot(n2, geometricNormal) < 0.01f) n2 = geometricNormal;
 
 					glm::vec3& t0 = builtTri.data.tangents[0], & t1 = builtTri.data.tangents[1], & t2 = builtTri.data.tangents[2];
 					if (
 						!(
-							validVector(t0) &&
-							validVector(t1) &&
-							validVector(t2)
+							ValidVector(t0) &&
+							ValidVector(t1) &&
+							ValidVector(t2)
 							) ||
 						fabsf(glm::dot(t0, n0)) > .9f ||
 						fabsf(glm::dot(t1, n1)) > .9f ||
@@ -455,7 +499,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 							f * (dUV2.y * edge1.y - dUV1.y * edge2.y),
 							f * (dUV2.y * edge1.z - dUV1.y * edge2.z)
 						};
-						if (!validVector(geometricTangent)) {
+						if (!ValidVector(geometricTangent)) {
 							// Set the tangent to one of the edges as a guess on the plane (this will only be reached if the uvs overlap)
 							geometricTangent = glm::normalize(edge1);
 							builtTri.data.ignoreNormalMap = true;
@@ -468,9 +512,9 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 					}
 
 					glm::vec3& b0 = builtTri.data.binormals[0], & b1 = builtTri.data.binormals[1], & b2 = builtTri.data.binormals[2];
-					if (!validVector(b0)) b0 = -glm::cross(n0, t0);
-					if (!validVector(b1)) b1 = -glm::cross(n1, t1);
-					if (!validVector(b2)) b2 = -glm::cross(n2, t2);
+					if (!ValidVector(b0)) b0 = -glm::cross(n0, t0);
+					if (!ValidVector(b1)) b1 = -glm::cross(n1, t1);
+					if (!ValidVector(b2)) b2 = -glm::cross(n2, t2);
 
 					triangles.push_back(builtTri);
 				}
@@ -494,17 +538,61 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				Material mat{};
 				mat.maskedBlending = false;
 
-				std::string baseTexture = getMaterialString(LUA, "$basetexture");
-				std::string normalMap = getMaterialString(LUA, "$bumpmap");
+				std::string baseTexture = GetMaterialString(LUA, "$basetexture");
+				std::string normalMap = GetMaterialString(LUA, "$bumpmap");
+				std::string detailTexture = GetMaterialString(LUA, "$detail");
 
 				mat.baseTexture = CacheTexture(baseTexture, textureCache, textureCache[MISSING_TEXTURE]);
 				mat.normalMap = CacheTexture(normalMap, textureCache);
+				mat.detail = CacheTexture(detailTexture, textureCache);
 				if (!baseTexture.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + baseTexture + "_mrao", textureCache);
 
 				const VMatrix* pMat = VMatrix::FromMaterial(LUA, "$basetexturetransform");
 				if (pMat != nullptr) mat.baseTexMat = pMat->To2x4();
+
 				pMat = VMatrix::FromMaterial(LUA, "$bumptransform");
 				if (pMat != nullptr) mat.normalMapMat = pMat->To2x4();
+
+				pMat = VMatrix::FromMaterial(LUA, "$detailtexturetransform");
+				if (pMat != nullptr) mat.detailMat = pMat->To2x4();
+
+				LUA->GetField(-1, "GetFloat");
+				LUA->Push(-2);
+				LUA->PushString("$detailscale");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Number)) mat.detailScale = LUA->GetNumber();
+				LUA->Pop();
+
+				LUA->GetField(-1, "GetFloat");
+				LUA->Push(-2);
+				LUA->PushString("$detailblendfactor");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Number)) mat.detailBlendFactor = LUA->GetNumber();
+				LUA->Pop();
+
+				LUA->GetField(-1, "GetInt");
+				LUA->Push(-2);
+				LUA->PushString("$detailblendmode");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Number)) mat.detailBlendMode = static_cast<DetailBlendMode>(LUA->GetNumber());
+				LUA->Pop();
+
+				LUA->GetField(-1, "GetVector");
+				LUA->Push(-2);
+				LUA->PushString("$detailtint");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Vector)) {
+					Vector v = LUA->GetVector();
+					mat.detailTint = glm::vec4(v.x, v.y, v.z, 1);
+				}
+				LUA->Pop();
+
+				LUA->GetField(-1, "GetInt");
+				LUA->Push(-2);
+				LUA->PushString("$detail_alpha_mask_base_texture");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Number)) mat.detailAlphaMaskBaseTexture = LUA->GetNumber() != 0;
+				LUA->Pop();
 
 				LUA->GetField(-1, "GetInt"); // _G util meshes IMaterial GetInt
 				LUA->Push(-2); // _G util meshes IMaterial GetInt IMaterial
@@ -562,13 +650,16 @@ AccelStruct::~AccelStruct()
 		delete mpIntersector;
 		delete mpTraverser;
 	}
-	for (auto& [key, element] : mTextureCache) {
-		delete element;
+	for (const auto& [key, val] : mTextureCache) {
+		if (mpWorld != nullptr && mpWorld->textureCache.find(key) != mpWorld->textureCache.end()) continue;
+		delete val;
 	}
 }
 
 void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 {
+	mpWorld = pWorld;
+
 	// Delete accel
 	if (mAccelBuilt) {
 		mAccelBuilt = false;
@@ -577,8 +668,9 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 	}
 
 	// Redefine containers
-	for (auto& [key, element] : mTextureCache) {
-		delete element;
+	for (const auto& [key, val] : mTextureCache) {
+		if (mpWorld != nullptr && mpWorld->textureCache.find(key) != mpWorld->textureCache.end()) continue;
+		delete val;
 	}
 
 	mTriangles.erase(mTriangles.begin(), mTriangles.end());
@@ -590,19 +682,15 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 	mMaterialIds.erase(mMaterialIds.begin(), mMaterialIds.end());
 	mMaterials.erase(mMaterials.begin(), mMaterials.end());
 
-	if (pWorld != nullptr) {
-		mTriangles = pWorld->triangles;
-		mEntities = pWorld->entities;
-
-		for (auto& [path, texture] : pWorld->textureCache) { // Copy images into accelstruct
-			mTextureCache.emplace(path, new VTFTexture(*texture));
-		}
-
-		mMaterials = pWorld->materials;
+	if (mpWorld != nullptr) {
+		mTriangles = mpWorld->triangles;
+		mEntities = mpWorld->entities;
+		mTextureCache = mpWorld->textureCache;
+		mMaterials = mpWorld->materials;
 	} else {
 		{
 			VTFTexture* pTexture;
-			if (!readTexture(MISSING_TEXTURE, &pTexture)) {
+			if (!ReadTexture(MISSING_TEXTURE, &pTexture)) {
 				LUA->ThrowError("Failed to read missing texture");
 			}
 			mTextureCache.emplace(MISSING_TEXTURE, pTexture);
@@ -822,20 +910,20 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 
 					// Check if triangle is invalid and remove vertices if so
 					glm::vec3 geometricNormal{ builtTri.nNorm[0], builtTri.nNorm[1], builtTri.nNorm[2] };
-					if (!validVector(geometricNormal)) continue;
+					if (!ValidVector(geometricNormal)) continue;
 
 
 					glm::vec3& n0 = builtTri.data.normals[0], & n1 = builtTri.data.normals[1], & n2 = builtTri.data.normals[2];
-					if (!validVector(n0) || glm::dot(n0, geometricNormal) < 0.01f) n0 = geometricNormal;
-					if (!validVector(n1) || glm::dot(n1, geometricNormal) < 0.01f) n1 = geometricNormal;
-					if (!validVector(n2) || glm::dot(n2, geometricNormal) < 0.01f) n2 = geometricNormal;
+					if (!ValidVector(n0) || glm::dot(n0, geometricNormal) < 0.01f) n0 = geometricNormal;
+					if (!ValidVector(n1) || glm::dot(n1, geometricNormal) < 0.01f) n1 = geometricNormal;
+					if (!ValidVector(n2) || glm::dot(n2, geometricNormal) < 0.01f) n2 = geometricNormal;
 
 					glm::vec3& t0 = builtTri.data.tangents[0], & t1 = builtTri.data.tangents[1], & t2 = builtTri.data.tangents[2];
 					if (
 						!(
-							validVector(t0) &&
-							validVector(t1) &&
-							validVector(t2)
+							ValidVector(t0) &&
+							ValidVector(t1) &&
+							ValidVector(t2)
 						) ||
 						fabsf(glm::dot(t0, n0)) > .9f ||
 						fabsf(glm::dot(t1, n1)) > .9f ||
@@ -855,7 +943,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 							f * (dUV2.y * edge1.y - dUV1.y * edge2.y),
 							f * (dUV2.y * edge1.z - dUV1.y * edge2.z)
 						};
-						if (!validVector(geometricTangent)) {
+						if (!ValidVector(geometricTangent)) {
 							// Set the tangent to one of the edges as a guess on the plane (this will only be reached if the uvs overlap)
 							geometricTangent = glm::normalize(edge1);
 							builtTri.data.ignoreNormalMap = true;
@@ -868,9 +956,9 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 					}
 
 					glm::vec3& b0 = builtTri.data.binormals[0], & b1 = builtTri.data.binormals[1], & b2 = builtTri.data.binormals[2];
-					if (!validVector(b0)) b0 = -glm::cross(n0, t0);
-					if (!validVector(b1)) b1 = -glm::cross(n1, t1);
-					if (!validVector(b2)) b2 = -glm::cross(n2, t2);
+					if (!ValidVector(b0)) b0 = -glm::cross(n0, t0);
+					if (!ValidVector(b1)) b1 = -glm::cross(n1, t1);
+					if (!ValidVector(b2)) b2 = -glm::cross(n2, t2);
 
 					mTriangles.push_back(builtTri);
 				}
@@ -916,8 +1004,8 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				Material mat{};
 				mat.maskedBlending = false;
 
-				std::string baseTexture = getMaterialString(LUA, "$basetexture");
-				std::string normalMap = getMaterialString(LUA, "$bumpmap");
+				std::string baseTexture = GetMaterialString(LUA, "$basetexture");
+				std::string normalMap = GetMaterialString(LUA, "$bumpmap");
 
 				mat.baseTexture = CacheTexture(baseTexture, mTextureCache, mTextureCache[MISSING_TEXTURE]);
 				mat.normalMap = CacheTexture(normalMap, mTextureCache);
