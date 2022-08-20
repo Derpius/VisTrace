@@ -35,7 +35,7 @@ Vector MakeVector(const float x, const float y, const float z);
 /// <param name="LUA">ILuaBase pointer</param>
 /// <param name="key">String key</param>
 /// <returns>Value at the key or an empty string</returns>
-std::string getMaterialString(GarrysMod::Lua::ILuaBase* LUA, const std::string& key);
+std::string GetMaterialString(GarrysMod::Lua::ILuaBase* LUA, const std::string& key);
 
 /// <summary>
 /// VMT flags
@@ -84,27 +84,19 @@ inline MaterialFlags operator&(const MaterialFlags a, const MaterialFlags b)
 }
 
 /// <summary>
-/// Returns true if the flag is present in the flags uint
-/// </summary>
-/// <param name="flags">uint32_t of flags</param>
-/// <param name="flag">Flag to check</param>
-/// <returns>True if the flag is set</returns>
-bool checkMaterialFlag(MaterialFlags flags, const MaterialFlags flag);
-
-/// <summary>
 /// Read a VTF texture at the given path
 /// </summary>
 /// <param name="path">Path to texture (without materials/ and .vtf)</param>
 /// <param name="ppTextureOut">Pointer to pointer to texture for passing the newly read texture out</param>
 /// <returns>Whether the read was successful or not</returns>
-bool readTexture(const std::string& path, VTFTexture** ppTextureOut);
+bool ReadTexture(const std::string& path, VTFTexture** ppTextureOut);
 
 /// <summary>
 /// Check if a vector is valid (not all zero or NaN)
 /// </summary>
 /// <param name="v">Vector to validate</param>
 /// <returns>Whether the vector was valid</returns>
-bool validVector(const glm::vec3& v);
+bool ValidVector(const glm::vec3& v);
 
 /// <summary>
 /// Transforms a texture coordinate with a material transform matrix and scale
@@ -119,7 +111,7 @@ inline glm::vec2 TransformTexcoord(const glm::vec2& texcoord, const glm::mat2x4&
 	transformed.x = glm::dot(glm::vec4(texcoord, 1.f, 1.f), transform[0]);
 	transformed.y = glm::dot(glm::vec4(texcoord, 1.f, 1.f), transform[1]);
 
-	return transformed;
+	return transformed * scale;
 }
 
 // Ray Tracing Gems

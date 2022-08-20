@@ -72,7 +72,7 @@ Vector MakeVector(const float x, const float y, const float z)
 	return v;
 }
 
-std::string getMaterialString(ILuaBase* LUA, const std::string& key)
+std::string GetMaterialString(ILuaBase* LUA, const std::string& key)
 {
 	std::string val = "";
 	LUA->GetField(-1, "GetString");
@@ -85,12 +85,7 @@ std::string getMaterialString(ILuaBase* LUA, const std::string& key)
 	return val;
 }
 
-bool checkMaterialFlag(uint32_t flags, const MaterialFlags flag)
-{
-	return (flags & static_cast<uint32_t>(flag)) == static_cast<uint32_t>(flag);
-}
-
-bool readTexture(const std::string& path, VTFTexture** ppTextureOut)
+bool ReadTexture(const std::string& path, VTFTexture** ppTextureOut)
 {
 	std::string texturePath = "materials/" + path + ".vtf";
 	if (!FileSystem::Exists(texturePath.c_str(), "GAME")) return false;
@@ -115,7 +110,7 @@ bool readTexture(const std::string& path, VTFTexture** ppTextureOut)
 	return true;
 }
 
-bool validVector(const glm::vec3& v)
+bool ValidVector(const glm::vec3& v)
 {
 	return (
 		!(v.x == 0.f && v.y == 0.f && v.z == 0.f) &&

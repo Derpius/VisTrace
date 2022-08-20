@@ -28,6 +28,14 @@ private:
 	VTFTexture* blendTexture = nullptr;
 	glm::mat2x4 blendTexMat;
 
+	VTFTexture* detailTexture = nullptr;
+	glm::mat2x4 detailTexMat;
+	float detailScale = 4.f;
+	float detailBlendFactor = 0.f;
+	DetailBlendMode detailBlendMode = DetailBlendMode::DecalModulate;
+	glm::vec3 detailTint = glm::vec3(1.f);
+	bool detailAlphaMaskBaseTexture = false;
+
 	bool blendFactorSet = false;
 	bool maskedBlending;
 	float blendFactor;
