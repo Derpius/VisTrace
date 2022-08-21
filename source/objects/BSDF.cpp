@@ -45,14 +45,15 @@ inline void CalculateLobePDFs(
 	pReflectionTransmission = (1.f - data.metallic) * data.specularTransmission;
 	pConductive             = data.metallic;
 
-	float normFactor = pReflection + pReflectionTransmission + pConductive;
+	// This was done in falcor as the lobe selection probabilities may not have summed to 1, they should always do here
+	/*float normFactor = pReflection + pReflectionTransmission + pConductive;
 	if (normFactor > 0.f) {
 		normFactor = 1.f / normFactor;
 
 		pReflection             /= normFactor;
 		pReflectionTransmission /= normFactor;
 		pConductive             /= normFactor;
-	}
+	}*/
 }
 
 #pragma region Reflective (Dielectric)
@@ -72,7 +73,7 @@ inline vec3f EvalGlossy(
 	// Delta
 	vec3f upNormal = dot(normal, wo) <= 0 ? -normal : normal;
 	float F = fresnel_dielectric(data.ior, upNormal, wo);
-	return colour * (1.f - F) / pif * yocto::abs(dot(upNormal, wi)) + vec3f{F, F, F} * (reflect(wo, upNormal) == wi ? 1.f : 0.f);
+	return colour * (1.f - F) / pif * max(dot(upNormal, wi), 0.f) + vec3f{F, F, F} * (reflect(wo, upNormal) == wi ? 1.f : 0.f);
 }
 
 inline vec3f SampleGlossy(
@@ -248,11 +249,11 @@ bool SampleBSDF(
 
 		result.pdf = SampleGlossyPDF(dielectricReflection, data, n, wo, wi);
 		if (result.pdf == 0) return false;
-		result.pdf *= pReflection;
 
-		vec3f weight = EvalGlossy(dielectricReflection, data, n, wo, wi) * (1.f - data.metallic) * (1.f - data.specularTransmission) / result.pdf;
+		vec3f weight = EvalGlossy(dielectricReflection, data, n, wo, wi) / result.pdf;
 		result.weight = vec3(weight.x, weight.y, weight.z);
 
+		result.pdf *= pReflection; // Apply this here as the prob is just the weighting of this lobe in the BSDF, so it cancels above
 		if (pConductive > 0) result.pdf += pConductive * SampleReflectivePDF(conductive, data, n, wo, wi);
 		if (pReflectionTransmission > 0) result.pdf += pReflectionTransmission * SampleRefractivePDF(reflectionTransmission, data, n, wo, wi);
 	} else if (lobeSelect < pReflection + pReflectionTransmission) {
@@ -261,11 +262,11 @@ bool SampleBSDF(
 
 		result.pdf = SampleRefractivePDF(reflectionTransmission, data, n, wo, wi);
 		if (result.pdf == 0) return false;
-		result.pdf *= pReflectionTransmission;
 
-		vec3f weight = EvalRefractive(reflectionTransmission, data, n, wo, wi) * (1.f - data.metallic) * data.specularTransmission / result.pdf;
+		vec3f weight = EvalRefractive(reflectionTransmission, data, n, wo, wi) / result.pdf;
 		result.weight = vec3(weight.x, weight.y, weight.z);
 
+		result.pdf *= pReflectionTransmission;
 		if (pReflection > 0) result.pdf += pReflection * SampleGlossyPDF(dielectricReflection, data, n, wo, wi);
 		if (pConductive > 0) result.pdf += pConductive * SampleReflectivePDF(conductive, data, n, wo, wi);
 	} else if (pConductive > 0.f) {
@@ -274,11 +275,11 @@ bool SampleBSDF(
 
 		result.pdf = SampleReflectivePDF(conductive, data, n, wo, wi);
 		if (result.pdf == 0) return false;
-		result.pdf *= pConductive;
 
-		vec3f weight = EvalReflective(conductive, data, n, wo, wi) * data.metallic / result.pdf;
+		vec3f weight = EvalReflective(conductive, data, n, wo, wi) / result.pdf;
 		result.weight = vec3(weight.x, weight.y, weight.z);
 
+		result.pdf *= pConductive;
 		if (pReflection > 0) result.pdf += pReflection * SampleGlossyPDF(dielectricReflection, data, n, wo, wi);
 		if (pReflectionTransmission > 0) result.pdf += pReflectionTransmission * SampleRefractivePDF(reflectionTransmission, data, n, wo, wi);
 	}
