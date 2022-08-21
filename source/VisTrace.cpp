@@ -82,14 +82,7 @@ LUA_FUNCTION(CreateRenderTarget)
 	// Automatically determine correct number of mips to make the Lua API easier
 	uint8_t mips = 1;
 	if (LUA->GetBool(4)) { // false on failure which disables mips
-		while (width > 1 || height > 1) {
-			width >>= 1;
-			height >>= 1;
-			if (width < 1) width = 1;
-			if (height < 1) height = 1;
-
-			mips++;
-		}
+		mips = MipsFromDimensions(width, height);
 	}
 
 	switch (format) {
@@ -134,14 +127,7 @@ LUA_FUNCTION(RT_Resize)
 	// Automatically determine correct number of mips to make the Lua API easier
 	uint8_t mips = 1;
 	if (LUA->GetBool(4)) { // false on failure which disables mips
-		while (width > 1 || height > 1) {
-			width >>= 1;
-			height >>= 1;
-			if (width < 1) width = 1;
-			if (height < 1) height = 1;
-
-			mips++;
-		}
+		mips = MipsFromDimensions(width, height);
 	}
 
 	LUA->PushBool(pRt->Resize(width, height, mips));
@@ -214,6 +200,45 @@ LUA_FUNCTION(RT_SetPixel)
 	if (mip >= pRt->GetMIPs()) LUA->ThrowError("MIP out of range");
 
 	pRt->SetPixel(x, y, Pixel{ rgb.x, rgb.y, rgb.z, a }, mip);
+
+	return 0;
+}
+
+LUA_FUNCTION(RT_Load)
+{
+	LUA->CheckType(1, RenderTarget::id);
+	LUA->CheckType(2, Type::String);
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+
+	const char* filepath = LUA->GetString(2);
+	bool generateMips = LUA->GetBool(3);
+
+	bool loaded = pRt->Load(filepath, generateMips);
+
+	if (!loaded) {
+		LUA->ThrowError("Failed to load the image into the render target!");
+	}
+
+	return 0;
+}
+
+LUA_FUNCTION(RT_Save)
+{
+	LUA->CheckType(1, RenderTarget::id);
+	LUA->CheckType(2, Type::String);
+	
+	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+
+	const char* filepath = LUA->GetString(2);
+	uint8_t mip = LUA->GetNumber(3); // Returns 0 if not specified
+
+	bool wrote = pRt->Save(filepath, mip);
+
+	if (!wrote) {
+		LUA->ThrowError("Failed to write the render target into the image!");
+	}
 
 	return 0;
 }
@@ -1001,6 +1026,11 @@ GMOD_MODULE_OPEN()
 		LUA->SetField(-2, "GetPixel");
 		LUA->PushCFunction(RT_SetPixel);
 		LUA->SetField(-2, "SetPixel");
+
+		LUA->PushCFunction(RT_Load);
+		LUA->SetField(-2, "Load");
+		LUA->PushCFunction(RT_Save);
+		LUA->SetField(-2, "Save");
 
 		LUA->PushCFunction(RT_GenerateMIPs);
 		LUA->SetField(-2, "GenerateMIPs");

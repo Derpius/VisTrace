@@ -5,6 +5,7 @@
 #include "VTFParser.h"
 
 #include <string>
+#include <cstdint>
 #include <vector>
 
 // Print a string to console using Lua
@@ -36,6 +37,14 @@ Vector MakeVector(const float x, const float y, const float z);
 /// <param name="key">String key</param>
 /// <returns>Value at the key or an empty string</returns>
 std::string GetMaterialString(GarrysMod::Lua::ILuaBase* LUA, const std::string& key);
+
+/// <summary>
+/// Calculates the minimum amount of mip levels to generate from the dimensions given.
+/// </summary>
+/// <param name="width">Width of image</param>
+/// <param name="height">Height of image</param>
+/// <returns>Mip level</returns>
+uint8_t MipsFromDimensions(uint16_t width, uint16_t height);
 
 /// <summary>
 /// VMT flags

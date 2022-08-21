@@ -1,10 +1,17 @@
 #include "RenderTarget.h"
+#include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+#include "Utils.h"
 
+#include <filesystem>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <unordered_map>
 
 using namespace VisTrace;
+namespace fs = std::filesystem;
 
 int RenderTarget::id{ -1 };
 
@@ -207,6 +214,197 @@ Pixel RenderTarget::SampleBilinear(float u, float v, uint8_t mip) const
 		(corners[0][0].a * uFractInv + corners[1][0].a * uFract) * vFractInv +
 		(corners[0][1].a * uFractInv + corners[1][1].a * uFract) * vFract,
 	};
+}
+
+static bool verifyInRoot(const fs::path& target, const fs::path& root) {
+	// We can assure that the user did not go out of bounds by checking that the root is equal to the working directory.
+	std::string finalPathString = target.string();
+	std::string workingDirString = root.string();
+
+	std::string rootSubStr = finalPathString.substr(0, workingDirString.length());
+	if (rootSubStr != workingDirString) {
+		return false; // User exited the root directory.
+	}
+
+	return true;
+}
+
+bool RenderTarget::Load(const char* filepath, bool generateMips) __attribute__((optnone))
+{
+	if (!IsValid()) return false;
+
+	int imageWidth = 0;
+	int imageHeight = 0;
+	int channels = CHANNELS[static_cast<uint8_t>(mFormat)];
+
+	uint8_t* rtData = GetRawData();
+
+	// Sandbox the filepath to data/vistrace
+	fs::path workingDir(fs::current_path());
+	workingDir += "/garrysmod/data/vistrace";
+	workingDir = fs::absolute(workingDir);
+	workingDir = workingDir.make_preferred();
+
+	if (!fs::is_directory(workingDir)) {
+		return false;
+	}
+	
+	fs::path filename(filepath);
+	filename = filename.make_preferred();
+
+	fs::path finalPath = workingDir / filename;
+	finalPath = fs::absolute(finalPath);
+
+	if (!verifyInRoot(finalPath, workingDir)) {
+		return false;
+	}
+
+	if (finalPath.has_extension()) {
+		std::string ext = finalPath.extension().string();
+		ext = ext.substr(1); // Get the extension without the period.
+
+		bool validExtension = ext == "png" || ext == "hdr" || ext == "jpg" || ext == "bmp";
+		if (!validExtension) {
+			return false;
+		}
+	}
+
+	const char* newPath = finalPath.string().c_str();
+
+	switch (mFormat) {
+	case RTFormat::RGBFFF: // Float-based RTs
+	case RTFormat::RGFF:
+	case RTFormat::RF:
+		{ // Seperate scope because of how switch cases work
+			float* imageData = stbi_loadf(newPath, &imageWidth, &imageHeight, nullptr, channels);
+			if (imageData == nullptr) return false;
+
+			uint8_t mips = 1;
+			if (generateMips) {
+				mips = MipsFromDimensions(imageWidth, imageHeight);
+			}
+
+			// Resize the RT to fit the image.
+			bool resized = Resize(imageWidth, imageHeight, mips);
+			if (!resized) {
+				stbi_image_free(imageData);
+				return false;
+			}
+
+			memcpy(reinterpret_cast<void*>(GetRawData()), reinterpret_cast<void*>(imageData), mPixelSize * imageWidth * imageHeight);
+			stbi_image_free(imageData);
+		}
+		break;
+	case RTFormat::RGB888: // Unsigned char RTs
+	case RTFormat::RG88:
+	case RTFormat::R8:
+		{
+			stbi_uc* imageData = stbi_load(newPath, &imageWidth, &imageHeight, nullptr, channels);
+			// Resize the RT to fit the image.
+
+			uint8_t mips = 1;
+			if (generateMips) {
+				mips = MipsFromDimensions(imageWidth, imageHeight);
+			}
+
+			bool resized = Resize(imageWidth, imageHeight, mips);
+			if (!resized) {
+				stbi_image_free(imageData);
+				return false;
+			}
+
+			memcpy(reinterpret_cast<void*>(GetRawData()), reinterpret_cast<void*>(imageData), mPixelSize * imageWidth * imageHeight);
+			stbi_image_free(imageData);
+		}
+		break;
+	default:
+		return false;
+		break;
+	}
+
+	return true;
+}
+
+bool RenderTarget::Save(const char* filename, uint8_t mip)
+{
+	int channels = CHANNELS[static_cast<uint8_t>(mFormat)];
+	if (mip >= GetMIPs()) {
+		return false;
+	}
+
+	fs::path filepath(filename);
+	fs::path workingDir = fs::current_path();
+
+	workingDir += "/garrysmod/data";
+	workingDir = fs::absolute(workingDir);
+
+	const bool isFloat = mFormat == RTFormat::RGBFFF || mFormat == RTFormat::RGFF || mFormat == RTFormat::RF;
+
+	std::string extension = isFloat ? "hdr" : "png";
+
+	if (filepath.has_extension()) {
+		std::string ext = filepath.extension().string();
+		ext = ext.substr(1); // Extension returns the period along with the actual extension.
+
+		if (ext == "hdr" || ext == "png" || ext == "jpg" || ext == "bmp") {
+			extension = ext; // Change the default to the requested one
+		}
+		else {
+			// Append the default extension.
+			// Great for things like: "frame.001"
+			filepath += "." + extension;
+		}
+	}
+
+	fs::path finalPath = workingDir / filepath;
+	finalPath = fs::absolute(finalPath);
+	finalPath = finalPath.make_preferred();
+
+	if (!verifyInRoot(finalPath, workingDir)) {
+		return false;
+	}
+	
+	if (filepath.has_parent_path()) {
+		// Create the subdirectories the user wants.
+		fs::create_directories(finalPath.parent_path());
+	}
+
+	const char* rawFilepath = finalPath.string().c_str();
+	
+	uint16_t width = GetWidth();
+	uint16_t height = GetHeight();
+
+	if (mip > 0) {
+		width >>= mip;
+		height >>= mip;
+
+		// Check for less than 0 (happens on non-base2 resolutions)
+		width = width < 1 ? 1 : width;
+		height = height < 1 ? 1 : height;
+	}
+
+	if (extension == "hdr") {
+		if (!stbi_write_hdr(rawFilepath, width, height, channels, reinterpret_cast<const float*>(GetRawData(mip)))) {
+			return false;
+		}
+	}
+	else if (extension == "png") {
+		if (!stbi_write_png(rawFilepath, width, height, channels, GetRawData(mip), mPixelSize * width)) {
+			return false;
+		}
+	}
+	else if (extension == "jpg") {
+		if (!stbi_write_jpg(rawFilepath, width, height, channels, GetRawData(mip), 95)) {
+			return false;
+		}
+	}
+	else if (extension == "bmp") {
+		if (!stbi_write_bmp(rawFilepath, width, height, channels, GetRawData(mip))) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 void RenderTarget::GenerateMIPs()
