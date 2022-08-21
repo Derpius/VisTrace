@@ -35,14 +35,18 @@ target_include_directories(
 	${PROJECT_NAME} PRIVATE
 	"source"
 	"source/objects"
+
 	"include"
+
 	"libs/BSPParser"
+	"libs/VTFParser"
+	"libs/GMFS"
+
 	"libs/bvh/include"
 	"libs/glm"
 	"libs/stb"
-	"libs/VTFParser"
 	"libs/gmod-module-base/include"
-	"libs/GMFS"
+	"libs/yocto-gl/libs/yocto"
 )
 
 if (OpenMP_CXX_FOUND)

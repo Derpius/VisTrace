@@ -184,18 +184,11 @@ void TraceResult::CalcTBN()
 		binormal = cross(tangent, normal);
 	}
 
-	if (!frontFacing) {
-		normal = -normal;
-	}
-
-	vec3 Ng = frontFacing ? geometricNormal : -geometricNormal;
-	vec3 Ns = normal;
-
 	const float kCosThetaThreshold = 0.1f;
-	float cosTheta = dot(wo, Ns);
+	float cosTheta = abs(dot(wo, normal));
 	if (cosTheta <= kCosThetaThreshold) {
 		float t = saturate(cosTheta * (1.f / kCosThetaThreshold));
-		normal = normalize(lerp(Ng, Ns, t));
+		normal = normalize(lerp(geometricNormal, normal, t));
 
 		tangent = normalize(tangent - normal * dot(tangent, normal));
 		binormal = cross(tangent, normal);

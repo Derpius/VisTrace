@@ -4,30 +4,24 @@
 
 #include "Sampler.h"
 
-enum class LobeType : glm::uint
+// Most significant bit of each nibble reserved 
+enum class LobeType : uint8_t
 {
-	None = 0x00,
+	None = 0,
 
-	DiffuseReflection = 0x01,
-	SpecularReflection = 0x02,
-	DeltaReflection = 0x04,
+	DeltaDielectricReflection   = 0b00000001,
+	DeltaDielectricTransmission = 0b00000010,
+	DeltaConductiveReflection   = 0b00000100,
 
-	DiffuseTransmission = 0x10,
-	SpecularTransmission = 0x20,
-	DeltaTransmission = 0x40,
+	DielectricReflection        = 0b00010000,
+	DielectricTransmission      = 0b00100000,
+	ConductiveReflection        = 0b01000000,
 
-	Diffuse = 0x11,
-	Specular = 0x22,
-	Delta = 0x44,
-	NonDelta = 0x33,
-
-	Reflection = 0x0f,
-	Transmission = 0xf0,
-
-	NonDeltaReflection = 0x03,
-	NonDeltaTransmission = 0x30,
-
-	All = 0xff,
+	Delta                       = 0b00000111,
+	Reflection                  = 0b01010101,
+	Transmission                = 0b00100010,
+	Dielectric                  = 0b00110011,
+	Conductive                  = 0b01000100
 };
 
 struct BSDFMaterial
@@ -42,18 +36,14 @@ struct BSDFMaterial
 	bool metallicOverridden = false;
 	float metallic = 0.f;
 
-	glm::vec3 diffuse{ 1.f, 1.f, 1.f };
-	glm::vec3 specular{ 1.f, 1.f, 1.f };
-	glm::vec3 transmission{ 1.f, 1.f, 1.f };
+	glm::vec3 dielectricReflection{ 1.f, 1.f, 1.f };
+	glm::vec3 reflectionTransmission{ 1.f, 1.f, 1.f };
+	glm::vec3 conductive{ 1.f, 1.f, 1.f };
 
-	bool etaOverridden = false;
-	float eta = 1;
 	float diffuseTransmission = 0.f;
 	float specularTransmission = 0.f;
 
 	bool thin = false;
-
-	glm::uint activeLobes = static_cast<glm::uint>(LobeType::All);
 
 	void PrepShadingData(
 		const glm::vec3& hitColour, float hitMetalness, float hitRoughness,
@@ -63,57 +53,49 @@ struct BSDFMaterial
 
 struct BSDFSample
 {
-	glm::vec3 wo;
-	float pdf;
-	glm::vec3 weight;
-	glm::uint lobe;
+	glm::vec3 dir = glm::vec3(0.f);
+	float pdf = 0.f;
+	glm::vec3 weight = glm::vec3(0.f);
+	LobeType lobe = LobeType::None;
 };
 
 /// <summary>
-/// Samples the Falcor BSDF
+/// Samples the BSDF
 /// </summary>
 /// <param name="data">Material data</param>
 /// <param name="sg">Sample generator</param>
 /// <param name="result">Sample result</param>
 /// <param name="normal">Normal at hit point</param>
-/// <param name="tangent">Tangent at hit point</param>
-/// <param name="binormal">Binormal at hit point</param>
-/// <param name="toEye">Vector towards camera or previous hit</param>
+/// <param name="outgoing">Vector towards camera or previous hit</param>
 /// <returns>Whether the sample is valid</returns>
-bool SampleFalcorBSDF(
-	const BSDFMaterial& data, Sampler* sg, BSDFSample& result,
-	const glm::vec3& normal, const glm::vec3& tangent, const glm::vec3& binormal,
-	const glm::vec3& toEye
+bool SampleBSDF(
+	const BSDFMaterial& data, Sampler* sg,
+	const glm::vec3& normal, const glm::vec3& outgoing,
+	BSDFSample& result
 );
 
 /// <summary>
-/// Evaluates the Falcor BSDF
+/// Evaluates the BSDF
 /// </summary>
 /// <param name="data">Material data</param>
 /// <param name="normal">Normal at hit point</param>
-/// <param name="tangent">Tangent at hit point</param>
-/// <param name="binormal">Binormal at hit point</param>
-/// <param name="toEye">Vector towards camera or previous hit</param>
-/// <param name="sampledDir">Sampled vector at this hit</param>
+/// <param name="outgoing">Vector towards camera or previous hit</param>
+/// <param name="incoming">Sampled vector at this hit</param>
 /// <returns>The value of the BSDF</returns>
-glm::vec3 EvalFalcorBSDF(
+glm::vec3 EvalBSDF(
 	const BSDFMaterial& data,
-	const glm::vec3& normal, const glm::vec3& tangent, const glm::vec3& binormal,
-	const glm::vec3& toEye, const glm::vec3& sampledDir
+	const glm::vec3& normal, const glm::vec3& outgoing, const glm::vec3& incoming
 );
 
 /// <summary>
-/// Evaluates the Falcor BSDF's PDF
+/// Evaluates the BSDF's PDF
 /// </summary>
 /// <param name="data">Material data</param>
 /// <param name="normal">Normal at hit point</param>
-/// <param name="tangent">Tangent at hit point</param>
-/// <param name="binormal">Binormal at hit point</param>
-/// <param name="toEye">Vector towards camera or previous hit</param>
-/// <param name="sampledDir">Sampled vector at this hit</param>
+/// <param name="outgoing">Vector towards camera or previous hit</param>
+/// <param name="incoming">Sampled vector at this hit</param>
 /// <returns>The value of the PDF</returns>
-float EvalPDFFalcorBSDF(
+float EvalPDF(
 	const BSDFMaterial& data,
-	const glm::vec3& normal, const glm::vec3& tangent, const glm::vec3& binormal,
-	const glm::vec3& toEye, const glm::vec3& sampledDir
+	const glm::vec3& normal, const glm::vec3& outgoing, const glm::vec3& incoming
 );

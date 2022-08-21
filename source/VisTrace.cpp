@@ -578,16 +578,6 @@ LUA_FUNCTION(Material_IoR)
 	pMat->ior = LUA->GetNumber(2);
 	return 0;
 }
-LUA_FUNCTION(Material_RelativeIoR)
-{
-	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Number);
-
-	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
-	pMat->eta = LUA->GetNumber(2);
-	pMat->etaOverridden = true;
-	return 0;
-}
 
 LUA_FUNCTION(Material_DiffuseTransmission)
 {
@@ -654,10 +644,11 @@ LUA_FUNCTION(TraceResult_SampleBSDF)
 	LUA->Pop(LUA->Top());
 
 	BSDFSample sample;
-	bool valid = SampleFalcorBSDF(
-		*pMat, pSampler, sample,
-		pResult->GetNormal(), pResult->GetTangent(), pResult->GetBinormal(),
-		pResult->wo
+	bool valid = SampleBSDF(
+		*pMat, pSampler,
+		pResult->GetNormal(),
+		pResult->wo,
+		sample
 	);
 
 	if (!valid) {
@@ -668,7 +659,7 @@ LUA_FUNCTION(TraceResult_SampleBSDF)
 	LUA->PushBool(true);
 
 	LUA->CreateTable();
-	LUA->PushVector(MakeVector(sample.wo.x, sample.wo.y, sample.wo.z));
+	LUA->PushVector(MakeVector(sample.dir.x, sample.dir.y, sample.dir.z));
 	LUA->SetField(-2, "wo");
 	LUA->PushVector(MakeVector(sample.weight.x, sample.weight.y, sample.weight.z));
 	LUA->SetField(-2, "weight");
@@ -676,7 +667,7 @@ LUA_FUNCTION(TraceResult_SampleBSDF)
 	LUA->PushNumber(sample.pdf);
 	LUA->SetField(-2, "pdf");
 
-	LUA->PushNumber(sample.lobe);
+	LUA->PushNumber(static_cast<double>(sample.lobe));
 	LUA->SetField(-2, "lobe");
 
 	return 2;
@@ -713,9 +704,9 @@ LUA_FUNCTION(TraceResult_EvalBSDF)
 
 	LUA->Pop(LUA->Top());
 
-	glm::vec3 colour = EvalFalcorBSDF(
+	glm::vec3 colour = EvalBSDF(
 		*pMat,
-		pResult->GetNormal(), pResult->GetTangent(), pResult->GetBinormal(),
+		pResult->GetNormal(),
 		pResult->wo, incoming
 	);
 
@@ -754,9 +745,9 @@ LUA_FUNCTION(TraceResult_EvalPDF)
 
 	LUA->Pop(LUA->Top());
 
-	float pdf = EvalPDFFalcorBSDF(
+	float pdf = EvalPDF(
 		*pMat,
-		pResult->GetNormal(), pResult->GetTangent(), pResult->GetBinormal(),
+		pResult->GetNormal(),
 		pResult->wo, incoming
 	);
 
@@ -1153,8 +1144,6 @@ GMOD_MODULE_OPEN()
 
 		LUA->PushCFunction(Material_IoR);
 		LUA->SetField(-2, "IoR");
-		LUA->PushCFunction(Material_RelativeIoR);
-		LUA->SetField(-2, "RelativeIoR");
 
 		LUA->PushCFunction(Material_DiffuseTransmission);
 		LUA->SetField(-2, "DiffuseTransmission");
@@ -1189,6 +1178,23 @@ GMOD_MODULE_OPEN()
 			PUSH_ENUM(RTFormat, Albedo);
 			PUSH_ENUM(RTFormat, Normal);
 		LUA->SetField(-2, "VisTraceRTFormat");
+
+		LUA->CreateTable();
+			PUSH_ENUM(LobeType, None);
+			PUSH_ENUM(LobeType, DeltaDielectricReflection);
+			PUSH_ENUM(LobeType, DeltaDielectricTransmission);
+			PUSH_ENUM(LobeType, DeltaConductiveReflection);
+
+			PUSH_ENUM(LobeType, DielectricReflection);
+			PUSH_ENUM(LobeType, DielectricTransmission);
+			PUSH_ENUM(LobeType, ConductiveReflection);
+
+			PUSH_ENUM(LobeType, Delta);
+			PUSH_ENUM(LobeType, Reflection);
+			PUSH_ENUM(LobeType, Transmission);
+			PUSH_ENUM(LobeType, Dielectric);
+			PUSH_ENUM(LobeType, Conductive);
+		LUA->SetField(-2, "LobeType");
 	LUA->Pop();
 
 	LUA->PushSpecial(SPECIAL_GLOB);
