@@ -134,7 +134,9 @@ inline vec3f EvalReflective(
 	const vec3f& normal, const vec3f& wo, const vec3f& wi
 )
 {
-	return (data.roughness < kMinGGXAlpha) ? eval_reflective(colour, normal, wo, wi) : eval_reflective(colour, data.roughness, normal, wo, wi);
+	return (data.roughness < kMinGGXAlpha) ?
+		(reflect(wo, dot(normal, wo) <= 0 ? -normal : normal) == wi ? eval_reflective(colour, normal, wo, wi) : vec3f{ 0.f, 0.f, 0.f }) :
+		eval_reflective(colour, data.roughness, normal, wo, wi);
 }
 
 inline vec3f SampleReflective(
@@ -160,7 +162,9 @@ inline float SampleReflectivePDF(
 	const vec3f& normal, const vec3f& wo, const vec3f& wi
 )
 {
-	return (data.roughness < kMinGGXAlpha) ? sample_reflective_pdf(colour, normal, wo, wi) : sample_reflective_pdf(colour, data.roughness, normal, wo, wi);
+	return (data.roughness < kMinGGXAlpha) ?
+		(reflect(wo, dot(normal, wo) <= 0 ? -normal : normal) == wi ? 1.f : 0.f) :
+		sample_reflective_pdf(colour, data.roughness, normal, wo, wi);
 }
 #pragma endregion
 
@@ -170,10 +174,28 @@ inline vec3f EvalRefractive(
 	const vec3f& normal, const vec3f& wo, const vec3f& wi
 )
 {
-	if (data.thin)
-		return (data.roughness < kMinGGXAlpha) ? eval_transparent(colour, data.ior, normal, wo, wi) : eval_transparent(colour, data.ior, data.roughness, normal, wo, wi);
-	else
-		return (data.roughness < kMinGGXAlpha) ? eval_refractive(colour, data.ior, normal, wo, wi) : eval_refractive(colour, data.ior, data.roughness, normal, wo, wi);
+	if (data.roughness < kMinGGXAlpha) {
+		bool entering = dot(normal, wo) >= 0;
+		vec3f upNormal = entering ? normal : -normal;
+		float invEta = entering ? (1.f / data.ior) : data.ior;
+
+		vec3f deltaDir;
+		if (dot(normal, wi) * dot(normal, wo) >= 0) {
+			deltaDir = reflect(wo, upNormal);
+		} else {
+			deltaDir = data.thin ? -wo : refract(wo, upNormal, invEta);
+		}
+
+		if (wi != deltaDir) return vec3f{ 0.f, 0.f, 0.f };
+
+		return data.thin ?
+			eval_transparent(colour, data.ior, normal, wo, wi) :
+			eval_refractive(colour, data.ior, normal, wo, wi);
+	} else {
+		return data.thin ?
+			eval_transparent(colour, data.ior, data.roughness, normal, wo, wi) :
+			eval_refractive(colour, data.ior, data.roughness, normal, wo, wi);
+	}
 }
 
 inline vec3f SampleRefractive(
@@ -212,14 +234,28 @@ inline float SampleRefractivePDF(
 	const vec3f& normal, const vec3f& wo, const vec3f& wi
 )
 {
-	if (data.thin)
-		return (data.roughness < kMinGGXAlpha) ?
+	if (data.roughness < kMinGGXAlpha) {
+		bool entering = dot(normal, wo) >= 0;
+		vec3f upNormal = entering ? normal : -normal;
+		float invEta = entering ? (1.f / data.ior) : data.ior;
+
+		vec3f deltaDir;
+		if (dot(normal, wi) * dot(normal, wo) >= 0) {
+			deltaDir = reflect(wo, upNormal);
+		} else {
+			deltaDir = data.thin ? -wo : refract(wo, upNormal, invEta);
+		}
+
+		if (wi != deltaDir) return 0.f;
+
+		return data.thin ?
 			sample_tranparent_pdf(colour, data.ior, normal, wo, wi) :
-			sample_tranparent_pdf(colour, data.ior, data.roughness, normal, wo, wi);
-	else
-		return (data.roughness < kMinGGXAlpha) ?
-			sample_refractive_pdf(colour, data.ior, normal, wo, wi) :
+			sample_refractive_pdf(colour, data.ior, normal, wo, wi);
+	} else {
+		return data.thin ?
+			sample_tranparent_pdf(colour, data.ior, data.roughness, normal, wo, wi) :
 			sample_refractive_pdf(colour, data.ior, data.roughness, normal, wo, wi);
+	}
 }
 #pragma endregion
 

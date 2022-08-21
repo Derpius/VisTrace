@@ -9,11 +9,11 @@ enum class LobeType : uint8_t
 {
 	None = 0,
 
-	DeltaDielectricReflection   = 0b00000001,
+	DeltaDielectricReflection   = 0b00000001, //
 	DeltaDielectricTransmission = 0b00000010,
-	DeltaConductiveReflection   = 0b00000100,
+	DeltaConductiveReflection   = 0b00000100, //
 
-	DielectricReflection        = 0b00010000,
+	DielectricReflection        = 0b00010000, //
 	DielectricTransmission      = 0b00100000,
 	ConductiveReflection        = 0b01000000,
 
