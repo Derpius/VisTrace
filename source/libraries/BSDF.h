@@ -36,9 +36,8 @@ struct BSDFMaterial
 	bool metallicOverridden = false;
 	float metallic = 0.f;
 
-	glm::vec3 dielectricReflection{ 1.f, 1.f, 1.f };
-	glm::vec3 reflectionTransmission{ 1.f, 1.f, 1.f };
-	glm::vec3 conductive{ 1.f, 1.f, 1.f };
+	glm::vec3 dielectric{ 1.f, 1.f, 1.f };
+	glm::vec3 conductor{ 1.f, 1.f, 1.f };
 
 	float diffuseTransmission = 0.f;
 	float specularTransmission = 0.f;

@@ -554,7 +554,7 @@ LUA_FUNCTION(Material_Metalness)
 	LUA->CheckType(2, Type::Number);
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
-	pMat->metallic = LUA->GetNumber(2);
+	pMat->metallic = glm::clamp(LUA->GetNumber(2), 0., 1.);
 	pMat->metallicOverridden = true;
 	return 0;
 }
@@ -564,7 +564,8 @@ LUA_FUNCTION(Material_Roughness)
 	LUA->CheckType(2, Type::Number);
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
-	pMat->roughness = LUA->GetNumber(2);
+	pMat->roughness = glm::clamp(LUA->GetNumber(2), 0., 1.);
+	pMat->roughness *= pMat->roughness;
 	pMat->roughnessOverridden = true;
 	return 0;
 }
@@ -585,7 +586,7 @@ LUA_FUNCTION(Material_DiffuseTransmission)
 	LUA->CheckType(2, Type::Number);
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
-	pMat->diffuseTransmission = LUA->GetNumber(2);
+	pMat->diffuseTransmission = glm::clamp(LUA->GetNumber(2), 0., 1.);
 	return 0;
 }
 LUA_FUNCTION(Material_SpecularTransmission)
@@ -594,7 +595,7 @@ LUA_FUNCTION(Material_SpecularTransmission)
 	LUA->CheckType(2, Type::Number);
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
-	pMat->specularTransmission = LUA->GetNumber(2);
+	pMat->specularTransmission = glm::clamp(LUA->GetNumber(2), 0., 1.);
 	return 0;
 }
 
