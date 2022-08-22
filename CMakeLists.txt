@@ -21,20 +21,22 @@ add_library(
 	"source/Utils.cpp"
 
 	"source/objects/Sampler.cpp"
+
 	"source/objects/RenderTarget.cpp"
+	"source/objects/HDRI.cpp"
 
 	"source/objects/TraceResult.cpp"
 	"source/objects/AccelStruct.cpp"
 
-	"source/objects/BSDF.cpp"
-	"source/objects/HDRI.cpp"
-	"source/objects/Tonemapper.cpp"
+	"source/libraries/BSDF.cpp"
+	"source/libraries/Tonemapper.cpp"
 )
 
 target_include_directories(
 	${PROJECT_NAME} PRIVATE
 	"source"
 	"source/objects"
+	"source/libraries"
 
 	"include"
 

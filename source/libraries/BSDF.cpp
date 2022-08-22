@@ -134,9 +134,10 @@ inline vec3f EvalReflective(
 	const vec3f& normal, const vec3f& wo, const vec3f& wi
 )
 {
-	return (data.roughness < kMinGGXAlpha) ?
-		(reflect(wo, dot(normal, wo) <= 0 ? -normal : normal) == wi ? eval_reflective(colour, normal, wo, wi) : vec3f{ 0.f, 0.f, 0.f }) :
-		eval_reflective(colour, data.roughness, normal, wo, wi);
+	if (data.roughness < kMinGGXAlpha)
+		return (reflect(wo, dot(normal, wo) <= 0 ? -normal : normal) == wi ? fresnel_schlick(colour, dot(normal, wo) <= 0 ? -normal : normal, wo) : vec3f{ 0.f, 0.f, 0.f });
+
+	return eval_reflective(colour, data.roughness, normal, wo, wi) * microfacet_compensation(colour, data.roughness, normal, wo);
 }
 
 inline vec3f SampleReflective(
@@ -145,16 +146,16 @@ inline vec3f SampleReflective(
 	Sampler* sg, LobeType& lobe
 )
 {
-	if (data.roughness >= kMinGGXAlpha) {
-		vec2f r2{ 0, 0 };
-		sg->GetFloat2D(r2.x, r2.y);
-
-		lobe = LobeType::ConductiveReflection;
-		return sample_reflective(colour, data.roughness, normal, wo, r2);
+	if (data.roughness < kMinGGXAlpha) {
+		lobe = LobeType::DeltaConductiveReflection;
+		return sample_reflective(colour, normal, wo);
 	}
 
-	lobe = LobeType::DeltaConductiveReflection;
-	return sample_reflective(colour, normal, wo);
+	vec2f r2{ 0, 0 };
+	sg->GetFloat2D(r2.x, r2.y);
+
+	lobe = LobeType::ConductiveReflection;
+	return sample_reflective(colour, data.roughness, normal, wo, r2);
 }
 
 inline float SampleReflectivePDF(
