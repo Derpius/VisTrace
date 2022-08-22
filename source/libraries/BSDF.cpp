@@ -135,7 +135,7 @@ inline vec3f EvalReflective(
 )
 {
 	if (data.roughness < kMinGGXAlpha)
-		return (reflect(wo, dot(normal, wo) <= 0 ? -normal : normal) == wi ? fresnel_schlick(colour, dot(normal, wo) <= 0 ? -normal : normal, wo) : vec3f{ 0.f, 0.f, 0.f });
+		return (reflect(wo, dot(normal, wo) <= 0 ? -normal : normal) == wi ? eval_reflective(colour, normal, wo, wi) : vec3f{ 0.f, 0.f, 0.f });
 
 	return eval_reflective(colour, data.roughness, normal, wo, wi) * microfacet_compensation(colour, data.roughness, normal, wo);
 }
@@ -155,7 +155,10 @@ inline vec3f SampleReflective(
 	sg->GetFloat2D(r2.x, r2.y);
 
 	lobe = LobeType::ConductiveReflection;
-	return sample_reflective(colour, data.roughness, normal, wo, r2);
+
+	auto up_normal = dot(normal, wo) <= 0 ? -normal : normal;
+	auto halfway = sample_microfacet(data.roughness, up_normal, wo, r2);
+	return reflect(wo, halfway);
 }
 
 inline float SampleReflectivePDF(
@@ -163,9 +166,13 @@ inline float SampleReflectivePDF(
 	const vec3f& normal, const vec3f& wo, const vec3f& wi
 )
 {
-	return (data.roughness < kMinGGXAlpha) ?
-		(reflect(wo, dot(normal, wo) <= 0 ? -normal : normal) == wi ? 1.f : 0.f) :
-		sample_reflective_pdf(colour, data.roughness, normal, wo, wi);
+	if (data.roughness < kMinGGXAlpha)
+		return reflect(wo, dot(normal, wo) <= 0 ? -normal : normal) == wi ? 1.f : 0.f;
+
+	if (dot(normal, wi) * dot(normal, wo) <= 0) return 0;
+	auto up_normal = dot(normal, wo) <= 0 ? -normal : normal;
+	auto halfway = normalize(wo + wi);
+	return sample_microfacet_pdf(data.roughness, up_normal, halfway, wo) / (4.f * dot(wo, halfway));
 }
 #pragma endregion
 

@@ -147,9 +147,9 @@ void TraceResult::CalcTBN()
 {
 	if (tbnSet) return;
 
-	normal = uvw[2] * vN[0] + uvw[0] * vN[1] + uvw[1] * vN[2];
-	tangent = uvw[2] * vT[0] + uvw[0] * vT[1] + uvw[1] * vT[2];
-	binormal = uvw[2] * vB[0] + uvw[0] * vB[1] + uvw[1] * vB[2];
+	normal = normalize(uvw[2] * vN[0] + uvw[0] * vN[1] + uvw[1] * vN[2]);
+	tangent = normalize(uvw[2] * vT[0] + uvw[0] * vT[1] + uvw[1] * vT[2]);
+	binormal = normalize(uvw[2] * vB[0] + uvw[0] * vB[1] + uvw[1] * vB[2]);
 
 	if (normalMap != nullptr) {
 		CalcFootprint();
