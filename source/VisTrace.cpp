@@ -564,8 +564,8 @@ LUA_FUNCTION(Material_Roughness)
 	LUA->CheckType(2, Type::Number);
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
-	pMat->roughness = glm::clamp(LUA->GetNumber(2), 0., 1.);
-	pMat->roughness *= pMat->roughness;
+	pMat->linearRoughness = glm::clamp(LUA->GetNumber(2), 0., 1.);
+	pMat->roughness = pMat->linearRoughness * pMat->linearRoughness;
 	pMat->roughnessOverridden = true;
 	return 0;
 }

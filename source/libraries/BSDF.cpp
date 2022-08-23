@@ -16,8 +16,8 @@ void BSDFMaterial::PrepShadingData(
 {
 	if (!metallicOverridden) metallic = clamp(hitMetalness, 0.f, 1.f);
 	if (!roughnessOverridden) {
-		roughness = clamp(hitRoughness, 0.f, 1.f);
-		roughness *= roughness;
+		linearRoughness = clamp(hitRoughness, 0.f, 1.f);
+		roughness = linearRoughness * linearRoughness;
 	}
 
 	vec3 surfaceColour = clamp(baseColour * hitColour, 0.f, 1.f);
@@ -39,6 +39,11 @@ inline void CalculateLobePDFs(
 }
 
 #pragma region Dielectric BSDF
+float schlick_disney(const float f0, const float f90, const float u)
+{
+	return f0 + (f90 - f0) * yocto::pow(1.f - u, 5.f);
+}
+
 vec3f EvalDielectric(
 	const vec3f& colour, const BSDFMaterial& data,
 	const vec3f& normal, const vec3f& incident, const vec3f& scattered
@@ -47,23 +52,33 @@ vec3f EvalDielectric(
 	const vec3f upNormal = dot(normal, incident) <= 0 ? -normal : normal;
 	const float Fmacro = fresnel_dielectric(data.ior, upNormal, incident);
 
-	const vec3f diffuse = colour * sample_hemisphere_cos_pdf(upNormal, scattered);
-
-	vec3f specular;
+	vec3f diffuse, specular;
 	if (data.roughness < kMinGGXAlpha) {
 		specular = vec3f{ 1.f, 1.f, 1.f } * (reflect(incident, upNormal) == scattered ? 1.f : 0.f);
+		diffuse = colour * sample_hemisphere_cos_pdf(upNormal, scattered);
 	} else {
 		const vec3f halfway = normalize(incident + scattered);
+
+		const float iDotN = dot(incident, upNormal);
+		const float sDotH = dot(scattered, halfway);
+		const float sDotN = dot(scattered, upNormal);
+
+		const float sDotHSat = clamp(sDotH, 0.f, 1.f);
+		const float sDotNSat = clamp(sDotN, 0.f, 1.f);
+
+		const float energyBias = lerp(0.f, 0.5f, data.linearRoughness);
+		const float energyFactor = lerp(1.f, 1.f / 1.51f, data.linearRoughness);
+		const float fd90 = energyBias + 2.f * sDotHSat * sDotHSat * data.linearRoughness;
+		const float lightScatter = schlick_disney(1.f, fd90, sDotNSat);
+		const float viewScatter = schlick_disney(1.f, fd90, iDotN);
+		diffuse = colour * lightScatter * viewScatter * energyFactor / pif * sDotNSat;
 
 		const float F = fresnel_dielectric(data.ior, halfway, incident);
 		const float D = microfacet_distribution(data.roughness, upNormal, halfway);
 		const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
 		const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
 
-		float sDotN = dot(scattered, upNormal);
-
-		specular = vec3f{ F, F, F } * G1incident * G1scattered * D / (4 * dot(incident, upNormal) * sDotN) * yocto::abs(sDotN);
-		//bsdf *= microfacet_compensation(colour, data.roughness, normal, incident); only for metals, get the right version
+		specular = vec3f{ F, F, F } * G1incident * G1scattered * D / (4 * iDotN * sDotN) * yocto::abs(sDotN);
 	}
 
 	return (1.f - Fmacro) * diffuse + /* Fmacro * */ specular; // fresnel is already incorporated in the microfacet eval
@@ -139,7 +154,6 @@ bool SampleDielectric(
 		if (pdf <= 0.f || !std::isfinite(pdf)) return false;
 
 		weight = vec3f{ F, F, F } * G1scattered / (sDotN) * yocto::abs(sDotN);
-		//weight *= microfacet_compensation(colour, data.roughness, normal, incident); // doesnt work for dielectric
 		return true;
 	} else {
 		vec2f r2{ 0, 0 };
@@ -147,8 +161,28 @@ bool SampleDielectric(
 
 		lobe = LobeType::DielectricReflection;
 		scattered = sample_hemisphere_cos(upNormal, r2);
-		weight = colour;
 		pdf = (1.f - Fmacro) * sample_hemisphere_cos_pdf(upNormal, scattered);
+
+		if (data.roughness < kMinGGXAlpha) {
+			weight = colour;
+			return true;
+		}
+
+		const vec3f halfway = normalize(incident + scattered);
+		const float iDotN = dot(incident, upNormal);
+		const float sDotH = dot(scattered, halfway);
+		const float sDotN = dot(scattered, upNormal);
+
+		const float sDotHSat = clamp(sDotH, 0.f, 1.f);
+		const float sDotNSat = clamp(sDotN, 0.f, 1.f);
+
+		const float energyBias = lerp(0.f, 0.5f, data.linearRoughness);
+		const float energyFactor = lerp(1.f, 1.f / 1.51f, data.linearRoughness);
+		const float fd90 = energyBias + 2.f * sDotHSat * sDotHSat * data.linearRoughness;
+		const float lightScatter = schlick_disney(1.f, fd90, sDotNSat);
+		const float viewScatter = schlick_disney(1.f, fd90, iDotN);
+		weight = colour * lightScatter * viewScatter * energyFactor;
+
 		return true;
 	}
 }

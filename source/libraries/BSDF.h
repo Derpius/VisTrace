@@ -33,6 +33,7 @@ struct BSDFMaterial
 
 	bool roughnessOverridden = false;
 	float roughness = 1.f;
+	float linearRoughness = 1.f;
 	bool metallicOverridden = false;
 	float metallic = 0.f;
 
