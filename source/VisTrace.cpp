@@ -1182,19 +1182,30 @@ GMOD_MODULE_OPEN()
 
 		LUA->CreateTable();
 			PUSH_ENUM(LobeType, None);
-			PUSH_ENUM(LobeType, DeltaDielectricReflection);
-			PUSH_ENUM(LobeType, DeltaDielectricTransmission);
-			PUSH_ENUM(LobeType, DeltaConductiveReflection);
+
+			PUSH_ENUM(LobeType, DiffuseReflection);
+			PUSH_ENUM(LobeType, DiffuseTransmission);
 
 			PUSH_ENUM(LobeType, DielectricReflection);
 			PUSH_ENUM(LobeType, DielectricTransmission);
 			PUSH_ENUM(LobeType, ConductiveReflection);
 
-			PUSH_ENUM(LobeType, Delta);
+			PUSH_ENUM(LobeType, DeltaDielectricReflection);
+			PUSH_ENUM(LobeType, DeltaDielectricTransmission);
+			PUSH_ENUM(LobeType, DeltaConductiveReflection);
+
 			PUSH_ENUM(LobeType, Reflection);
 			PUSH_ENUM(LobeType, Transmission);
-			PUSH_ENUM(LobeType, Dielectric);
-			PUSH_ENUM(LobeType, Conductive);
+
+			PUSH_ENUM(LobeType, Delta);
+			PUSH_ENUM(LobeType, NonDelta);
+
+			PUSH_ENUM(LobeType, Diffuse);
+			PUSH_ENUM(LobeType, Specular);
+			PUSH_ENUM(LobeType, SpecularDielectric);
+			PUSH_ENUM(LobeType, SpecularConductive);
+
+			PUSH_ENUM(LobeType, All);
 		LUA->SetField(-2, "LobeType");
 	LUA->Pop();
 

@@ -131,6 +131,7 @@ bool SampleDielectric(
 			pdf = Fmacro;
 			return true;
 		}
+		lobe = LobeType::DielectricReflection;
 
 		vec2f r2{ 0, 0 };
 		sg->GetFloat2D(r2.x, r2.y);
@@ -157,10 +158,11 @@ bool SampleDielectric(
 		weight = vec3f{ F, F, F } * G1scattered * sDotH / (sDotN * iDotH) * yocto::abs(sDotN);
 		return true;
 	} else {
+		lobe = LobeType::DiffuseReflection;
+
 		vec2f r2{ 0, 0 };
 		sg->GetFloat2D(r2.x, r2.y);
 
-		lobe = LobeType::DielectricReflection;
 		scattered = sample_hemisphere_cos(upNormal, r2);
 		pdf = (1.f - Fmacro) * sample_hemisphere_cos_pdf(upNormal, scattered);
 
