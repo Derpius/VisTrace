@@ -30,11 +30,11 @@ void BSDFMaterial::PrepShadingData(
 // If this ever changed then both the sample and eval functions would need changing too
 inline void CalculateLobePDFs(
 	const BSDFMaterial& data,
-	float& pDielectric, float& pConductive
+	float& pDielectric, float& pConductive, float& pSpecTrans
 )
 {
-	// The dielectric BSDF calculates the distribution of each lobe
-	pDielectric = (1.f - data.metallic);
+	pDielectric = (1.f - data.metallic) * (1.f - data.specularTransmission);
+	pSpecTrans  = (1.f - data.metallic) * data.specularTransmission;
 	pConductive = data.metallic;
 }
 
@@ -106,7 +106,7 @@ float SampleDielectricPDF(
 		const float D = microfacet_distribution(data.roughness, upNormal, halfway);
 		const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
 
-		specularPdf = D * G1incident / (4 * dot(incident, upNormal));
+		specularPdf = D * G1incident * iDotH / (4 * dot(incident, upNormal) * dot(scattered, halfway));
 		if (specularPdf < 0.f || !std::isfinite(specularPdf)) specularPdf = 0.f;
 	}
 
@@ -144,16 +144,17 @@ bool SampleDielectric(
 
 		scattered = reflect(incident, halfway);
 		float sDotN = dot(scattered, upNormal);
+		float sDotH = dot(scattered, halfway);
 
 		const float F = fresnel_dielectric(data.ior, halfway, incident);
 		const float D = microfacet_distribution(data.roughness, upNormal, halfway);
 		const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
 		const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
 
-		pdf = D * G1incident / (4 * iDotN);
+		pdf = D * G1incident * iDotH / (4 * iDotN * sDotH);
 		if (pdf <= 0.f || !std::isfinite(pdf)) return false;
 
-		weight = vec3f{ F, F, F } * G1scattered / (sDotN) * yocto::abs(sDotN);
+		weight = vec3f{ F, F, F } * G1scattered * sDotH / (sDotN * iDotH) * yocto::abs(sDotN);
 		return true;
 	} else {
 		vec2f r2{ 0, 0 };
@@ -233,7 +234,7 @@ float SampleConductorPDF(
 	const float D = microfacet_distribution(data.roughness, upNormal, halfway);
 	const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
 
-	const float pdf = D * G1incident / (4 * dot(incident, upNormal));
+	const float pdf = D * G1incident * iDotH / (4 * dot(incident, upNormal) * dot(scattered, halfway));
 	if (pdf <= 0.f || !std::isfinite(pdf)) return 0.f;
 	return pdf;
 }
@@ -269,6 +270,7 @@ bool SampleConductor(
 
 	scattered = reflect(incident, halfway);
 	float sDotN = dot(scattered, upNormal);
+	float sDotH = dot(scattered, halfway);
 
 	const vec3f F = fresnel_schlick(colour, halfway, incident);
 	const float D = microfacet_distribution(data.roughness, upNormal, halfway);
@@ -277,29 +279,29 @@ bool SampleConductor(
 
 	// eval: F * G1incident * G1scattered * D / (4 * iDotN * sDotN) * yocto::abs(sDotN)
 
-	// pdf: D * G1incident / (4 * iDotN)
+	// pdf: D * G1incident * iDotH / (4 * iDotN * sDotH)
 
 	// weight: eval / pdf
 	// weight: eval * 1/pdf
-	// 1/pdf: (4 * iDotN) / (D * G1incident)
+	// 1/pdf: (4 * iDotN * sDotH) / (D * G1incident * iDotH)
 
 	// weight:
-	// F * G1incident * G1scattered * D / (4 * iDotN * sDotN) * (4 * iDotN) / (D * G1incident) * yocto::abs(sDotN)
+	// F * G1incident * G1scattered * D / (4 * iDotN * sDotN) * (4 * iDotN * sDotH) / (D * G1incident * iDotH) * yocto::abs(sDotN)
 	// cancel D
-	// F * G1incident * G1scattered / (4 * iDotN * sDotN) * (4 * iDotN) / (G1incident) * yocto::abs(sDotN)
+	// F * G1incident * G1scattered / (4 * iDotN * sDotN) * (4 * iDotN * sDotH) / (G1incident * iDotH) * yocto::abs(sDotN)
 	// cancel G1incident
-	// F * G1scattered / (4 * iDotN * sDotN) * (4 * iDotN) * yocto::abs(sDotN)
+	// F * G1scattered / (4 * iDotN * sDotN) * (4 * iDotN * sDotH) / (iDotH) * yocto::abs(sDotN)
 	// cancel 4
-	// F * G1scattered / (iDotN * sDotN) * (iDotN) * yocto::abs(sDotN)
+	// F * G1scattered / (iDotN * sDotN) * (iDotN * sDotH) / (iDotH) * yocto::abs(sDotN)
 	// cancel iDotN
-	// F * G1scattered / (sDotN) * yocto::abs(sDotN)
+	// F * G1scattered / (sDotN) * (sDotH) / (iDotH) * yocto::abs(sDotN)
 	// final weight (before compensation)
-	// F * G1scattered / (sDotN) * yocto::abs(sDotN)
+	// F * G1scattered * sDotH / (sDotN * iDotH) * yocto::abs(sDotN)
 
-	pdf = D * G1incident / (4 * iDotN);
+	pdf = D * G1incident * iDotH / (4 * iDotN * sDotH);
 	if (pdf <= 0.f || !std::isfinite(pdf)) return false;
 
-	weight = F * G1scattered / (sDotN) * yocto::abs(sDotN);
+	weight = F * G1scattered * sDotH / (sDotN * iDotH) * yocto::abs(sDotN);
 	weight *= microfacet_compensation(colour, data.roughness, normal, incident); // Add in single scattering compensation
 
 	return true;
@@ -307,93 +309,258 @@ bool SampleConductor(
 
 #pragma endregion
 
-#pragma region Refractive
-inline vec3f EvalRefractive(
+#pragma region Specular Transmission BSDF
+vec3f EvalSpecularTransmission(
 	const vec3f& colour, const BSDFMaterial& data,
-	const vec3f& normal, const vec3f& wo, const vec3f& wi
+	const vec3f& normal, const vec3f& incident, const vec3f& scattered
 )
 {
+	const bool entering = dot(normal, incident) >= 0;
+	const vec3f upNormal = entering ? normal : -normal;
+
+	const float iorI = entering ? 1.f : data.ior;
+	const float iorS = entering ? data.ior : 1.f;
+	const float eta = iorS / iorI;
+	const float invEta = 1.f / eta;
+
+	const bool isReflection = dot(normal, incident) * dot(normal, scattered) >= 0;
+
 	if (data.roughness < kMinGGXAlpha) {
-		bool entering = dot(normal, wo) >= 0;
-		vec3f upNormal = entering ? normal : -normal;
-		float invEta = entering ? (1.f / data.ior) : data.ior;
-
-		vec3f deltaDir;
-		if (dot(normal, wi) * dot(normal, wo) >= 0) {
-			deltaDir = reflect(wo, upNormal);
+		if (data.thin) {
+			if (isReflection) {
+				if (scattered != reflect(incident, upNormal)) return vec3f{ 0.f, 0.f, 0.f };
+				return vec3f{ 1.f, 1.f, 1.f } * fresnel_dielectric(data.ior, upNormal, incident);
+			} else {
+				if (scattered != -incident) return vec3f{ 0.f, 0.f, 0.f };
+				return colour * (1.f - fresnel_dielectric(data.ior, upNormal, incident));
+			}
 		} else {
-			deltaDir = data.thin ? -wo : refract(wo, upNormal, invEta);
+			if (isReflection) {
+				if (scattered != reflect(incident, upNormal)) return vec3f{ 0.f, 0.f, 0.f };
+				return vec3f{ 1.f, 1.f, 1.f } * fresnel_dielectric(eta, upNormal, incident);
+			} else {
+				if (scattered != refract(incident, upNormal, invEta)) return vec3f{ 0.f, 0.f, 0.f };
+				return vec3f{ 1.f, 1.f, 1.f } * (1.f - fresnel_dielectric(eta, upNormal, incident));
+			}
 		}
-
-		if (wi != deltaDir) return vec3f{ 0.f, 0.f, 0.f };
-
-		return data.thin ?
-			eval_transparent(colour, data.ior, normal, wo, wi) :
-			eval_refractive(colour, data.ior, normal, wo, wi);
-	} else {
-		return data.thin ?
-			eval_transparent(colour, data.ior, data.roughness, normal, wo, wi) :
-			eval_refractive(colour, data.ior, data.roughness, normal, wo, wi);
 	}
+
+	if (data.thin) {
+		return vec3f{ 0.f, 0.f, 0.f }; // Not implemented yet
+	}
+
+	const vec3f halfway = isReflection ? normalize(incident + scattered) : -normalize(iorI * incident + iorS * scattered);
+
+	const float iDotH = dot(incident, halfway);
+	const float iDotN = dot(incident, upNormal);
+	const float sDotH = dot(scattered, halfway);
+	const float sDotN = dot(scattered, upNormal);
+
+	const float F = fresnel_dielectric(eta, halfway, incident);
+	const float D = microfacet_distribution(data.roughness, upNormal, halfway);
+	const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
+	const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
+
+	if (isReflection) {
+		return vec3f{ F, F, F } * G1incident * G1scattered * D / (4 * iDotN * sDotN) * yocto::abs(sDotN);
+	}
+
+	const float lhs = yocto::abs(iDotH) * yocto::abs(sDotH) / (yocto::abs(iDotN) * yocto::abs(sDotN));
+
+	float denom = iorI * iDotH + iorS * sDotH;
+	denom *= denom;
+	const float rhs = iorS * iorS * (1.f - F) * G1incident * G1scattered * D / denom;
+
+	return vec3f{ 1.f, 1.f, 1.f } * (lhs * rhs * yocto::abs(sDotN));
 }
 
-inline vec3f SampleRefractive(
+float SampleSpecularTransmissionPDF(
 	const vec3f& colour, const BSDFMaterial& data,
-	const vec3f& normal, const vec3f& wo,
-	Sampler* sg, LobeType& lobe
+	const vec3f& normal, const vec3f& incident, const vec3f& scattered
 )
 {
-	float r = sg->GetFloat();
-	vec2f r2{ 0, 0 };
-	if (data.roughness >= kMinGGXAlpha) sg->GetFloat2D(r2.x, r2.y);
+	const bool entering = dot(normal, incident) >= 0;
+	const vec3f upNormal = entering ? normal : -normal;
 
-	vec3f wi;
-	bool delta = data.roughness < kMinGGXAlpha;
+	const float iorI = entering ? 1.f : data.ior;
+	const float iorS = entering ? data.ior : 1.f;
+	const float eta = iorS / iorI;
+	const float invEta = 1.f / eta;
 
-	if (data.thin)
-		wi = delta ?
-			sample_transparent(colour, data.ior, normal, wo, r) :
-			sample_transparent(colour, data.ior, data.roughness, normal, wo, r, r2);
-	else
-		wi = delta ?
-			sample_refractive(colour, data.ior, normal, wo, r) :
-			sample_refractive(colour, data.ior, data.roughness, normal, wo, r, r2);
+	const bool isReflection = dot(normal, incident) * dot(normal, scattered) >= 0;
 
-	const vec3f upNormal = dot(normal, wo) >= 0 ? normal : -normal;
-	if (delta)
-		lobe = same_hemisphere(upNormal, wo, wi) ? LobeType::DeltaDielectricReflection : LobeType::DeltaDielectricTransmission;
-	else
-		lobe = same_hemisphere(upNormal, wo, wi) ? LobeType::DielectricReflection : LobeType::DielectricTransmission;
-
-	return wi;
-}
-
-inline float SampleRefractivePDF(
-	const vec3f& colour, const BSDFMaterial& data,
-	const vec3f& normal, const vec3f& wo, const vec3f& wi
-)
-{
 	if (data.roughness < kMinGGXAlpha) {
-		bool entering = dot(normal, wo) >= 0;
-		vec3f upNormal = entering ? normal : -normal;
-		float invEta = entering ? (1.f / data.ior) : data.ior;
-
-		vec3f deltaDir;
-		if (dot(normal, wi) * dot(normal, wo) >= 0) {
-			deltaDir = reflect(wo, upNormal);
+		if (isReflection) {
+			if (scattered != reflect(incident, upNormal)) return 0.f;
+			return fresnel_dielectric(data.thin ? data.ior : eta, upNormal, incident);
 		} else {
-			deltaDir = data.thin ? -wo : refract(wo, upNormal, invEta);
+			if (scattered != (data.thin ? -incident : refract(incident, upNormal, invEta))) return 0.f;
+			return 1.f - fresnel_dielectric(data.thin ? data.ior : eta, upNormal, incident);
 		}
+	}
 
-		if (wi != deltaDir) return 0.f;
+	if (data.thin) {
+		return 0.f; // Not implemented yet
+	}
 
-		return data.thin ?
-			sample_tranparent_pdf(colour, data.ior, normal, wo, wi) :
-			sample_refractive_pdf(colour, data.ior, normal, wo, wi);
+	const vec3f halfway = isReflection ? normalize(incident + scattered) : -normalize(iorI * incident + iorS * scattered);
+
+	const float iDotH = dot(incident, halfway);
+	const float iDotN = dot(incident, upNormal);
+	const float sDotH = dot(scattered, halfway);
+	const float sDotN = dot(scattered, upNormal);
+
+	if (dot(upNormal, halfway) < 0.f) return 0.f;
+	if (iDotH < 0.f) return 0.f;
+
+	const float F = fresnel_dielectric(eta, upNormal, incident);
+	const float D = microfacet_distribution(data.roughness, upNormal, halfway);
+	const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
+
+	if (isReflection) {
+		const float pdf = D * G1incident * iDotH / (4 * iDotN * sDotH);
+		if (pdf < 0.f || !std::isfinite(pdf)) return 0.f;
+		return F * pdf;
+	}
+
+	// pdf is VNDF pdf * jacobian of refraction
+	// VNDF: G1incident * iDotH * D / iDotN
+	// jacobian: iorS * iorS * abs(sDotH) / ((iorI * iDotH + iorS * sDotH) * (iorI * iDotH + iorS * sDotH))
+
+	// final PDF:
+	// iorS * iorS * abs(sDotH) / ((iorI * iDotH + iorS * sDotH) * (iorI * iDotH + iorS * sDotH)) * G1incident * iDotH * D / iDotN
+	
+	const float jDenom = iorI * iDotH + iorS * sDotH;
+	const float jacobian = iorS * iorS * yocto::abs(sDotH) / (jDenom * jDenom);
+
+	const float pdf = jacobian * G1incident * iDotH * D / iDotN;
+	if (pdf < 0.f || !std::isfinite(pdf)) return 0.f;
+	return (1.f - F) * pdf;
+}
+
+bool SampleSpecularTransmission(
+	const vec3f& colour, const BSDFMaterial& data,
+	const vec3f& normal, const vec3f& incident,
+	Sampler* sg,
+	LobeType& lobe, vec3f& scattered, vec3f& weight, float& pdf
+)
+{
+	const bool entering = dot(normal, incident) >= 0;
+	const vec3f upNormal = entering ? normal : -normal;
+
+	const float iorI = entering ? 1.f : data.ior;
+	const float iorS = entering ? data.ior : 1.f;
+	const float eta = iorS / iorI;
+	const float invEta = 1.f / eta;
+
+	const float r = sg->GetFloat();
+
+	if (data.roughness < kMinGGXAlpha) {
+		if (data.thin) {
+			const float F = fresnel_dielectric(data.ior, upNormal, incident);
+			if (r < fresnel_dielectric(data.ior, upNormal, incident)) {
+				lobe = LobeType::DeltaDielectricReflection;
+				weight = vec3f{ 1, 1, 1 };
+				pdf = F;
+				scattered = reflect(incident, upNormal);
+				return true;
+			} else {
+				lobe = LobeType::DeltaDielectricTransmission;
+				weight = colour;
+				pdf = 1.f - F;
+				scattered = -incident;
+				return true;
+			}
+		} else {
+			const float F = fresnel_dielectric(eta, upNormal, incident);
+			if (r < F) {
+				lobe = LobeType::DeltaDielectricReflection;
+				weight = vec3f{ 1, 1, 1 };
+				pdf = F;
+				scattered = reflect(incident, upNormal);
+				return true;
+			} else {
+				lobe = LobeType::DeltaDielectricTransmission;
+				weight = vec3f{ 1, 1, 1 } * (1.f / (eta * eta));
+				pdf = 1.f - F;
+				scattered = refract(incident, upNormal, invEta);
+				return true;
+			}
+		}
+	}
+
+	if (data.thin) {
+		return false; // Not implemented yet
+	}
+
+	vec2f r2{ 0, 0 };
+	sg->GetFloat2D(r2.x, r2.y);
+	const vec3f halfway = sample_microfacet(data.roughness, upNormal, incident, r2);
+
+	const float iDotH = dot(incident, halfway);
+	const float iDotN = dot(incident, upNormal);
+	if (dot(upNormal, halfway) < 0.f) return false;
+	if (iDotH < 0.f) return false;
+
+	const float F = fresnel_dielectric(eta, halfway, incident);
+	const float D = microfacet_distribution(data.roughness, upNormal, halfway);
+	const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
+
+	if (sg->GetFloat() < F) {
+		lobe = LobeType::DielectricReflection;
+		scattered = reflect(incident, halfway);
+		const float sDotH = dot(scattered, halfway);
+		const float sDotN = dot(scattered, upNormal);
+		const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
+
+		weight = vec3f{ F, F, F } * G1scattered * sDotH / (sDotN * iDotH) * yocto::abs(sDotN);
+		pdf = D * G1incident * iDotH / (4 * iDotN * sDotH);
+		
+		return true;
 	} else {
-		return data.thin ?
-			sample_tranparent_pdf(colour, data.ior, data.roughness, normal, wo, wi) :
-			sample_refractive_pdf(colour, data.ior, data.roughness, normal, wo, wi);
+		lobe = LobeType::DielectricTransmission;
+		scattered = refract(incident, halfway, invEta);
+		const float sDotH = dot(scattered, halfway);
+		const float sDotN = dot(scattered, upNormal);
+		const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
+
+		float denom = iorI * iDotH + iorS * sDotH;
+		denom *= denom;
+		const float jacobian = iorS * iorS * yocto::abs(sDotH) / denom;
+
+		// eval: yocto::abs(iDotH) * yocto::abs(sDotH) / (yocto::abs(iDotN) * yocto::abs(sDotN)) * iorS * iorS * (1.f - F) * G1incident * G1scattered * D / denom * yocto::abs(sDotN)
+
+		// pdf: iorS * iorS * yocto::abs(sDotH) * G1incident * iDotH * D / (denom * iDotN)
+
+		// weight: eval / pdf
+		// weight: eval * 1/pdf
+		// 1/pdf: (denom * iDotN) / (iorS * iorS * yocto::abs(sDotH) * G1incident * iDotH * D)
+
+		// weight:
+		// yocto::abs(iDotH) * yocto::abs(sDotH) / (yocto::abs(iDotN) * yocto::abs(sDotN)) * iorS * iorS * (1.f - F) * G1incident * G1scattered * D / denom * yocto::abs(sDotN)
+		// * (denom * iDotN) / (iorS * iorS * yocto::abs(sDotH) * G1incident * iDotH * D)
+		// 
+		// Cancel denom
+		// yocto::abs(iDotH) * yocto::abs(sDotH) / (yocto::abs(iDotN) * yocto::abs(sDotN)) * iorS * iorS * (1.f - F) * G1incident * G1scattered * D * yocto::abs(sDotN)
+		// * (iDotN) / (iorS * iorS * yocto::abs(sDotH) * G1incident * iDotH * D)
+		//
+		// Cancel iorS^2
+		// yocto::abs(iDotH) * yocto::abs(sDotH) / (yocto::abs(iDotN) * yocto::abs(sDotN)) * (1.f - F) * G1incident * G1scattered * D * yocto::abs(sDotN)
+		// * (iDotN) / (yocto::abs(sDotH) * G1incident * iDotH * D)
+		//
+		// Cancel G1incident and D
+		// yocto::abs(iDotH) * yocto::abs(sDotH) / (yocto::abs(iDotN) * yocto::abs(sDotN)) * (1.f - F) * G1scattered * yocto::abs(sDotN) * (iDotN) / (yocto::abs(sDotH) * iDotH)
+		//
+		// Cancel iDotN and iDotH (both are guaranteed >= 0 by the normal flipping and VNDF sampling)
+		// yocto::abs(sDotH) / (yocto::abs(sDotN)) * (1.f - F) * G1scattered * yocto::abs(sDotN) / (yocto::abs(sDotH))
+		// 
+		// Cancel |sDotH| and |sDotN|
+		// (1.f - F) * G1scattered
+
+		weight = vec3f{ 1.f, 1.f, 1.f } * ((1.f - F) * G1scattered);
+		pdf = jacobian * G1incident * iDotH * D / iDotN;
+
+		return true;
 	}
 }
 #pragma endregion
@@ -409,8 +576,8 @@ bool SampleBSDF(
 	vec3f n{ normal.x, normal.y, normal.z };
 	vec3f wo{ outgoing.x, outgoing.y, outgoing.z };
 
-	float pDielectric, pConductor;
-	CalculateLobePDFs(data, pDielectric, pConductor);
+	float pDielectric, pConductor, pSpecTrans;
+	CalculateLobePDFs(data, pDielectric, pConductor, pSpecTrans);
 
 	float lobeSelect = sg->GetFloat();
 
@@ -422,7 +589,18 @@ bool SampleBSDF(
 		result.weight = vec3(weight.x, weight.y, weight.z);
 
 		result.pdf *= pDielectric;
-		if (pConductor > 0) result.pdf += pConductor * SampleConductorPDF(dielectric, data, n, wo, wi);
+		if (pConductor > 0) result.pdf += pConductor * SampleConductorPDF(conductor, data, n, wo, wi);
+		if (pSpecTrans > 0.f) result.pdf += pSpecTrans * SampleSpecularTransmissionPDF(dielectric, data, n, wo, wi);
+	} else if (lobeSelect < pDielectric + pSpecTrans) {
+		vec3f wi, weight;
+		if (!SampleSpecularTransmission(dielectric, data, n, wo, sg, result.lobe, wi, weight, result.pdf)) return false;
+
+		result.dir = vec3(wi.x, wi.y, wi.z);
+		result.weight = vec3(weight.x, weight.y, weight.z);
+
+		result.pdf *= pSpecTrans;
+		if (pDielectric > 0) result.pdf += pDielectric * SampleDielectricPDF(dielectric, data, n, wo, wi);
+		if (pConductor > 0.f) result.pdf += pConductor * SampleConductorPDF(conductor, data, n, wo, wi);
 	} else if (pConductor > 0.f) {
 		vec3f wi, weight;
 		if (!SampleConductor(conductor, data, n, wo, sg, result.lobe, wi, weight, result.pdf)) return false;
@@ -432,6 +610,7 @@ bool SampleBSDF(
 
 		result.pdf *= pConductor;
 		if (pDielectric > 0) result.pdf += pDielectric * SampleDielectricPDF(dielectric, data, n, wo, wi);
+		if (pSpecTrans > 0.f) result.pdf += pSpecTrans * SampleSpecularTransmissionPDF(dielectric, data, n, wo, wi);
 	}
 
 	return true;
@@ -448,15 +627,18 @@ vec3 EvalBSDF(
 	vec3f wo{ outgoing.x, outgoing.y, outgoing.z };
 	vec3f wi{ incoming.x, incoming.y, incoming.z };
 
-	float pDielectric, pConductor;
-	CalculateLobePDFs(data, pDielectric, pConductor);
+	float pDielectric, pConductor, pSpecTrans;
+	CalculateLobePDFs(data, pDielectric, pConductor, pSpecTrans);
 
 	vec3f result{ 0, 0, 0 };
 	if (pDielectric > 0.f) {
-		result += (1.f - data.metallic) * EvalDielectric(dielectric, data, n, wo, wi);
+		result += (1.f - data.metallic) * (1.f - data.specularTransmission) * EvalDielectric(dielectric, data, n, wo, wi);
 	}
 	if (pConductor > 0.f) {
 		result += data.metallic * EvalConductor(conductor, data, n, wo, wi);
+	}
+	if (pSpecTrans > 0.f) {
+		result += (1.f - data.metallic) * data.specularTransmission * EvalSpecularTransmission(dielectric, data, n, wo, wi);
 	}
 
 	return vec3(result.x, result.y, result.z);
@@ -473,12 +655,13 @@ float EvalPDF(
 	vec3f wo{ outgoing.x, outgoing.y, outgoing.z };
 	vec3f wi{ incoming.x, incoming.y, incoming.z };
 
-	float pDielectric, pConductor;
-	CalculateLobePDFs(data, pDielectric, pConductor);
+	float pDielectric, pConductor, pSpecTrans;
+	CalculateLobePDFs(data, pDielectric, pConductor, pSpecTrans);
 
 	float pdf = 0.f;
 	if (pDielectric > 0.f) pdf += pDielectric * SampleDielectricPDF(dielectric, data, n, wo, wi);
 	if (pConductor > 0.f) pdf += pConductor * SampleConductorPDF(conductor, data, n, wo, wi);
+	if (pSpecTrans > 0.f) pdf += pSpecTrans * SampleSpecularTransmissionPDF(dielectric, data, n, wo, wi);
 
 	return pdf;
 }
