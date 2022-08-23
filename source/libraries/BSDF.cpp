@@ -39,74 +39,118 @@ inline void CalculateLobePDFs(
 }
 
 #pragma region Dielectric BSDF
-inline vec3f EvalDielectric(
+vec3f EvalDielectric(
 	const vec3f& colour, const BSDFMaterial& data,
-	const vec3f& normal, const vec3f& wo, const vec3f& wi
+	const vec3f& normal, const vec3f& incident, const vec3f& scattered
 )
 {
-	// Lambert
-	if (data.roughness == 1)
-		return eval_matte(colour, normal, wo, wi);
+	const vec3f upNormal = dot(normal, incident) <= 0 ? -normal : normal;
+	const float Fmacro = fresnel_dielectric(data.ior, upNormal, incident);
 
-	// Microfacet
-	if (data.roughness >= kMinGGXAlpha)
-		return eval_glossy(colour, data.ior, data.roughness, normal, wo, wi);
+	const vec3f diffuse = colour * sample_hemisphere_cos_pdf(upNormal, scattered);
 
-	// Delta
-	vec3f upNormal = dot(normal, wo) <= 0 ? -normal : normal;
-	float F = fresnel_dielectric(data.ior, upNormal, wo);
-	return colour * (1.f - F) / pif * max(dot(upNormal, wi), 0.f) + vec3f{F, F, F} * (reflect(wo, upNormal) == wi ? 1.f : 0.f);
-}
-
-inline vec3f SampleDielectric(
-	const vec3f& colour, const BSDFMaterial& data,
-	const vec3f& normal, const vec3f& wo,
-	Sampler* sg, LobeType& lobe
-)
-{
-	vec2f r2{ 0, 0 };
-	sg->GetFloat2D(r2.x, r2.y);
-
-	// Lambert
-	if (data.roughness == 1) {
-		lobe = LobeType::DielectricReflection;
-		return sample_matte(colour, normal, wo, r2);
-	}
-
-	// Microfacet
-	if (data.roughness >= kMinGGXAlpha) {
-		lobe = LobeType::DielectricReflection;
-		return sample_glossy(colour, data.ior, data.roughness, normal, wo, sg->GetFloat(), r2);
-	}
-
-	// Delta
-	vec3f upNormal = dot(normal, wo) <= 0 ? -normal : normal;
-	if (sg->GetFloat() < fresnel_dielectric(data.ior, upNormal, wo)) {
-		lobe = LobeType::DeltaDielectricReflection;
-		return reflect(wo, upNormal);
+	vec3f specular;
+	if (data.roughness < kMinGGXAlpha) {
+		specular = vec3f{ 1.f, 1.f, 1.f } * (reflect(incident, upNormal) == scattered ? 1.f : 0.f);
 	} else {
-		lobe = LobeType::DielectricReflection;
-		return sample_hemisphere_cos(upNormal, r2);
+		const vec3f halfway = normalize(incident + scattered);
+
+		const float F = fresnel_dielectric(data.ior, halfway, incident);
+		const float D = microfacet_distribution(data.roughness, upNormal, halfway);
+		const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
+		const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
+
+		float sDotN = dot(scattered, upNormal);
+
+		specular = vec3f{ F, F, F } * G1incident * G1scattered * D / (4 * dot(incident, upNormal) * sDotN) * yocto::abs(sDotN);
+		//bsdf *= microfacet_compensation(colour, data.roughness, normal, incident); only for metals, get the right version
 	}
+
+	return (1.f - Fmacro) * diffuse + /* Fmacro * */ specular; // fresnel is already incorporated in the microfacet eval
 }
 
-inline float SampleDielectricPDF(
+float SampleDielectricPDF(
 	const vec3f& colour, const BSDFMaterial& data,
-	const vec3f& normal, const vec3f& wo, const vec3f& wi
+	const vec3f& normal, const vec3f& incident, const vec3f& scattered
 )
 {
-	// Lambert
-	if (data.roughness == 1)
-		return sample_matte_pdf(colour, normal, wo, wi);
+	const vec3f upNormal = dot(normal, incident) <= 0 ? -normal : normal;
+	const float F = fresnel_dielectric(data.ior, upNormal, incident);
 
-	// Microfacet
-	if (data.roughness >= kMinGGXAlpha)
-		return sample_glossy_pdf(colour, data.ior, data.roughness, normal, wo, wi);
+	const float diffusePdf = sample_hemisphere_cos_pdf(upNormal, scattered);
+	float specularPdf;
+	if (data.roughness < kMinGGXAlpha) {
+		specularPdf = reflect(incident, upNormal) == scattered ? 1.f : 0.f;
+	} else {
+		const vec3f halfway = normalize(incident + scattered);
 
-	// Delta
-	vec3f upNormal = dot(normal, wo) <= 0 ? -normal : normal;
-	float F = fresnel_dielectric(data.ior, upNormal, wo);
-	return F * (reflect(wo, upNormal) == wi ? 1.f : 0.f) + (1.f - F) * sample_hemisphere_cos_pdf(upNormal, wi);
+		float iDotH = dot(incident, halfway);
+		if (dot(upNormal, halfway) < 0.f) return 0.f;
+		if (iDotH < 0.f) return 0.f;
+
+		const float D = microfacet_distribution(data.roughness, upNormal, halfway);
+		const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
+
+		specularPdf = D * G1incident / (4 * dot(incident, upNormal));
+		if (specularPdf < 0.f || !std::isfinite(specularPdf)) specularPdf = 0.f;
+	}
+
+	return F * specularPdf + (1.f - F) * diffusePdf;
+}
+
+bool SampleDielectric(
+	const vec3f& colour, const BSDFMaterial& data,
+	const vec3f& normal, const vec3f& incident,
+	Sampler* sg,
+	LobeType& lobe, vec3f& scattered, vec3f& weight, float& pdf
+)
+{
+	const vec3f upNormal = dot(normal, incident) <= 0 ? -normal : normal;
+	const float Fmacro = fresnel_dielectric(data.ior, upNormal, incident);
+
+	if (sg->GetFloat() < Fmacro) {
+		if (data.roughness < kMinGGXAlpha) {
+			lobe = LobeType::DeltaDielectricReflection;
+			scattered = reflect(incident, upNormal);
+			weight = vec3f{ 1.f, 1.f, 1.f };
+			pdf = Fmacro;
+			return true;
+		}
+
+		vec2f r2{ 0, 0 };
+		sg->GetFloat2D(r2.x, r2.y);
+		const vec3f halfway = sample_microfacet(data.roughness, upNormal, incident, r2);
+
+		float iDotH = dot(incident, halfway);
+		if (dot(upNormal, halfway) < 0.f) return false;
+		if (iDotH < 0.f) return false;
+
+		float iDotN = dot(incident, upNormal);
+
+		scattered = reflect(incident, halfway);
+		float sDotN = dot(scattered, upNormal);
+
+		const float F = fresnel_dielectric(data.ior, halfway, incident);
+		const float D = microfacet_distribution(data.roughness, upNormal, halfway);
+		const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
+		const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
+
+		pdf = D * G1incident / (4 * iDotN);
+		if (pdf <= 0.f || !std::isfinite(pdf)) return false;
+
+		weight = vec3f{ F, F, F } * G1scattered / (sDotN) * yocto::abs(sDotN);
+		//weight *= microfacet_compensation(colour, data.roughness, normal, incident); // doesnt work for dielectric
+		return true;
+	} else {
+		vec2f r2{ 0, 0 };
+		sg->GetFloat2D(r2.x, r2.y);
+
+		lobe = LobeType::DielectricReflection;
+		scattered = sample_hemisphere_cos(upNormal, r2);
+		weight = colour;
+		pdf = (1.f - Fmacro) * sample_hemisphere_cos_pdf(upNormal, scattered);
+		return true;
+	}
 }
 #pragma endregion
 
@@ -116,21 +160,21 @@ vec3f EvalConductor(
 	const vec3f& normal, const vec3f& incident, const vec3f& scattered
 )
 {
-	const vec3f up_normal = dot(normal, incident) <= 0 ? -normal : normal;
+	const vec3f upNormal = dot(normal, incident) <= 0 ? -normal : normal;
 
 	if (data.roughness < kMinGGXAlpha)
-		return (reflect(incident, up_normal) == scattered ? fresnel_schlick(colour, up_normal, incident) : vec3f{ 0.f, 0.f, 0.f });
+		return (reflect(incident, upNormal) == scattered ? fresnel_schlick(colour, upNormal, incident) : vec3f{ 0.f, 0.f, 0.f });
 
 	const vec3f halfway = normalize(incident + scattered);
 
 	const vec3f F = fresnel_schlick(colour, halfway, incident);
-	const float D = microfacet_distribution(data.roughness, up_normal, halfway);
-	const float G1incident = microfacet_shadowing1(data.roughness, up_normal, halfway, incident, true);
-	const float G1scattered = microfacet_shadowing1(data.roughness, up_normal, halfway, scattered, true);
+	const float D = microfacet_distribution(data.roughness, upNormal, halfway);
+	const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
+	const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
 
-	float sDotN = dot(scattered, up_normal);
+	float sDotN = dot(scattered, upNormal);
 
-	vec3f bsdf = F * G1incident * G1scattered * D / (4 * dot(incident, up_normal) * sDotN) * yocto::abs(sDotN);
+	vec3f bsdf = F * G1incident * G1scattered * D / (4 * dot(incident, upNormal) * sDotN) * yocto::abs(sDotN);
 	bsdf *= microfacet_compensation(colour, data.roughness, normal, incident);
 
 	return bsdf;
@@ -141,21 +185,21 @@ float SampleConductorPDF(
 	const vec3f& normal, const vec3f& incident, const vec3f& scattered
 )
 {
-	const vec3f up_normal = dot(normal, incident) <= 0 ? -normal : normal;
+	const vec3f upNormal = dot(normal, incident) <= 0 ? -normal : normal;
 
 	if (data.roughness < kMinGGXAlpha)
-		return reflect(incident, up_normal) == scattered ? 1.f : 0.f;
+		return reflect(incident, upNormal) == scattered ? 1.f : 0.f;
 
 	const vec3f halfway = normalize(incident + scattered);
 
 	float iDotH = dot(incident, halfway);
-	if (dot(up_normal, halfway) < 0.f) return 0.f;
+	if (dot(upNormal, halfway) < 0.f) return 0.f;
 	if (iDotH < 0.f) return 0.f;
 
-	const float D = microfacet_distribution(data.roughness, up_normal, halfway);
-	const float G1incident = microfacet_shadowing1(data.roughness, up_normal, halfway, incident, true);
+	const float D = microfacet_distribution(data.roughness, upNormal, halfway);
+	const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
 
-	const float pdf = D * G1incident / (4 * dot(incident, up_normal));
+	const float pdf = D * G1incident / (4 * dot(incident, upNormal));
 	if (pdf <= 0.f || !std::isfinite(pdf)) return 0.f;
 	return pdf;
 }
@@ -167,13 +211,13 @@ bool SampleConductor(
 	LobeType& lobe, vec3f& scattered, vec3f& weight, float& pdf
 )
 {
-	const vec3f up_normal = dot(normal, incident) <= 0 ? -normal : normal;
+	const vec3f upNormal = dot(normal, incident) <= 0 ? -normal : normal;
 
 	if (data.roughness < kMinGGXAlpha) {
 		lobe = LobeType::DeltaConductiveReflection;
-		weight = fresnel_schlick(colour, up_normal, incident);
-		pdf = 1;
-		scattered = reflect(incident, up_normal);
+		weight = fresnel_schlick(colour, upNormal, incident);
+		pdf = 1.f;
+		scattered = reflect(incident, upNormal);
 		return true;
 	}
 
@@ -181,21 +225,21 @@ bool SampleConductor(
 
 	vec2f r2{ 0, 0 };
 	sg->GetFloat2D(r2.x, r2.y);
-	const vec3f halfway = sample_microfacet(data.roughness, up_normal, incident, r2);
+	const vec3f halfway = sample_microfacet(data.roughness, upNormal, incident, r2);
 
 	float iDotH = dot(incident, halfway);
-	if (dot(up_normal, halfway) < 0.f) return false;
+	if (dot(upNormal, halfway) < 0.f) return false;
 	if (iDotH < 0.f) return false;
 
-	float iDotN = dot(incident, up_normal);
+	float iDotN = dot(incident, upNormal);
 
 	scattered = reflect(incident, halfway);
-	float sDotN = dot(scattered, up_normal);
+	float sDotN = dot(scattered, upNormal);
 
 	const vec3f F = fresnel_schlick(colour, halfway, incident);
-	const float D = microfacet_distribution(data.roughness, up_normal, halfway);
-	const float G1incident = microfacet_shadowing1(data.roughness, up_normal, halfway, incident, true);
-	const float G1scattered = microfacet_shadowing1(data.roughness, up_normal, halfway, scattered, true);
+	const float D = microfacet_distribution(data.roughness, upNormal, halfway);
+	const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
+	const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
 
 	// eval: F * G1incident * G1scattered * D / (4 * iDotN * sDotN) * yocto::abs(sDotN)
 
@@ -337,17 +381,14 @@ bool SampleBSDF(
 	float lobeSelect = sg->GetFloat();
 
 	if (lobeSelect < pDielectric) {
-		vec3f wi = SampleDielectric(dielectric, data, n, wo, sg, result.lobe);
+		vec3f wi, weight;
+		if (!SampleDielectric(dielectric, data, n, wo, sg, result.lobe, wi, weight, result.pdf)) return false;
+
 		result.dir = vec3(wi.x, wi.y, wi.z);
-
-		result.pdf = SampleDielectricPDF(dielectric, data, n, wo, wi);
-		if (result.pdf == 0) return false;
-
-		vec3f weight = EvalDielectric(dielectric, data, n, wo, wi) / result.pdf;
 		result.weight = vec3(weight.x, weight.y, weight.z);
 
-		result.pdf *= pDielectric; // Apply this here as the prob is just the weighting of this lobe in the BSDF, so it cancels above
-		if (pConductor > 0) result.pdf += pConductor * SampleConductorPDF(conductor, data, n, wo, wi);
+		result.pdf *= pDielectric;
+		if (pConductor > 0) result.pdf += pConductor * SampleConductorPDF(dielectric, data, n, wo, wi);
 	} else if (pConductor > 0.f) {
 		vec3f wi, weight;
 		if (!SampleConductor(conductor, data, n, wo, sg, result.lobe, wi, weight, result.pdf)) return false;
