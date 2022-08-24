@@ -147,6 +147,10 @@ if CLIENT then
 	local PREVIEW_RES = 256
 	local PREVIEW_PADDING = 16
 	local PREVIEW_SPOT_LIGHT = Vector(3, 3, 4) -- Position of spot light relative to sphere (x and y are image x and y, z is pointing out of the screen)
+	local PREVIEW_INDIRECT_MINCOS = 0.001 -- Minimum cosine to sample (no point sampling parallel to the surface)
+	local PREVIEW_INDIRECT_RES = 8       -- How many snapshots of iDotN should we take evenly between min cosine and 1
+	local PREVIEW_INDIRECT_SAMPLES = 4096   -- How many samples of the BSDF to take at each snapshot
+	local PREVIEW_AMBIENT = Vector(1, 1, 1)
 
 	local previewRT = GetRenderTarget("VisTrace.BSDFMaterialPreview", PREVIEW_RES, PREVIEW_RES)
 	local previewMat = CreateMaterial("VisTrace.BSDFMaterialPreview", "UnlitGeneric", {
@@ -157,6 +161,10 @@ if CLIENT then
 	local RES_MINUS_PADDING = PREVIEW_RES - PREVIEW_PADDING
 	local PAD_DIV_2 = PREVIEW_PADDING / 2
 
+	-- Cache indirect sampling calcs
+	local INDIRECT_INCREMENT = (1 - PREVIEW_INDIRECT_MINCOS) / PREVIEW_INDIRECT_RES
+
+	local sampler = vistrace and vistrace.CreateSampler() or {}
 	local function DrawPreview()
 		if not vistrace then return end
 
@@ -183,27 +191,77 @@ if CLIENT then
 		mat:SpecularTransmission(spectrans)
 		mat:Thin(thin)
 
+		-- Compute average throughput of a few iDotNs and store in a LUT
+		-- This means we can approximate the intergral for indirect lighting assuming a uniform colour in all directions of the integral
+		-- by linearly interpolating between LUT values
+		local indirectLUT = {}
+		local iDotN = PREVIEW_INDIRECT_MINCOS
+		for i = 1, PREVIEW_INDIRECT_RES do
+			-- Convert sampled dot product to an incident vector (assuming the normal is positive Z)
+			local incident = Vector(math.sin(math.acos(iDotN)), 0, iDotN)
+			local normal = Vector(0, 0, 1)
+
+			-- Sample the BSDF
+			local throughput = Vector(0, 0, 0)
+			local validSamples = PREVIEW_INDIRECT_SAMPLES
+			for j = 1, PREVIEW_INDIRECT_SAMPLES do
+				local valid, sample = vistrace.SampleBSDF(sampler, mat, normal, incident)
+				if valid then
+					throughput = throughput + sample.weight
+				else
+					validSamples = validSamples - 1
+				end
+			end
+
+			indirectLUT[i] = throughput / validSamples
+			iDotN = iDotN + INDIRECT_INCREMENT
+		end
+
 		for y = 0, PREVIEW_RES - 1 do
 			for x = 0, PREVIEW_RES - 1 do
+				render.SetViewPort(x, y, 1, 1)
+
 				local u = (x - PAD_DIV_2) / RES_MINUS_PADDING
 				local v = (y - PAD_DIV_2) / RES_MINUS_PADDING
 				u = u * 2 - 1
 				v = v * 2 - 1
 
 				local u2, v2 = u * u, v * v
-				if u2 + v2 <= 1 then
+				if u2 + v2 < 1 then
 					local normal = Vector(u, -v, math.sqrt(1 - u2 - v2))
 					local incident = Vector(0, 0, 1)
+					iDotN = normal:Dot(incident)
 
+					-- Direct contribution
 					local lDir = PREVIEW_SPOT_LIGHT - normal
 					lDir:Normalize()
+					local direct = vistrace.EvalBSDF(mat, normal, incident, lDir)
 
-					local bsdf = vistrace.EvalBSDF(mat, normal, incident, lDir)
-					render.SetViewPort(x, y, 1, 1)
+					-- Indirect contribution
+					local index = iDotN * (PREVIEW_INDIRECT_RES - 1)
+					local iLow, iHigh = math.floor(index), math.ceil(index)
+					local indirect
+					if iLow == iHigh then
+						indirect = indirectLUT[iLow + 1]
+					else
+						local fract = index - iLow
+						indirect = (1 - fract) * indirectLUT[iLow + 1] + fract * indirectLUT[iHigh + 1]
+					end
+					indirect = indirect * PREVIEW_AMBIENT
+
+					local lighting = direct + indirect
+					
 					render.Clear(
-						math.Clamp(bsdf[1], 0, 1) * 255,
-						math.Clamp(bsdf[2], 0, 1) * 255,
-						math.Clamp(bsdf[3], 0, 1) * 255,
+						math.Clamp(lighting[1], 0, 1) * 255,
+						math.Clamp(lighting[2], 0, 1) * 255,
+						math.Clamp(lighting[3], 0, 1) * 255,
+						255, true, true
+					)
+				else
+					render.Clear(
+						PREVIEW_AMBIENT[1] * 255,
+						PREVIEW_AMBIENT[2] * 255,
+						PREVIEW_AMBIENT[3] * 255,
 						255, true, true
 					)
 				end
