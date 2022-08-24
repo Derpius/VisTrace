@@ -9,10 +9,7 @@ static const float kMinGGXAlpha = 0.0064f;
 
 int BSDFMaterial::id = -1;
 
-void BSDFMaterial::PrepShadingData(
-	const vec3& hitColour, float hitMetalness, float hitRoughness,
-	bool frontFacing
-)
+void BSDFMaterial::PrepShadingData(const vec3& hitColour, float hitMetalness, float hitRoughness)
 {
 	if (!metallicOverridden) metallic = clamp(hitMetalness, 0.f, 1.f);
 	if (!roughnessOverridden) {
@@ -20,9 +17,8 @@ void BSDFMaterial::PrepShadingData(
 		roughness = linearRoughness * linearRoughness;
 	}
 
-	vec3 surfaceColour = clamp(baseColour * hitColour, 0.f, 1.f);
-	dielectric = surfaceColour; // TODO: allow the user to specify individual colours for each BSDF
-	conductor = surfaceColour;
+	dielectric = clamp(dielectric * hitColour, 0.f, 1.f);
+	conductor = clamp(conductor * hitColour, 0.f, 1.f);
 }
 
 // Calculates the probability of each lobe

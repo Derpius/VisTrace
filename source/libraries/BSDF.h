@@ -36,7 +36,8 @@ struct BSDFMaterial
 {
 	static int id;
 
-	glm::vec3 baseColour{ 1.f, 1.f, 1.f };
+	glm::vec3 dielectric{ 1.f, 1.f, 1.f };
+	glm::vec3 conductor{ 1.f, 1.f, 1.f };
 	float ior = 1.5;
 
 	bool roughnessOverridden = false;
@@ -45,18 +46,12 @@ struct BSDFMaterial
 	bool metallicOverridden = false;
 	float metallic = 0.f;
 
-	glm::vec3 dielectric{ 1.f, 1.f, 1.f };
-	glm::vec3 conductor{ 1.f, 1.f, 1.f };
-
 	float diffuseTransmission = 0.f;
 	float specularTransmission = 0.f;
 
 	bool thin = false;
 
-	void PrepShadingData(
-		const glm::vec3& hitColour, float hitMetalness, float hitRoughness,
-		bool frontFacing
-	);
+	void PrepShadingData(const glm::vec3& hitColour, float hitMetalness, float hitRoughness);
 };
 
 struct BSDFSample
@@ -74,11 +69,11 @@ struct BSDFSample
 /// <param name="sg">Sample generator</param>
 /// <param name="result">Sample result</param>
 /// <param name="normal">Normal at hit point</param>
-/// <param name="outgoing">Vector towards camera or previous hit</param>
+/// <param name="incident">Vector towards camera or previous hit</param>
 /// <returns>Whether the sample is valid</returns>
 bool SampleBSDF(
 	const BSDFMaterial& data, Sampler* sg,
-	const glm::vec3& normal, const glm::vec3& outgoing,
+	const glm::vec3& normal, const glm::vec3& incident,
 	BSDFSample& result
 );
 
@@ -87,12 +82,12 @@ bool SampleBSDF(
 /// </summary>
 /// <param name="data">Material data</param>
 /// <param name="normal">Normal at hit point</param>
-/// <param name="outgoing">Vector towards camera or previous hit</param>
-/// <param name="incoming">Sampled vector at this hit</param>
+/// <param name="incident">Vector towards camera or previous hit</param>
+/// <param name="scattered">Sampled vector at this hit</param>
 /// <returns>The value of the BSDF</returns>
 glm::vec3 EvalBSDF(
 	const BSDFMaterial& data,
-	const glm::vec3& normal, const glm::vec3& outgoing, const glm::vec3& incoming
+	const glm::vec3& normal, const glm::vec3& incident, const glm::vec3& scattered
 );
 
 /// <summary>
@@ -100,10 +95,10 @@ glm::vec3 EvalBSDF(
 /// </summary>
 /// <param name="data">Material data</param>
 /// <param name="normal">Normal at hit point</param>
-/// <param name="outgoing">Vector towards camera or previous hit</param>
-/// <param name="incoming">Sampled vector at this hit</param>
+/// <param name="incident">Vector towards camera or previous hit</param>
+/// <param name="scattered">Sampled vector at this hit</param>
 /// <returns>The value of the PDF</returns>
 float EvalPDF(
 	const BSDFMaterial& data,
-	const glm::vec3& normal, const glm::vec3& outgoing, const glm::vec3& incoming
+	const glm::vec3& normal, const glm::vec3& incident, const glm::vec3& scattered
 );

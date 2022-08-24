@@ -544,7 +544,30 @@ LUA_FUNCTION(Material_Colour)
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
 	Vector v = LUA->GetVector(2);
-	pMat->baseColour = glm::vec3(v.x, v.y, v.z);
+	pMat->dielectric = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
+	pMat->conductor = pMat->dielectric;
+	return 0;
+}
+
+LUA_FUNCTION(Material_DielectricColour)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Vector);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	Vector v = LUA->GetVector(2);
+	pMat->dielectric = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
+	return 0;
+}
+
+LUA_FUNCTION(Material_ConductorColour)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Vector);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	Vector v = LUA->GetVector(2);
+	pMat->conductor = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
 	return 0;
 }
 
@@ -638,8 +661,7 @@ LUA_FUNCTION(TraceResult_SampleBSDF)
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(3, BSDFMaterial::id);
 	pMat->PrepShadingData(
 		pResult->GetAlbedo(),
-		pResult->GetMetalness(), pResult->GetRoughness(),
-		pResult->frontFacing
+		pResult->GetMetalness(), pResult->GetRoughness()
 	);
 
 	LUA->Pop(LUA->Top());
@@ -699,8 +721,7 @@ LUA_FUNCTION(TraceResult_EvalBSDF)
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(2, BSDFMaterial::id);
 	pMat->PrepShadingData(
 		pResult->GetAlbedo(),
-		pResult->GetMetalness(), pResult->GetRoughness(),
-		pResult->frontFacing
+		pResult->GetMetalness(), pResult->GetRoughness()
 	);
 
 	LUA->Pop(LUA->Top());
@@ -740,8 +761,7 @@ LUA_FUNCTION(TraceResult_EvalPDF)
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(2, BSDFMaterial::id);
 	pMat->PrepShadingData(
 		pResult->GetAlbedo(),
-		pResult->GetMetalness(), pResult->GetRoughness(),
-		pResult->frontFacing
+		pResult->GetMetalness(), pResult->GetRoughness()
 	);
 
 	LUA->Pop(LUA->Top());
@@ -752,6 +772,128 @@ LUA_FUNCTION(TraceResult_EvalPDF)
 		pResult->wo, incoming
 	);
 
+	LUA->PushNumber(pdf);
+	return 1;
+}
+
+/*
+	Sampler      sampler
+	BSDFMaterial material
+	Vector       normal
+	Vector       incident
+
+	returns:
+	bool valid
+	BSDFSample? sample
+*/
+LUA_FUNCTION(SampleBSDF)
+{
+	LUA->CheckType(1, Sampler::id);
+	LUA->CheckType(2, BSDFMaterial::id);
+	LUA->CheckType(3, Type::Vector);
+	LUA->CheckType(4, Type::Vector);
+
+	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler::id);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(2, BSDFMaterial::id);
+
+	Vector v = LUA->GetVector(3);
+	glm::vec3 normal(v.x, v.y, v.z);
+	v = LUA->GetVector(4);
+	glm::vec3 incident(v.x, v.y, v.z);
+
+	LUA->Pop(LUA->Top());
+
+	BSDFSample sample;
+	bool valid = SampleBSDF(
+		*pMat, pSampler,
+		normal,
+		incident,
+		sample
+	);
+
+	if (!valid) {
+		LUA->PushBool(false);
+		return 1;
+	}
+
+	LUA->PushBool(true);
+
+	LUA->CreateTable();
+	LUA->PushVector(MakeVector(sample.dir.x, sample.dir.y, sample.dir.z));
+	LUA->SetField(-2, "wo");
+	LUA->PushVector(MakeVector(sample.weight.x, sample.weight.y, sample.weight.z));
+	LUA->SetField(-2, "weight");
+
+	LUA->PushNumber(sample.pdf);
+	LUA->SetField(-2, "pdf");
+
+	LUA->PushNumber(static_cast<double>(sample.lobe));
+	LUA->SetField(-2, "lobe");
+
+	return 2;
+}
+
+/*
+	BSDFMaterial material
+	Vector       normal
+	Vector       incident
+	Vector       scattered
+
+	returns:
+	Vector colour
+*/
+LUA_FUNCTION(EvalBSDF)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Vector);
+	LUA->CheckType(3, Type::Vector);
+	LUA->CheckType(4, Type::Vector);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+
+	Vector v = LUA->GetVector(2);
+	glm::vec3 normal(v.x, v.y, v.z);
+	v = LUA->GetVector(3);
+	glm::vec3 incident(v.x, v.y, v.z);
+	v = LUA->GetVector(4);
+	glm::vec3 scattered(v.x, v.y, v.z);
+
+	LUA->Pop(LUA->Top());
+
+	glm::vec3 colour = EvalBSDF(*pMat, normal, incident, scattered);
+	LUA->PushVector(MakeVector(colour.x, colour.y, colour.z));
+	return 1;
+}
+
+/*
+	BSDFMaterial material
+	Vector       normal
+	Vector       incident
+	Vector       scattered
+
+	returns:
+	float pdf
+*/
+LUA_FUNCTION(EvalPDF)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Vector);
+	LUA->CheckType(3, Type::Vector);
+	LUA->CheckType(4, Type::Vector);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+
+	Vector v = LUA->GetVector(2);
+	glm::vec3 normal(v.x, v.y, v.z);
+	v = LUA->GetVector(3);
+	glm::vec3 incident(v.x, v.y, v.z);
+	v = LUA->GetVector(4);
+	glm::vec3 scattered(v.x, v.y, v.z);
+
+	LUA->Pop(LUA->Top());
+
+	float pdf = EvalPDF(*pMat, normal, incident, scattered);
 	LUA->PushNumber(pdf);
 	return 1;
 }
@@ -1137,6 +1279,10 @@ GMOD_MODULE_OPEN()
 
 		LUA->PushCFunction(Material_Colour);
 		LUA->SetField(-2, "Colour");
+		LUA->PushCFunction(Material_DielectricColour);
+		LUA->SetField(-2, "DielectricColour");
+		LUA->PushCFunction(Material_ConductorColour);
+		LUA->SetField(-2, "ConductorColour");
 
 		LUA->PushCFunction(Material_Metalness);
 		LUA->SetField(-2, "Metalness");
@@ -1164,6 +1310,10 @@ GMOD_MODULE_OPEN()
 			PUSH_C_FUNC(LoadHDRI);
 
 			PUSH_C_FUNC(CalcRayOrigin);
+
+			PUSH_C_FUNC(SampleBSDF);
+			PUSH_C_FUNC(EvalBSDF);
+			PUSH_C_FUNC(EvalPDF);
 		LUA->SetField(-2, "vistrace");
 
 		LUA->CreateTable();
