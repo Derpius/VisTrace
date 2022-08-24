@@ -32,6 +32,28 @@ enum class LobeType : uint8_t
 	All = 0b11111111
 };
 
+inline LobeType operator |(const LobeType& lhs, const LobeType& rhs)
+{
+	return static_cast<LobeType>(static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs));
+}
+
+inline LobeType& operator |=(LobeType& lhs, const LobeType& rhs)
+{
+	lhs = lhs | rhs;
+	return lhs;
+}
+
+inline LobeType operator &(const LobeType& lhs, const LobeType& rhs)
+{
+	return static_cast<LobeType>(static_cast<uint8_t>(lhs) & static_cast<uint8_t>(rhs));
+}
+
+inline LobeType& operator &=(LobeType& lhs, const LobeType& rhs)
+{
+	lhs = lhs & rhs;
+	return lhs;
+}
+
 struct BSDFMaterial
 {
 	static int id;
@@ -50,6 +72,8 @@ struct BSDFMaterial
 	float specularTransmission = 0.f;
 
 	bool thin = false;
+
+	LobeType activeLobes = LobeType::All;
 
 	void PrepShadingData(const glm::vec3& hitColour, float hitMetalness, float hitRoughness);
 };

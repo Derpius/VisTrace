@@ -632,6 +632,16 @@ LUA_FUNCTION(Material_Thin)
 	return 0;
 }
 
+LUA_FUNCTION(Material_ActiveLobes)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	LobeType lobes = static_cast<LobeType>(LUA->CheckNumber(2));
+
+	pMat->activeLobes = lobes;
+	return 0;
+}
+
 LUA_FUNCTION(Material_tostring)
 {
 	LUA->PushString("BSDFMaterial");
@@ -1299,6 +1309,9 @@ GMOD_MODULE_OPEN()
 
 		LUA->PushCFunction(Material_Thin);
 		LUA->SetField(-2, "Thin");
+
+		LUA->PushCFunction(Material_ActiveLobes);
+		LUA->SetField(-2, "ActiveLobes");
 	LUA->Pop();
 
 	LUA->PushSpecial(SPECIAL_GLOB);
