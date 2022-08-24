@@ -148,8 +148,8 @@ if CLIENT then
 	local PREVIEW_PADDING = 16
 	local PREVIEW_SPOT_LIGHT = Vector(3, 3, 4) -- Position of spot light relative to sphere (x and y are image x and y, z is pointing out of the screen)
 	local PREVIEW_INDIRECT_MINCOS = 0.001 -- Minimum cosine to sample (no point sampling parallel to the surface)
-	local PREVIEW_INDIRECT_RES = 8       -- How many snapshots of iDotN should we take evenly between min cosine and 1
-	local PREVIEW_INDIRECT_SAMPLES = 4096   -- How many samples of the BSDF to take at each snapshot
+	local PREVIEW_INDIRECT_RES = 16       -- How many snapshots of iDotN should we take evenly between min cosine and 1
+	local PREVIEW_INDIRECT_SAMPLES = 4096*4   -- How many samples of the BSDF to take at each snapshot
 	local PREVIEW_AMBIENT = Vector(1, 1, 1)
 
 	local previewRT = GetRenderTarget("VisTrace.BSDFMaterialPreview", PREVIEW_RES, PREVIEW_RES)
