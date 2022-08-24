@@ -44,7 +44,6 @@ duplicator.RegisterEntityModifier("BSDFMaterial", SetMaterial)
 
 -- Apply
 function TOOL:LeftClick(trace)
-	print("TEST")
 	local ent = trace.Entity
 	if IsValid(ent.AttachedEntity) then ent = ent.AttachedEntity end
 
