@@ -479,7 +479,7 @@ bool SampleSpecularTransmission(
 				return true;
 			} else {
 				lobe = LobeType::DeltaDielectricTransmission;
-				weight = vec3f{ 1, 1, 1 } * (1.f / (eta * eta));
+				weight = vec3f{ 1, 1, 1 };
 				pdf = 1.f - F;
 				scattered = refract(incident, upNormal, invEta);
 				return true;

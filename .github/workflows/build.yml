@@ -19,7 +19,7 @@ on:
       - "CMakeLists.txt"
       - ".gitmodules"
 env:
-  API_VERSION: "0.10"
+  API_VERSION: "0.11"
 
 jobs:
   build:
