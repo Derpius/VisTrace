@@ -143,6 +143,71 @@ if CLIENT then
 		return mat
 	end
 
+	-- Preview params
+	local PREVIEW_RES = 256
+	local PREVIEW_PADDING = 16
+	local PREVIEW_SPOT_LIGHT = Vector(2, 2, -2) -- Position of spot light relative to sphere (x and y are image x and y, z is pointing into the screen)
+
+	local previewRT = GetRenderTarget("VisTrace.BSDFMaterialPreview", PREVIEW_RES, PREVIEW_RES)
+	local previewMat = CreateMaterial("VisTrace.BSDFMaterialPreview", "UnlitGeneric", {
+		["$basetexture"] = previewRT:GetName()
+	})
+
+	-- Cache padding calcs
+	local RES_MINUS_PADDING = PREVIEW_RES - PREVIEW_PADDING
+	local PAD_DIV_2 = PREVIEW_PADDING / 2
+
+	local function DrawPreview()
+		if not vistrace then return end
+
+		render.PushRenderTarget(previewRT)
+		render.Clear(0, 0, 0, 255, true, true)
+
+		local plr = LocalPlayer()
+		local r         = plr:GetInfoNum("bsdf_material_r", 255) / 255
+		local g         = plr:GetInfoNum("bsdf_material_g", 255) / 255
+		local b         = plr:GetInfoNum("bsdf_material_b", 255) / 255
+		local roughness = plr:GetInfoNum("bsdf_material_roughness", 1)
+		local metalness = plr:GetInfoNum("bsdf_material_metalness", 0)
+		local ior       = plr:GetInfoNum("bsdf_material_ior", 1.5)
+		local difftrans = plr:GetInfoNum("bsdf_material_difftrans", 0)
+		local spectrans = plr:GetInfoNum("bsdf_material_spectrans", 0)
+		local thin      = plr:GetInfoNum("bsdf_material_thin", 0) ~= 0
+
+		local mat = vistrace.CreateMaterial()
+		mat:Colour(Vector(r, g, b))
+		mat:Roughness(roughness)
+		mat:Metalness(metalness)
+		mat:IoR(ior)
+		mat:DiffuseTransmission(difftrans)
+		mat:SpecularTransmission(spectrans)
+		mat:Thin(thin)
+
+		for y = 0, PREVIEW_RES - 1 do
+			for x = 0, PREVIEW_RES - 1 do
+				local u = (x - PAD_DIV_2) / RES_MINUS_PADDING
+				local v = (y - PAD_DIV_2) / RES_MINUS_PADDING
+				u = u * 2 - 1
+				v = v * 2 - 1
+
+				local u2, v2 = u * u, v * v
+				if u2 + v2 <= 1 then
+					local normal = Vector(u, v, math.sqrt(1 - u2 - v2))
+
+					local lDir = PREVIEW_SPOT_LIGHT - normal
+					lDir:Normalize()
+
+					local bsdf = vistrace.EvalBSDF(mat, normal, Vector(0, 0, -1), lDir)
+					render.SetViewPort(x, y, 1, 1)
+					render.Clear(bsdf[1] * 255, bsdf[2] * 255, bsdf[3] * 255, 255, true, true)
+				end
+			end
+		end
+
+		render.PopRenderTarget()
+		hook.Remove("PostRenderVGUI", "VisTrace.BSDFMaterialPreview")
+	end
+
 	local CON_VARS_DEFAULT = TOOL:BuildConVarList()
 	function TOOL.BuildCPanel(CPanel)
 		CPanel:ClearControls()
@@ -166,7 +231,6 @@ if CLIENT then
 		diffuseMixer:SetConVarR("bsdf_material_r")
 		diffuseMixer:SetConVarG("bsdf_material_g")
 		diffuseMixer:SetConVarB("bsdf_material_b")
-		diffuseMixer:SetSize(1, 200)
 		CPanel:AddItem(diffuseMixer)
 
 		CPanel:NumSlider("Metalness", "bsdf_material_metalness", 0, 1, 2)
@@ -174,5 +238,35 @@ if CLIENT then
 		CPanel:NumSlider("Index of Refraction", "bsdf_material_ior", 1, 5, 2)
 		CPanel:NumSlider("Specular Transmission", "bsdf_material_spectrans", 0, 1, 2)
 		CPanel:NumSlider("Diffuse Transmission", "bsdf_material_difftrans", 0, 1, 2)
+
+		local BUTTON_HEIGHT = 24
+		local previewContainer = vgui.Create("DPanel")
+		previewContainer:Dock(TOP)
+		previewContainer:SetHeight(PREVIEW_RES + BUTTON_HEIGHT)
+		previewContainer.Paint = nil
+
+		local generatePreview = vgui.Create("DButton", previewContainer)
+		generatePreview:SetSize(PREVIEW_RES, BUTTON_HEIGHT)
+		generatePreview:SetText("Generate Preview")
+		function generatePreview:DoClick()
+			hook.Add("PostRenderVGUI", "VisTrace.BSDFMaterialPreview", DrawPreview)
+		end
+
+		local previewPanel = vgui.Create("DPanel", previewContainer)
+		previewPanel:SetSize(PREVIEW_RES, PREVIEW_RES)
+
+		function previewPanel:Paint(w, h)
+			surface.SetDrawColor(255, 255, 255)
+			surface.SetMaterial(previewMat)
+			surface.DrawTexturedRect(0, 0, w, h)
+		end
+
+		function previewContainer:PerformLayout(w, h)
+			local offset = w * 0.5 - PREVIEW_RES / 2
+			generatePreview:SetPos(offset, 0)
+			previewPanel:SetPos(offset, BUTTON_HEIGHT)
+		end
+
+		CPanel:AddPanel(previewContainer)
 	end
 end
