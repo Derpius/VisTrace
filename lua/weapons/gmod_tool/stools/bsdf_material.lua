@@ -199,7 +199,12 @@ if CLIENT then
 
 					local bsdf = vistrace.EvalBSDF(mat, normal, Vector(0, 0, -1), lDir)
 					render.SetViewPort(x, y, 1, 1)
-					render.Clear(bsdf[1] * 255, bsdf[2] * 255, bsdf[3] * 255, 255, true, true)
+					render.Clear(
+						math.Clamp(bsdf[1], 0, 1) * 255,
+						math.Clamp(bsdf[2], 0, 1) * 255,
+						math.Clamp(bsdf[3], 0, 1) * 255,
+						255, true, true
+					)
 				end
 			end
 		end
