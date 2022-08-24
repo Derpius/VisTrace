@@ -146,7 +146,7 @@ if CLIENT then
 	-- Preview params
 	local PREVIEW_RES = 256
 	local PREVIEW_PADDING = 16
-	local PREVIEW_SPOT_LIGHT = Vector(2, 2, -2) -- Position of spot light relative to sphere (x and y are image x and y, z is pointing into the screen)
+	local PREVIEW_SPOT_LIGHT = Vector(3, 3, 4) -- Position of spot light relative to sphere (x and y are image x and y, z is pointing out of the screen)
 
 	local previewRT = GetRenderTarget("VisTrace.BSDFMaterialPreview", PREVIEW_RES, PREVIEW_RES)
 	local previewMat = CreateMaterial("VisTrace.BSDFMaterialPreview", "UnlitGeneric", {
@@ -192,12 +192,13 @@ if CLIENT then
 
 				local u2, v2 = u * u, v * v
 				if u2 + v2 <= 1 then
-					local normal = Vector(u, v, math.sqrt(1 - u2 - v2))
+					local normal = Vector(u, -v, math.sqrt(1 - u2 - v2))
+					local incident = Vector(0, 0, 1)
 
 					local lDir = PREVIEW_SPOT_LIGHT - normal
 					lDir:Normalize()
 
-					local bsdf = vistrace.EvalBSDF(mat, normal, Vector(0, 0, -1), lDir)
+					local bsdf = vistrace.EvalBSDF(mat, normal, incident, lDir)
 					render.SetViewPort(x, y, 1, 1)
 					render.Clear(
 						math.Clamp(bsdf[1], 0, 1) * 255,
