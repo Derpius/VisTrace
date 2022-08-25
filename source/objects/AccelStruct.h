@@ -44,10 +44,10 @@ namespace bvh
 #include "glm/glm.hpp"
 #include "glm/gtc/quaternion.hpp"
 
-#include "VTFParser.h"
 #include "BSPParser.h"
 
 #include "Utils.h"
+#include "VTFTexture.h"
 #include "vistrace/IRenderTarget.h"
 
 using Vector3 = bvh::Vector3<float>;
@@ -88,25 +88,25 @@ enum class DetailBlendMode : uint8_t
 struct Material
 {
 	glm::vec4 colour = glm::vec4(1.f);
-	VTFTexture* baseTexture = nullptr;
+	const VisTrace::IVTFTexture* baseTexture = nullptr;
 	glm::mat2x4 baseTexMat = glm::identity<glm::mat2x4>();
-	VTFTexture* normalMap = nullptr;
+	const VisTrace::IVTFTexture* normalMap = nullptr;
 	glm::mat2x4 normalMapMat = glm::identity<glm::mat2x4>();
-	VTFTexture* mrao = nullptr;
+	const VisTrace::IVTFTexture* mrao = nullptr;
 	//glm::mat2x4 mraoMat     = glm::identity<glm::mat2x4>(); MRAO texture lookups are driven by the base texture
 
-	VTFTexture* baseTexture2 = nullptr;
+	const VisTrace::IVTFTexture* baseTexture2 = nullptr;
 	glm::mat2x4 baseTexMat2 = glm::identity<glm::mat2x4>();
-	VTFTexture* normalMap2 = nullptr;
+	const VisTrace::IVTFTexture* normalMap2 = nullptr;
 	glm::mat2x4 normalMapMat2 = glm::identity<glm::mat2x4>();
-	VTFTexture* mrao2 = nullptr;
+	const VisTrace::IVTFTexture* mrao2 = nullptr;
 	//glm::mat2x4 mraoMat2    = glm::identity<glm::mat2x4>(); MRAO texture lookups are driven by the base texture
 
-	VTFTexture* blendTexture = nullptr;
+	const VisTrace::IVTFTexture* blendTexture = nullptr;
 	glm::mat2x4 blendTexMat = glm::identity<glm::mat2x4>();
 	bool maskedBlending = false;
 
-	VTFTexture* detail = nullptr;
+	const VisTrace::IVTFTexture* detail = nullptr;
 	glm::mat2x4 detailMat = glm::identity<glm::mat2x4>();
 	float detailScale = 4.f;
 	float detailBlendFactor = 1.f;
@@ -330,7 +330,7 @@ public:
 
 	std::vector<Entity> entities;
 
-	std::unordered_map<std::string, VTFTexture*> textureCache;
+	std::unordered_map<std::string, const VisTrace::IVTFTexture*> textureCache;
 
 	std::unordered_map<std::string, size_t> materialIds;
 	std::vector<Material> materials;
@@ -355,7 +355,7 @@ private:
 
 	std::vector<Entity> mEntities;
 
-	std::unordered_map<std::string, VTFTexture*> mTextureCache;
+	std::unordered_map<std::string, const VisTrace::IVTFTexture*> mTextureCache;
 
 	std::unordered_map<std::string, size_t> mMaterialIds;
 	std::vector<Material> mMaterials;

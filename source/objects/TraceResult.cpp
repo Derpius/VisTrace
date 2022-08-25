@@ -4,6 +4,8 @@
 #include "glm/gtx/compatibility.hpp"
 using namespace glm;
 
+using namespace VisTrace;
+
 int TraceResult::id = -1;
 
 vec4 TextureCombine(
@@ -126,7 +128,7 @@ void TraceResult::CalcBlendFactor()
 		CalcFootprint();
 
 		vec2 scaled = TransformTexcoord(texUV, blendTexMat, texScale);
-		VTFPixel pixelBlend = blendTexture->Sample(
+		Pixel pixelBlend = blendTexture->Sample(
 			scaled.x, scaled.y,
 			mipOverride ? 0 : TriUVInfoToTexLOD(blendTexture, textureLodInfo)
 		);
@@ -156,7 +158,7 @@ void TraceResult::CalcTBN()
 		CalcBlendFactor();
 
 		vec2 scaled = TransformTexcoord(texUV, normalMapMat, texScale);
-		VTFPixel pixelNormal = normalMap->Sample(
+		Pixel pixelNormal = normalMap->Sample(
 			scaled.x, scaled.y,
 			mipOverride ? 0 : TriUVInfoToTexLOD(normalMap, textureLodInfo)
 		);
@@ -207,7 +209,7 @@ void TraceResult::CalcShadingData()
 	vec2 scaled = TransformTexcoord(texUV, baseTexMat, texScale);
 	vec2 scaled2 = TransformTexcoord(texUV, baseTexMat2, texScale);
 
-	VTFPixel pixelColour = baseTexture->Sample(
+	Pixel pixelColour = baseTexture->Sample(
 		scaled.x, scaled.y,
 		mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture, textureLodInfo)
 	);
@@ -225,7 +227,7 @@ void TraceResult::CalcShadingData()
 
 	if (detailTexture != nullptr) {
 		vec2 detailUVs = TransformTexcoord(texUV, detailTexMat, detailScale);
-		VTFPixel detailColour = detailTexture->Sample(
+		Pixel detailColour = detailTexture->Sample(
 			detailUVs.x, detailUVs.y,
 			mipOverride ? 0 : TriUVInfoToTexLOD(detailTexture, textureLodInfo)
 		);
@@ -240,7 +242,7 @@ void TraceResult::CalcShadingData()
 	alpha *= colour.a;
 
 	if (mrao != nullptr) {
-		VTFPixel pixelMRAO = mrao->Sample(
+		Pixel pixelMRAO = mrao->Sample(
 			scaled.x, scaled.y,
 			mipOverride ? 0 : TriUVInfoToTexLOD(mrao, textureLodInfo)
 		);

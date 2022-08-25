@@ -2,7 +2,7 @@
 
 #include "glm/glm.hpp"
 
-#include "Sampler.h"
+#include "vistrace/ISampler.h"
 
 // Most significant bit of each nibble reserved 
 enum class LobeType : uint8_t
@@ -96,7 +96,7 @@ struct BSDFSample
 /// <param name="incident">Vector towards camera or previous hit</param>
 /// <returns>Whether the sample is valid</returns>
 bool SampleBSDF(
-	const BSDFMaterial& data, Sampler* sg,
+	const BSDFMaterial& data, VisTrace::ISampler* sg,
 	const glm::vec3& normal, const glm::vec3& incident,
 	BSDFSample& result
 );

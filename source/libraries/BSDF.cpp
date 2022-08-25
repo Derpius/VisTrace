@@ -4,6 +4,7 @@
 using namespace yocto;
 
 using namespace glm;
+using namespace VisTrace;
 
 static const float kMinGGXAlpha = 0.0064f;
 
@@ -140,7 +141,7 @@ float SampleDielectricPDF(
 bool SampleDielectric(
 	const vec3f& colour, const BSDFMaterial& data,
 	const vec3f& normal, const vec3f& incident,
-	Sampler* sg,
+	ISampler* sg,
 	LobeType& lobe, vec3f& scattered, vec3f& weight, float& pdf
 )
 {
@@ -271,7 +272,7 @@ float SampleConductorPDF(
 bool SampleConductor(
 	const vec3f& colour, const BSDFMaterial& data,
 	const vec3f& normal, const vec3f& incident,
-	Sampler* sg,
+	ISampler* sg,
 	LobeType& lobe, vec3f& scattered, vec3f& weight, float& pdf
 )
 {
@@ -480,7 +481,7 @@ float SampleSpecularTransmissionPDF(
 bool SampleSpecularTransmission(
 	const vec3f& colour, const BSDFMaterial& data,
 	const vec3f& normal, const vec3f& incident,
-	Sampler* sg,
+	ISampler* sg,
 	LobeType& lobe, vec3f& scattered, vec3f& weight, float& pdf
 )
 {
@@ -623,7 +624,7 @@ bool SampleSpecularTransmission(
 #pragma endregion
 
 bool SampleBSDF(
-	const BSDFMaterial& data, Sampler* sg,
+	const BSDFMaterial& data, ISampler* sg,
 	const vec3& normal, const vec3& outgoing,
 	BSDFSample& result
 )

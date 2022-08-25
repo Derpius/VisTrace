@@ -2,7 +2,8 @@
 
 #include "GarrysMod/Lua/Interface.h"
 #include "glm/glm.hpp"
-#include "VTFParser.h"
+
+#include "vistrace/IVTFTexture.h"
 
 #include <string>
 #include <vector>
@@ -84,14 +85,6 @@ inline MaterialFlags operator&(const MaterialFlags a, const MaterialFlags b)
 }
 
 /// <summary>
-/// Read a VTF texture at the given path
-/// </summary>
-/// <param name="path">Path to texture (without materials/ and .vtf)</param>
-/// <param name="ppTextureOut">Pointer to pointer to texture for passing the newly read texture out</param>
-/// <returns>Whether the read was successful or not</returns>
-bool ReadTexture(const std::string& path, VTFTexture** ppTextureOut);
-
-/// <summary>
 /// Check if a vector is valid (not all zero or NaN)
 /// </summary>
 /// <param name="v">Vector to validate</param>
@@ -115,7 +108,7 @@ inline glm::vec2 TransformTexcoord(const glm::vec2& texcoord, const glm::mat2x4&
 }
 
 // Ray Tracing Gems
-inline float TriUVInfoToTexLOD(const VTFTexture* pTex, glm::vec2 uvInfo)
+inline float TriUVInfoToTexLOD(const VisTrace::IVTFTexture* pTex, glm::vec2 uvInfo)
 {
 	return uvInfo.x + 0.5f * log2(pTex->GetWidth() * pTex->GetHeight() * uvInfo.y);
 }

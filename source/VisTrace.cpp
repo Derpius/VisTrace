@@ -2,12 +2,12 @@
 
 #include "Utils.h"
 
-#include "VTFParser.h"
 #include "BSPParser.h"
 #include "GMFS.h"
 
 #include "Sampler.h"
 #include "RenderTarget.h"
+#include "VTFTexture.h"
 
 #include "TraceResult.h"
 #include "AccelStruct.h"
@@ -33,7 +33,7 @@ LUA_FUNCTION(CreateSampler)
 LUA_FUNCTION(Sampler_gc)
 {
 	LUA->CheckType(1, Sampler::id);
-	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler::id);
+	ISampler* pSampler = *LUA->GetUserType<ISampler*>(1, Sampler::id);
 
 	LUA->SetUserType(1, NULL);
 	delete pSampler;
@@ -44,7 +44,7 @@ LUA_FUNCTION(Sampler_gc)
 LUA_FUNCTION(Sampler_GetFloat)
 {
 	LUA->CheckType(1, Sampler::id);
-	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler::id);
+	ISampler* pSampler = *LUA->GetUserType<ISampler*>(1, Sampler::id);
 	LUA->PushNumber(pSampler->GetFloat());
 	return 1;
 }
@@ -52,7 +52,7 @@ LUA_FUNCTION(Sampler_GetFloat)
 LUA_FUNCTION(Sampler_GetFloat2D)
 {
 	LUA->CheckType(1, Sampler::id);
-	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler::id);
+	ISampler* pSampler = *LUA->GetUserType<ISampler*>(1, Sampler::id);
 
 	float x, y;
 	pSampler->GetFloat2D(x, y);
@@ -64,6 +64,185 @@ LUA_FUNCTION(Sampler_GetFloat2D)
 LUA_FUNCTION(Sampler_tostring)
 {
 	LUA->PushString("Sampler");
+	return 1;
+}
+#pragma endregion
+
+#pragma region VTF Textures
+/*
+	string path
+*/
+LUA_FUNCTION(LoadTexture)
+{
+	const char* path = LUA->CheckString(1);
+
+	IVTFTexture* pTex = new VTFTextureWrapper(path);
+	if (!pTex->IsValid()) {
+		delete pTex;
+		LUA->ThrowError("Failed to load texture");
+	}
+
+	LUA->PushUserType_Value(pTex, VTFTextureWrapper::id);
+	return 1;
+}
+LUA_FUNCTION(VTFTexture_gc)
+{
+	LUA->CheckType(1, VTFTextureWrapper::id);
+	IVTFTexture* pTex = *LUA->GetUserType<IVTFTexture*>(1, VTFTextureWrapper::id);
+
+	LUA->SetUserType(1, NULL);
+	delete pTex;
+
+	return 0;
+}
+
+LUA_FUNCTION(VTFTexture_IsValid)
+{
+	IVTFTexture** ppTex = LUA->GetUserType<IVTFTexture*>(1, VTFTextureWrapper::id);
+	LUA->PushBool(ppTex != nullptr && (*ppTex)->IsValid());
+	return 1;
+}
+
+LUA_FUNCTION(VTFTexture_GetWidth)
+{
+	LUA->CheckType(1, VTFTextureWrapper::id);
+	uint8_t mip = LUA->GetNumber(2);
+
+	const IVTFTexture* pTex = *LUA->GetUserType<IVTFTexture*>(1, VTFTextureWrapper::id);
+	if (!pTex->IsValid()) LUA->ThrowError("Invalid texture");
+
+	LUA->PushNumber(pTex->GetWidth(mip));
+	return 1;
+}
+LUA_FUNCTION(VTFTexture_GetHeight)
+{
+	LUA->CheckType(1, VTFTextureWrapper::id);
+	uint8_t mip = LUA->GetNumber(2);
+
+	const IVTFTexture* pTex = *LUA->GetUserType<IVTFTexture*>(1, VTFTextureWrapper::id);
+	if (!pTex->IsValid()) LUA->ThrowError("Invalid texture");
+
+	LUA->PushNumber(pTex->GetHeight(mip));
+	return 1;
+}
+LUA_FUNCTION(VTFTexture_GetDepth)
+{
+	LUA->CheckType(1, VTFTextureWrapper::id);
+	uint8_t mip = LUA->GetNumber(2);
+
+	const IVTFTexture* pTex = *LUA->GetUserType<IVTFTexture*>(1, VTFTextureWrapper::id);
+	if (!pTex->IsValid()) LUA->ThrowError("Invalid texture");
+
+	LUA->PushNumber(pTex->GetDepth(mip));
+	return 1;
+}
+
+LUA_FUNCTION(VTFTexture_GetFaces)
+{
+	LUA->CheckType(1, VTFTextureWrapper::id);
+	const IVTFTexture* pTex = *LUA->GetUserType<IVTFTexture*>(1, VTFTextureWrapper::id);
+	if (!pTex->IsValid()) LUA->ThrowError("Invalid texture");
+
+	LUA->PushNumber(pTex->GetFaces());
+	return 1;
+}
+
+LUA_FUNCTION(VTFTexture_GetMIPLevels)
+{
+	LUA->CheckType(1, VTFTextureWrapper::id);
+	const IVTFTexture* pTex = *LUA->GetUserType<IVTFTexture*>(1, VTFTextureWrapper::id);
+	if (!pTex->IsValid()) LUA->ThrowError("Invalid texture");
+
+	LUA->PushNumber(pTex->GetMIPLevels());
+	return 1;
+}
+
+LUA_FUNCTION(VTFTexture_GetFrames)
+{
+	LUA->CheckType(1, VTFTextureWrapper::id);
+	const IVTFTexture* pTex = *LUA->GetUserType<IVTFTexture*>(1, VTFTextureWrapper::id);
+	if (!pTex->IsValid()) LUA->ThrowError("Invalid texture");
+
+	LUA->PushNumber(pTex->GetFrames());
+	return 1;
+}
+LUA_FUNCTION(VTFTexture_GetFirstFrame)
+{
+	LUA->CheckType(1, VTFTextureWrapper::id);
+	const IVTFTexture* pTex = *LUA->GetUserType<IVTFTexture*>(1, VTFTextureWrapper::id);
+	if (!pTex->IsValid()) LUA->ThrowError("Invalid texture");
+
+	LUA->PushNumber(pTex->GetFirstFrame());
+	return 1;
+}
+
+/*
+	uint16_t x
+	uint16_t y
+	uint16_t z
+	uint8_t  mipLevel
+	uint16_t frame
+	uint8_t  face
+*/
+LUA_FUNCTION(VTFTexture_GetPixel)
+{
+	LUA->CheckType(1, VTFTextureWrapper::id);
+	const IVTFTexture* pTex = *LUA->GetUserType<IVTFTexture*>(1, VTFTextureWrapper::id);
+	if (!pTex->IsValid()) LUA->ThrowError("Invalid texture");
+
+	const int top = LUA->Top();
+	const double x        = LUA->CheckNumber(2);
+	const double y        = LUA->CheckNumber(3);
+	const double z        = LUA->GetNumber(4);
+	const double mipLevel = LUA->GetNumber(5);
+	const double frame    = LUA->GetNumber(6);
+	const double face     = LUA->GetNumber(7);
+
+	if (mipLevel < 0.0 || mipLevel >= pTex->GetMIPLevels())  LUA->ThrowError("MIP level out of range");
+	if (x < 0.0        || x        >= pTex->GetWidth(mipLevel))      LUA->ThrowError("x coordinate out of range");
+	if (y < 0.0        || y        >= pTex->GetHeight(mipLevel))     LUA->ThrowError("y coordinate out of range");
+	if (z < 0.0        || z        >= pTex->GetDepth(mipLevel))      LUA->ThrowError("z coordinate out of range");
+	if (frame < 0.0    || frame    >= pTex->GetFrames())     LUA->ThrowError("Frame out of range");
+	if (face < 0.0     || face     >= pTex->GetFaces())      LUA->ThrowError("Face out of range");
+
+	Pixel p = pTex->GetPixel(x, y, z, mipLevel, frame, face);
+	LUA->PushVector(MakeVector(p.r, p.g, p.b));
+	LUA->PushNumber(p.a);
+	return 2;
+}
+
+/*
+	float    u
+	float    v
+	float    mipLevel
+	uint16_t frame
+	uint8_t  face
+*/
+LUA_FUNCTION(VTFTexture_Sample)
+{
+	LUA->CheckType(1, VTFTextureWrapper::id);
+	const IVTFTexture* pTex = *LUA->GetUserType<IVTFTexture*>(1, VTFTextureWrapper::id);
+	if (!pTex->IsValid()) LUA->ThrowError("Invalid texture");
+
+	const int top = LUA->Top();
+	const double u        = LUA->CheckNumber(2);
+	const double v        = LUA->CheckNumber(3);
+	const double mipLevel = LUA->GetNumber(4);
+	const double frame    = LUA->GetNumber(5);
+	const double face     = LUA->GetNumber(6);
+
+	if (frame < 0.0 || frame >= pTex->GetFrames()) LUA->ThrowError("Frame out of range");
+	if (face < 0.0  || face >= pTex->GetFaces())   LUA->ThrowError("Face out of range");
+
+	Pixel p = pTex->Sample(u, v, 0, mipLevel, frame, face);
+	LUA->PushVector(MakeVector(p.r, p.g, p.b));
+	LUA->PushNumber(p.a);
+	return 2;
+}
+
+LUA_FUNCTION(VTFTexture_tostring)
+{
+	LUA->PushString("VTFTexture");
 	return 1;
 }
 #pragma endregion
@@ -109,7 +288,7 @@ LUA_FUNCTION(CreateRenderTarget)
 LUA_FUNCTION(RT_gc)
 {
 	LUA->CheckType(1, RenderTarget::id);
-	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
 
 	LUA->SetUserType(1, NULL);
 	delete pRt;
@@ -119,7 +298,7 @@ LUA_FUNCTION(RT_gc)
 
 LUA_FUNCTION(RT_IsValid)
 {
-	RenderTarget** ppRt = LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	IRenderTarget** ppRt = LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
 	LUA->PushBool(ppRt != nullptr && (*ppRt)->IsValid());
 	return 1;
 }
@@ -127,7 +306,8 @@ LUA_FUNCTION(RT_IsValid)
 LUA_FUNCTION(RT_Resize)
 {
 	LUA->CheckType(1, RenderTarget::id);
-	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 
 	uint16_t width = LUA->CheckNumber(2), height = LUA->CheckNumber(3);
 
@@ -151,28 +331,36 @@ LUA_FUNCTION(RT_Resize)
 LUA_FUNCTION(RT_GetWidth)
 {
 	LUA->CheckType(1, RenderTarget::id);
-	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+
 	LUA->PushNumber(pRt->GetWidth());
 	return 1;
 }
 LUA_FUNCTION(RT_GetHeight)
 {
 	LUA->CheckType(1, RenderTarget::id);
-	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+
 	LUA->PushNumber(pRt->GetHeight());
 	return 1;
 }
 LUA_FUNCTION(RT_GetMIPs)
 {
 	LUA->CheckType(1, RenderTarget::id);
-	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+
 	LUA->PushNumber(pRt->GetMIPs());
 	return 1;
 }
 LUA_FUNCTION(RT_GetFormat)
 {
 	LUA->CheckType(1, RenderTarget::id);
-	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+
 	LUA->PushNumber(static_cast<double>(pRt->GetFormat()));
 	return 1;
 }
@@ -180,7 +368,7 @@ LUA_FUNCTION(RT_GetFormat)
 LUA_FUNCTION(RT_GetPixel)
 {
 	LUA->CheckType(1, RenderTarget::id);
-	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 
 	uint16_t x = LUA->CheckNumber(2), y = LUA->CheckNumber(3);
@@ -198,7 +386,7 @@ LUA_FUNCTION(RT_GetPixel)
 LUA_FUNCTION(RT_SetPixel)
 {
 	LUA->CheckType(1, RenderTarget::id);
-	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 
 	uint16_t x = LUA->CheckNumber(2), y = LUA->CheckNumber(3);
@@ -221,7 +409,7 @@ LUA_FUNCTION(RT_SetPixel)
 LUA_FUNCTION(RT_GenerateMIPs)
 {
 	LUA->CheckType(1, RenderTarget::id);
-	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 
 	pRt->GenerateMIPs();
@@ -231,7 +419,7 @@ LUA_FUNCTION(RT_GenerateMIPs)
 LUA_FUNCTION(RT_Tonemap)
 {
 	LUA->CheckType(1, RenderTarget::id);
-	RenderTarget* pRt = *LUA->GetUserType<RenderTarget*>(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 	if (pRt->GetFormat() != RTFormat::RGBFFF) LUA->ThrowError("Render target's format must be RGBFFF");
 
@@ -666,7 +854,7 @@ LUA_FUNCTION(TraceResult_SampleBSDF)
 	LUA->CheckType(3, BSDFMaterial::id);
 
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
-	Sampler* pSampler = *LUA->GetUserType<Sampler*>(2, Sampler::id);
+	ISampler* pSampler = *LUA->GetUserType<ISampler*>(2, Sampler::id);
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(3, BSDFMaterial::id);
 	pMat->PrepShadingData(
@@ -803,7 +991,7 @@ LUA_FUNCTION(SampleBSDF)
 	LUA->CheckType(3, Type::Vector);
 	LUA->CheckType(4, Type::Vector);
 
-	Sampler* pSampler = *LUA->GetUserType<Sampler*>(1, Sampler::id);
+	ISampler* pSampler = *LUA->GetUserType<ISampler*>(1, Sampler::id);
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(2, BSDFMaterial::id);
 
@@ -1125,6 +1313,45 @@ GMOD_MODULE_OPEN()
 		printLua(LUA, "VisTrace: Loaded filesystem interface successfully");
 	}
 
+	VTFTextureWrapper::id = LUA->CreateMetaTable("VisTraceVTFTexture");
+	LUA->PushSpecial(SPECIAL_REG);
+	LUA->PushNumber(VTFTextureWrapper::id);
+	LUA->SetField(-2, "VisTraceVTFTexture_id");
+	LUA->Pop(); // Pop the registry
+		LUA->Push(-1);
+		LUA->SetField(-2, "__index");
+		LUA->PushCFunction(VTFTexture_tostring);
+		LUA->SetField(-2, "__tostring");
+		LUA->PushCFunction(VTFTexture_gc);
+		LUA->SetField(-2, "__gc");
+
+		LUA->PushCFunction(VTFTexture_IsValid);
+		LUA->SetField(-2, "IsValid");
+
+		LUA->PushCFunction(VTFTexture_GetWidth);
+		LUA->SetField(-2, "GetWidth");
+		LUA->PushCFunction(VTFTexture_GetHeight);
+		LUA->SetField(-2, "GetHeight");
+		LUA->PushCFunction(VTFTexture_GetDepth);
+		LUA->SetField(-2, "GetDepth");
+
+		LUA->PushCFunction(VTFTexture_GetFaces);
+		LUA->SetField(-2, "GetFaces");
+
+		LUA->PushCFunction(VTFTexture_GetMIPLevels);
+		LUA->SetField(-2, "GetMIPLevels");
+
+		LUA->PushCFunction(VTFTexture_GetFrames);
+		LUA->SetField(-2, "GetFrames");
+		LUA->PushCFunction(VTFTexture_GetFirstFrame);
+		LUA->SetField(-2, "GetFirstFrame");
+
+		LUA->PushCFunction(VTFTexture_GetPixel);
+		LUA->SetField(-2, "GetPixel");
+		LUA->PushCFunction(VTFTexture_Sample);
+		LUA->SetField(-2, "Sample");
+	LUA->Pop();
+
 	RenderTarget::id = LUA->CreateMetaTable("VisTraceRT");
 	LUA->PushSpecial(SPECIAL_REG);
 	LUA->PushNumber(RenderTarget::id);
@@ -1320,7 +1547,9 @@ GMOD_MODULE_OPEN()
 			PUSH_C_FUNC(CreateAccel);
 			PUSH_C_FUNC(CreateSampler);
 			PUSH_C_FUNC(CreateMaterial);
+
 			PUSH_C_FUNC(LoadHDRI);
+			PUSH_C_FUNC(LoadTexture);
 
 			PUSH_C_FUNC(CalcRayOrigin);
 

@@ -3,32 +3,32 @@
 #include <cstdint>
 #include "glm/glm.hpp"
 
-#include "VTFParser.h"
 #include "BSPParser.h"
 
 #include "AccelStruct.h"
+#include "vistrace/IVTFTexture.h"
 
 #include "Utils.h"
 
 class TraceResult
 {
 private:
-	VTFTexture* baseTexture  = nullptr;
+	const VisTrace::IVTFTexture* baseTexture  = nullptr;
 	glm::mat2x4 baseTexMat;
-	VTFTexture* normalMap    = nullptr;
+	const VisTrace::IVTFTexture* normalMap    = nullptr;
 	glm::mat2x4 normalMapMat;
-	VTFTexture* mrao         = nullptr;
+	const VisTrace::IVTFTexture* mrao         = nullptr;
 
-	VTFTexture* baseTexture2 = nullptr;
+	const VisTrace::IVTFTexture* baseTexture2 = nullptr;
 	glm::mat2x4 baseTexMat2;
-	VTFTexture* normalMap2   = nullptr;
+	const VisTrace::IVTFTexture* normalMap2   = nullptr;
 	glm::mat2x4 normalMapMat2;
-	VTFTexture* mrao2        = nullptr;
+	const VisTrace::IVTFTexture* mrao2        = nullptr;
 
-	VTFTexture* blendTexture = nullptr;
+	const VisTrace::IVTFTexture* blendTexture = nullptr;
 	glm::mat2x4 blendTexMat;
 
-	VTFTexture* detailTexture = nullptr;
+	const VisTrace::IVTFTexture* detailTexture = nullptr;
 	glm::mat2x4 detailTexMat;
 	float detailScale = 4.f;
 	float detailBlendFactor = 0.f;

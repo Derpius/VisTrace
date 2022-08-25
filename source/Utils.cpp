@@ -85,31 +85,6 @@ std::string GetMaterialString(ILuaBase* LUA, const std::string& key)
 	return val;
 }
 
-bool ReadTexture(const std::string& path, VTFTexture** ppTextureOut)
-{
-	std::string texturePath = "materials/" + path + ".vtf";
-	if (!FileSystem::Exists(texturePath.c_str(), "GAME")) return false;
-	FileHandle_t file = FileSystem::Open(texturePath.c_str(), "rb", "GAME");
-
-	uint32_t filesize = FileSystem::Size(file);
-	uint8_t* data = reinterpret_cast<uint8_t*>(malloc(filesize));
-	if (data == nullptr) return false;
-
-	FileSystem::Read(data, filesize, file);
-	FileSystem::Close(file);
-
-	VTFTexture* pTexture = new VTFTexture{ data, filesize };
-	free(data);
-
-	if (!pTexture->IsValid()) {
-		delete pTexture;
-		return false;
-	}
-
-	*ppTextureOut = pTexture;
-	return true;
-}
-
 bool ValidVector(const glm::vec3& v)
 {
 	return (

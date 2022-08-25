@@ -16,6 +16,7 @@
 #define WATER_BASE_TEXTURE "models/debug/debugwhite"
 
 using namespace GarrysMod::Lua;
+using namespace VisTrace;
 
 void normalise(Vector3& v)
 {
@@ -64,20 +65,21 @@ VMatrix* VMatrix::FromMaterial(ILuaBase* LUA, const std::string& key)
 	return pMat;
 }
 
-VTFTexture* CacheTexture(
+const IVTFTexture* CacheTexture(
 	const std::string& path,
-	std::unordered_map<std::string, VTFTexture*>& cache,
-	VTFTexture* fallback = nullptr
+	std::unordered_map<std::string, const IVTFTexture*>& cache,
+	const IVTFTexture* fallback = nullptr
 )
 {
 	if (cache.find(path) != cache.end()) return cache[path];
 
 	if (!path.empty()) {
-		VTFTexture* pTexture;
-		if (ReadTexture(path, &pTexture)) {
+		const IVTFTexture* pTexture = new VTFTextureWrapper(path);
+		if (pTexture->IsValid()) {
 			cache.emplace(path, pTexture);
 			return pTexture;
-		};
+		}
+		delete pTexture;
 	}
 
 	return fallback;
@@ -109,21 +111,25 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 	entities = std::vector<Entity>();
 
-	textureCache = std::unordered_map<std::string, VTFTexture*>();
+	textureCache = std::unordered_map<std::string, const IVTFTexture*>();
 
 	materials = std::vector<Material>();
 
 	{
-		VTFTexture* pTexture;
-		if (!ReadTexture(MISSING_TEXTURE, &pTexture)) {
+		const IVTFTexture* pTexture = new VTFTextureWrapper(MISSING_TEXTURE);
+		if (!pTexture->IsValid()) {
+			delete pTexture;
 			delete pMap;
 			pMap = nullptr;
 			return;
 		}
 		textureCache.emplace(MISSING_TEXTURE, pTexture);
 
-		if (ReadTexture(WATER_BASE_TEXTURE, &pTexture)) {
+		pTexture = new VTFTextureWrapper(WATER_BASE_TEXTURE);
+		if (pTexture->IsValid()) {
 			textureCache.emplace(WATER_BASE_TEXTURE, pTexture);
+		} else {
+			delete pTexture;
 		}
 	}
 
@@ -638,7 +644,7 @@ AccelStruct::AccelStruct()
 
 	mEntities = std::vector<Entity>();
 
-	mTextureCache = std::unordered_map<std::string, VTFTexture*>();
+	mTextureCache = std::unordered_map<std::string, const IVTFTexture*>();
 
 	mMaterialIds = std::unordered_map<std::string, size_t>();
 	mMaterials = std::vector<Material>();
@@ -689,8 +695,9 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 		mMaterials = mpWorld->materials;
 	} else {
 		{
-			VTFTexture* pTexture;
-			if (!ReadTexture(MISSING_TEXTURE, &pTexture)) {
+			const IVTFTexture* pTexture = new VTFTextureWrapper(MISSING_TEXTURE);
+			if (!pTexture->IsValid()) {
+				delete pTexture;
 				LUA->ThrowError("Failed to read missing texture");
 			}
 			mTextureCache.emplace(MISSING_TEXTURE, pTexture);

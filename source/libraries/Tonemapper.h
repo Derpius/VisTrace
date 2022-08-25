@@ -1,5 +1,5 @@
 #pragma once
 
-#include "RenderTarget.h"
+#include "vistrace/IRenderTarget.h"
 
-void Tonemap(RenderTarget* pRt);
+void Tonemap(VisTrace::IRenderTarget* pRt);

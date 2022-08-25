@@ -40,7 +40,7 @@ inline vec3 ACESFitted(vec3 colour)
 	return saturate(colour);
 }
 
-void Tonemap(RenderTarget* pRt)
+void Tonemap(IRenderTarget* pRt)
 {
 	if (pRt->GetFormat() != RTFormat::RGBFFF) return;
 	vec3* pData = reinterpret_cast<vec3*>(pRt->GetRawData());

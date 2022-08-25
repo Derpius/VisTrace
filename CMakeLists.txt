@@ -24,6 +24,7 @@ add_library(
 
 	"source/objects/RenderTarget.cpp"
 	"source/objects/HDRI.cpp"
+	"source/objects/VTFTexture.cpp"
 
 	"source/objects/TraceResult.cpp"
 	"source/objects/AccelStruct.cpp"
