@@ -160,8 +160,8 @@ bool SampleDielectric(
 		if (data.roughness < kMinGGXAlpha) {
 			lobe = LobeType::DeltaDielectricReflection;
 			scattered = reflect(incident, upNormal);
-			weight = vec3f{ 1.f, 1.f, 1.f };
-			pdf = Fmacro;
+			weight = vec3f{ 1.f, 1.f, 1.f } * (Fmacro / pSpecular);
+			pdf = pSpecular;
 			return true;
 		}
 		lobe = LobeType::DielectricReflection;
