@@ -198,12 +198,12 @@ LUA_FUNCTION(VTFTexture_GetPixel)
 	const double frame    = LUA->GetNumber(6);
 	const double face     = LUA->GetNumber(7);
 
-	if (mipLevel < 0.0 || mipLevel >= pTex->GetMIPLevels())  LUA->ThrowError("MIP level out of range");
-	if (x < 0.0        || x        >= pTex->GetWidth(mipLevel))      LUA->ThrowError("x coordinate out of range");
-	if (y < 0.0        || y        >= pTex->GetHeight(mipLevel))     LUA->ThrowError("y coordinate out of range");
-	if (z < 0.0        || z        >= pTex->GetDepth(mipLevel))      LUA->ThrowError("z coordinate out of range");
-	if (frame < 0.0    || frame    >= pTex->GetFrames())     LUA->ThrowError("Frame out of range");
-	if (face < 0.0     || face     >= pTex->GetFaces())      LUA->ThrowError("Face out of range");
+	if (mipLevel < 0.0 || mipLevel >= pTex->GetMIPLevels())      LUA->ThrowError("MIP level out of range");
+	if (x < 0.0        || x        >= pTex->GetWidth(mipLevel))  LUA->ThrowError("x coordinate out of range");
+	if (y < 0.0        || y        >= pTex->GetHeight(mipLevel)) LUA->ThrowError("y coordinate out of range");
+	if (z < 0.0        || z        >= pTex->GetDepth(mipLevel))  LUA->ThrowError("z coordinate out of range");
+	if (frame < 0.0    || frame    >= pTex->GetFrames())         LUA->ThrowError("Frame out of range");
+	if (face < 0.0     || face     >= pTex->GetFaces())          LUA->ThrowError("Face out of range");
 
 	Pixel p = pTex->GetPixel(x, y, z, mipLevel, frame, face);
 	LUA->PushVector(MakeVector(p.r, p.g, p.b));

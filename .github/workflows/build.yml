@@ -9,6 +9,7 @@ on:
       - "CMakePresets.json"
       - "CMakeLists.txt"
       - ".gitmodules"
+      - "libs/**"
   pull_request:
     branches:
       - master
@@ -18,6 +19,7 @@ on:
       - "CMakePresets.json"
       - "CMakeLists.txt"
       - ".gitmodules"
+      - "libs/**"
 env:
   API_VERSION: "0.11"
 
