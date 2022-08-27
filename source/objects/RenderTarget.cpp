@@ -256,7 +256,7 @@ bool RenderTarget::Load(const char* filename, bool createMips)
 	std::filesystem::path imagePath = "vistrace/";
 	imagePath += filename;
 	imagePath = imagePath.lexically_normal();
-	if (imagePath.string().rfind("vistrace/", 0) != 0) return false;
+	if (imagePath.string().rfind("vistrace/", 0) != 0 && imagePath.string().rfind("vistrace\\", 0) != 0) return false;
 
 	if (!FileSystem::Exists(imagePath.string().c_str(), "DATA")) return false;
 
