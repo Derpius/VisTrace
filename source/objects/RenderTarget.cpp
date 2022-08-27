@@ -253,11 +253,14 @@ bool RenderTarget::Save(const char* filename, uint8_t mip) const
 
 bool RenderTarget::Load(const char* filename, bool createMips)
 {
-	std::string imagePath = "vistrace/";
+	std::filesystem::path imagePath = "vistrace/";
 	imagePath += filename;
-	if (!FileSystem::Exists(imagePath.c_str(), "DATA")) return false;
+	imagePath = imagePath.lexically_normal();
+	if (imagePath.string().rfind("vistrace/", 0) != 0) return false;
 
-	FileHandle_t file = FileSystem::Open(imagePath.c_str(), "rb", "DATA");
+	if (!FileSystem::Exists(imagePath.string().c_str(), "DATA")) return false;
+
+	FileHandle_t file = FileSystem::Open(imagePath.string().c_str(), "rb", "DATA");
 	if (file == nullptr) return false;
 
 	uint32_t filesize = FileSystem::Size(file);
