@@ -27,9 +27,9 @@ private:
 	VisTrace::RTFormat mFormat;
 	size_t mChannelSize, mPixelSize, mSize;
 
-	uint16_t mWidth = 0, mHeight = 0;
 	uint8_t mMips = 0;
 	size_t mMipOffsets[VisTrace::MAX_MIPS];
+	uint8_t mMipDims[VisTrace::MAX_MIPS][2];
 
 	VisTrace::Pixel SampleBilinear(float u, float v, uint8_t mip) const;
 
@@ -43,8 +43,8 @@ public:
 	bool Resize(uint16_t width, uint16_t height, uint8_t mips = 1);
 
 	bool IsValid() const;
-	uint16_t GetWidth() const;
-	uint16_t GetHeight() const;
+	uint16_t GetWidth(uint8_t mip = 0) const;
+	uint16_t GetHeight(uint8_t mip = 0) const;
 	uint8_t GetMIPs() const;
 	VisTrace::RTFormat GetFormat() const;
 

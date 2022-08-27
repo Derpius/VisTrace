@@ -31,8 +31,8 @@ namespace VisTrace
 		virtual bool Resize(uint16_t width, uint16_t height, uint8_t mips = 1) = 0;
 
 		virtual bool IsValid() const = 0;
-		virtual uint16_t GetWidth() const = 0;
-		virtual uint16_t GetHeight() const = 0;
+		virtual uint16_t GetWidth(uint8_t mip = 0) const = 0;
+		virtual uint16_t GetHeight(uint8_t mip = 0) const = 0;
 		virtual uint8_t GetMIPs() const = 0;
 		virtual RTFormat GetFormat() const = 0;
 

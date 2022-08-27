@@ -30,7 +30,7 @@ RenderTarget::~RenderTarget()
 		free(mpBuffer);
 		mpBuffer = nullptr;
 	}
-	mWidth = mHeight = 0;
+	mMips = 0;
 }
 
 bool RenderTarget::Resize(uint16_t width, uint16_t height, uint8_t mips)
@@ -42,12 +42,12 @@ bool RenderTarget::Resize(uint16_t width, uint16_t height, uint8_t mips)
 			free(mpBuffer);
 			mpBuffer = nullptr;
 		}
-		mWidth = mHeight = mMips = 0;
+		mMips = 0;
 	} else {
-		mWidth = width;
-		mHeight = height;
 		mMips = mips;
 		mMipOffsets[0] = 0;
+		mMipDims[0][0] = width;
+		mMipDims[0][1] = height;
 
 		for (uint8_t mip = 1; mip < mips; mip++) {
 			width >>= 1;
@@ -56,6 +56,8 @@ bool RenderTarget::Resize(uint16_t width, uint16_t height, uint8_t mips)
 			if (height < 1) height = 1;
 
 			mMipOffsets[mip] = mSize; // Set this before increasing size as the size is already calculated for the *previous* mip
+			mMipDims[mip][0] = width;
+			mMipDims[mip][1] = height;
 			mSize += mPixelSize * width * height;
 		}
 
@@ -70,11 +72,19 @@ bool RenderTarget::Resize(uint16_t width, uint16_t height, uint8_t mips)
 }
 
 bool RenderTarget::IsValid() const {
-	return mpBuffer != nullptr && mSize > 0;
+	return mpBuffer != nullptr && mSize > 0 && mMips > 0;
 }
 
-uint16_t RenderTarget::GetWidth() const { return mWidth; }
-uint16_t RenderTarget::GetHeight() const { return mHeight; }
+uint16_t RenderTarget::GetWidth(uint8_t mip) const {
+	if (!IsValid() || mip >= mMips) return 0;
+	return mMipDims[mip][0];
+}
+uint16_t RenderTarget::GetHeight(uint8_t mip) const
+{
+	if (!IsValid() || mip >= mMips) return 0;
+	return mMipDims[mip][1];
+}
+
 uint8_t RenderTarget::GetMIPs() const { return mMips; }
 RTFormat RenderTarget::GetFormat() const { return mFormat; }
 
@@ -90,9 +100,7 @@ Pixel RenderTarget::GetPixel(uint16_t x, uint16_t y, uint8_t mip) const
 {
 	if (!IsValid() || mip >= mMips) return Pixel{};
 
-	uint16_t width = mWidth >> mip, height = mHeight >> mip;
-	if (width < 1) width = 1;
-	if (height < 1) height = 1;
+	uint16_t width = mMipDims[mip][0], height = mMipDims[mip][1];
 	if (x >= width || y >= height) return Pixel{};
 	size_t offset = mMipOffsets[mip];
 
@@ -127,9 +135,7 @@ void RenderTarget::SetPixel(uint16_t x, uint16_t y, const Pixel& pixel, uint8_t 
 {
 	if (!IsValid() || mip >= mMips) return;
 
-	uint16_t width = mWidth >> mip, height = mHeight >> mip;
-	if (width < 1) width = 1;
-	if (height < 1) height = 1;
+	uint16_t width = mMipDims[mip][0], height = mMipDims[mip][1];
 	if (x >= width || y >= height) return;
 	size_t offset = mMipOffsets[mip];
 
@@ -165,11 +171,7 @@ inline int intmod(int a, int b)
 Pixel RenderTarget::SampleBilinear(float u, float v, uint8_t mip) const
 {
 	uint32_t offset = mMipOffsets[mip];
-
-	uint16_t width = mWidth >> mip;
-	uint16_t height = mHeight >> mip;
-	if (width < 1) width = 1;
-	if (height < 1) height = 1;
+	uint16_t width = mMipDims[mip][0], height = mMipDims[mip][1];
 
 	Pixel filtered{};
 
@@ -221,14 +223,9 @@ void RenderTarget::GenerateMIPs()
 {
 	if (!IsValid()) return;
 
-	uint16_t width = mWidth, height = mHeight;
-
 	// For each mip level after the raw image
 	for (uint8_t mip = 1; mip < mMips; mip++) {
-		width >>= 1;
-		height >>= 1;
-		if (width < 1) width = 1;
-		if (height < 1) height = 1;
+		uint16_t width = mMipDims[mip][0], height = mMipDims[mip][1];
 
 		// For each pixel in the mip
 		#pragma omp parallel for collapse(2)

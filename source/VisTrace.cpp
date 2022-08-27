@@ -331,19 +331,23 @@ LUA_FUNCTION(RT_Resize)
 LUA_FUNCTION(RT_GetWidth)
 {
 	LUA->CheckType(1, RenderTarget::id);
+	uint8_t mip = LUA->CheckNumber(2);
+
 	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 
-	LUA->PushNumber(pRt->GetWidth());
+	LUA->PushNumber(pRt->GetWidth(mip));
 	return 1;
 }
 LUA_FUNCTION(RT_GetHeight)
 {
 	LUA->CheckType(1, RenderTarget::id);
+	uint8_t mip = LUA->CheckNumber(2);
+
 	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 
-	LUA->PushNumber(pRt->GetHeight());
+	LUA->PushNumber(pRt->GetHeight(mip));
 	return 1;
 }
 LUA_FUNCTION(RT_GetMIPs)
