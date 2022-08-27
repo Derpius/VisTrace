@@ -245,11 +245,48 @@ void RenderTarget::GenerateMIPs()
 
 bool RenderTarget::Save(const char* filename, uint8_t mip) const
 {
-	return false;
+	if (!IsValid() || mip >= mMips) return false;
+
+	std::filesystem::path root = (std::filesystem::current_path() / "garrysmod/data/vistrace").make_preferred();
+	std::filesystem::path out = root / filename;
+
+	std::error_code err;
+	std::filesystem::path outFolder = std::filesystem::canonical(out.parent_path(), err);
+	if (err) return false; // Directory does not exist
+	if (outFolder.string().rfind(root.string(), 0) != 0) return false; // Sandbox
+
+	const RTFormatInfo& format = RT_FORMAT_INFO[static_cast<size_t>(mFormat)];
+
+	if (format.hdr) {
+		if (out.extension() != ".hdr") out += ".hdr";
+		return stbi_write_hdr(
+			out.string().c_str(),
+			mMipDims[mip][0], mMipDims[mip][1], format.channels,
+			reinterpret_cast<const float*>(mpBuffer)
+		) != 0;
+	} else {
+		std::filesystem::path extension = out.extension();
+		if (extension == ".bmp")
+			return stbi_write_bmp(out.string().c_str(), mMipDims[mip][0], mMipDims[mip][1], format.channels, mpBuffer) != 0;
+		if (extension == ".tga")
+			return stbi_write_tga(out.string().c_str(), mMipDims[mip][0], mMipDims[mip][1], format.channels, mpBuffer) != 0;
+		if (extension == ".jpg")
+			return stbi_write_jpg(out.string().c_str(), mMipDims[mip][0], mMipDims[mip][1], format.channels, mpBuffer, 90) != 0;
+
+		if (out.extension() != ".png") out += ".png";
+		return stbi_write_png(
+			out.string().c_str(),
+			mMipDims[mip][0], mMipDims[mip][1], format.channels,
+			mpBuffer,
+			format.stride * format.channels * mMipDims[mip][0]
+		) != 0;
+	}
 }
 
 bool RenderTarget::Load(const char* filename, bool createMips)
 {
+	if (!IsValid()) return false;
+
 	std::filesystem::path imagePath = "vistrace/";
 	imagePath += filename;
 	imagePath = imagePath.lexically_normal();
@@ -264,8 +301,12 @@ bool RenderTarget::Load(const char* filename, bool createMips)
 	uint8_t* data = reinterpret_cast<uint8_t*>(malloc(filesize));
 	if (data == nullptr) return false;
 
-	FileSystem::Read(data, filesize, file);
+	int result = FileSystem::Read(data, filesize, file);
 	FileSystem::Close(file);
+	if (!result) {
+		free(data);
+		return false;
+	}
 
 	uint8_t* parsedImage;
 	int resX, resY, channels, stride;

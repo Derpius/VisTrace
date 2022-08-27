@@ -331,7 +331,7 @@ LUA_FUNCTION(RT_Resize)
 LUA_FUNCTION(RT_GetWidth)
 {
 	LUA->CheckType(1, RenderTarget::id);
-	uint8_t mip = LUA->CheckNumber(2);
+	uint8_t mip = LUA->GetNumber(2);
 
 	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
@@ -342,7 +342,7 @@ LUA_FUNCTION(RT_GetWidth)
 LUA_FUNCTION(RT_GetHeight)
 {
 	LUA->CheckType(1, RenderTarget::id);
-	uint8_t mip = LUA->CheckNumber(2);
+	uint8_t mip = LUA->GetNumber(2);
 
 	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
@@ -420,6 +420,16 @@ LUA_FUNCTION(RT_GenerateMIPs)
 	return 0;
 }
 
+LUA_FUNCTION(RT_Save)
+{
+	LUA->CheckType(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+
+	if (!pRt->Save(LUA->CheckString(2), LUA->GetNumber(3)))
+		LUA->ThrowError("Failed to save image");
+	return 0;
+}
 LUA_FUNCTION(RT_Load)
 {
 	LUA->CheckType(1, RenderTarget::id);
@@ -1400,6 +1410,8 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(RT_GenerateMIPs);
 		LUA->SetField(-2, "GenerateMIPs");
 
+		LUA->PushCFunction(RT_Save);
+		LUA->SetField(-2, "Save");
 		LUA->PushCFunction(RT_Load);
 		LUA->SetField(-2, "Load");
 
