@@ -19,4 +19,5 @@ end
 
 require("VisTrace-v" .. VISTRACE_VERSION)
 
+file.CreateDir("vistrace")
 file.CreateDir("vistrace_hdris")
