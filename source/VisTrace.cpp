@@ -416,6 +416,17 @@ LUA_FUNCTION(RT_GenerateMIPs)
 	return 0;
 }
 
+LUA_FUNCTION(RT_Load)
+{
+	LUA->CheckType(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+
+	if (!pRt->Load(LUA->CheckString(2), LUA->GetBool(3)))
+		LUA->ThrowError("Failed to load image into render target");
+	return 0;
+}
+
 LUA_FUNCTION(RT_Tonemap)
 {
 	LUA->CheckType(1, RenderTarget::id);
@@ -1384,6 +1395,9 @@ GMOD_MODULE_OPEN()
 
 		LUA->PushCFunction(RT_GenerateMIPs);
 		LUA->SetField(-2, "GenerateMIPs");
+
+		LUA->PushCFunction(RT_Load);
+		LUA->SetField(-2, "Load");
 
 		LUA->PushCFunction(RT_Tonemap);
 		LUA->SetField(-2, "Tonemap");

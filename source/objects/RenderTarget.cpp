@@ -1,8 +1,16 @@
 #include "RenderTarget.h"
 
+#include "stb_image.h"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+#include "GMFS.h"
+
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 
 using namespace VisTrace;
 
@@ -11,8 +19,8 @@ int RenderTarget::id{ -1 };
 RenderTarget::RenderTarget(uint16_t width, uint16_t height, RTFormat format, uint8_t mips)
 {
 	mFormat = format;
-	mChannelSize = STRIDES[static_cast<uint8_t>(mFormat)];
-	mPixelSize = mChannelSize * CHANNELS[static_cast<uint8_t>(mFormat)];
+	mChannelSize = RT_FORMAT_INFO[static_cast<uint8_t>(mFormat)].stride;
+	mPixelSize = mChannelSize * RT_FORMAT_INFO[static_cast<uint8_t>(mFormat)].channels;
 	Resize(width, height, mips);
 }
 
@@ -236,4 +244,59 @@ void RenderTarget::GenerateMIPs()
 			}
 		}
 	}
+}
+
+bool RenderTarget::Save(const char* filename, uint8_t mip) const
+{
+	return false;
+}
+
+bool RenderTarget::Load(const char* filename, bool createMips)
+{
+	std::string imagePath = "vistrace/";
+	imagePath += filename;
+	if (!FileSystem::Exists(imagePath.c_str(), "DATA")) return false;
+
+	FileHandle_t file = FileSystem::Open(imagePath.c_str(), "rb", "DATA");
+	if (file == nullptr) return false;
+
+	uint32_t filesize = FileSystem::Size(file);
+	uint8_t* data = reinterpret_cast<uint8_t*>(malloc(filesize));
+	if (data == nullptr) return false;
+
+	FileSystem::Read(data, filesize, file);
+	FileSystem::Close(file);
+
+	uint8_t* parsedImage;
+	int resX, resY, channels, stride;
+
+	const RTFormatInfo& format = RT_FORMAT_INFO[static_cast<size_t>(mFormat)];
+	if (format.hdr)
+		parsedImage = reinterpret_cast<uint8_t*>(stbi_loadf_from_memory(data, filesize, &resX, &resY, &channels, format.channels));
+	else
+		parsedImage = stbi_load_from_memory(data, filesize, &resX, &resY, &channels, format.channels);
+	free(data);
+
+	if (parsedImage == nullptr) return false;
+	if (
+		resX > std::numeric_limits<uint16_t>::max() ||
+		resY > std::numeric_limits<uint16_t>::max()
+	) {
+		stbi_image_free(parsedImage);
+		return false;
+	}
+
+	uint8_t mips = 1;
+	if (createMips)
+		mips = static_cast<uint8_t>(floorf(log2f(std::max(resX, resY)))) + 1;
+
+	bool success = Resize(resX, resY, mips);
+	if (!success) {
+		stbi_image_free(parsedImage);
+		return false;
+	}
+
+	memcpy(mpBuffer, parsedImage, resX * resY * format.channels * format.stride);
+	stbi_image_free(parsedImage);
+	return true;
 }

@@ -3,22 +3,20 @@
 #include <cstdint>
 #include "vistrace/IRenderTarget.h"
 
-static const uint8_t CHANNELS[static_cast<size_t>(VisTrace::RTFormat::Size)] = {
-	1,
-	2,
-	3,
-	1,
-	2,
-	3
+struct RTFormatInfo
+{
+	uint8_t channels;
+	size_t stride;
+	bool hdr;
 };
 
-static const size_t STRIDES[static_cast<size_t>(VisTrace::RTFormat::Size)] = {
-	sizeof(uint8_t),
-	sizeof(uint8_t),
-	sizeof(uint8_t),
-	sizeof(float),
-	sizeof(float),
-	sizeof(float)
+static const RTFormatInfo RT_FORMAT_INFO[static_cast<size_t>(VisTrace::RTFormat::Size)] = {
+	{1, sizeof(uint8_t), false},
+	{2, sizeof(uint8_t), false},
+	{3, sizeof(uint8_t), false},
+	{1, sizeof(float), true},
+	{2, sizeof(float), true},
+	{3, sizeof(float), true}
 };
 
 class RenderTarget : public VisTrace::IRenderTarget
@@ -58,4 +56,7 @@ public:
 	void SetPixel(uint16_t x, uint16_t y, const VisTrace::Pixel& pixel, uint8_t mip = 0);
 
 	void GenerateMIPs();
+
+	bool Save(const char* filename, uint8_t mip = 0) const;
+	bool Load(const char* filename, bool createMips = false);
 };
