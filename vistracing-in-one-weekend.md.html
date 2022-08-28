@@ -22,14 +22,14 @@ Drawing an Image
 
 Before we get into the nitty gritty of light transport, we need to actually be able to draw pixels to our screen. While there are *many* ways to do this ranging from drawing to a physical screen in the world, to a VGUI frame you can use like a mini application, I've opted for the simplest and most efficient for this step (however you can ignore this and use whatever method you prefer if you're already familiar with rendering in GMod).  
 
-To start with we need a script to work in, and an addon to place that script in. Create a new folder in your `garrysmod/addons` folder with any name you like, then create a subfolder called `lua` and a file in that folder called `vistracer.lua` (you can of course use whatever name you like, however the book assumes this is what you called it). You should now have the file `garrysmod/addons/youraddonname/lua/vistracer.lua`.  
+To start with we need a script to work in, and an addon to place that script in. Create a new folder in your `garrysmod/addons` folder with any name you like, then create a subfolder called `lua` and a file in that folder called `vistracer.lua` (you can of course use whatever name you want, however the book assumes this is what you called it). You should now have the file `garrysmod/addons/youraddonname/lua/vistracer.lua`.  
 
-Open the file in your text editor of choice (I recommend vscode with sumneko's Lua extension and the GLua annotations) and add the following to the file
+Open the file in your text editor of choice (I recommend vscode with sumneko's Lua extension and the GLua annotations) and add the following
 ```lua
 print("VisTracing in One Weekend!")
 ```
 
-Launch GMod and start singleplayer (or join a multiplayer server with clientside Lua enabled), open console with `` ` ``, and enter `lua_openscript_cl vistracer.lua`. You should see `VisTracing in One Weekend!` appear in your console! If not then check that `sv_allowcslua` is set to `1`, and that GMod has been restarted since you created `vistracer.lua` (it only hotloads existing files).  
+Launch GMod and start singleplayer (or join a multiplayer server with clientside Lua enabled), open console with the grave/backtick key, and enter `lua_openscript_cl vistracer.lua`. You should see `VisTracing in One Weekend!` appear in your console! If not then check that `sv_allowcslua` is set to `1`, and that GMod has been restarted since you created `vistracer.lua` (it only hotloads existing files).  
 
 Now to draw something to the screen we need a render context, and in this case I've chosen the `PostDrawHUD` hook as a simple way to get pixels above everything except the menu. Remove the print we added and replace it with the hook
 ```lua
@@ -77,7 +77,9 @@ hook.Add("PostDrawHUD", "VisTracer", function()
 end)
 ```
 
-If you run this with `lua_openscript_cl vistracer.lua` you should get a black screen (don't worry, use `lua_run_cl hook.Remove("PostDrawHUD", "VisTracer")` to get rid of the hook). This isn't exactly what we want, so lets try drawing some pixels. While we could draw to the render target immediately when we run our script, we're going to want to split the drawing over multiple frames for later (ray tracing single threaded in Lua is not fast). To do this we can ignore more complicated (and slower) methods of spreading our code over multiple frames, and just render one row per frame. We also need to define an x and y resolution to draw, which we'll place at the top of the file (this is where all of our parameters will go)
+If you run this with `lua_openscript_cl vistracer.lua` you should get a black screen (don't worry, use `lua_run_cl hook.Remove("PostDrawHUD", "VisTracer")` to get rid of the hook). This isn't exactly what we want, so lets try drawing some pixels.  
+
+While we could draw to the render target immediately when we run our script, we're going to want to split the drawing over multiple frames for later (ray tracing single threaded in Lua is not fast). To do this we can ignore more complicated (and slower) methods of spreading our code over multiple frames, and just render one row per frame. We also need to define an x and y resolution to draw, which we'll place at the top of the file (this is where all of our parameters will go)
 ```lua
 local RESX, RESY = 256, 256
 
