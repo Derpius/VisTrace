@@ -25,7 +25,7 @@ Before we get into the nitty gritty of light transport, we need to actually be a
 To start with we need a script to work in, and an addon to place that script in. Create a new folder in your `garrysmod/addons` folder with any name you like, then create a subfolder called `lua` and a file in that folder called `vistracer.lua` (you can of course use whatever name you want, however the book assumes this is what you called it). You should now have the file `garrysmod/addons/youraddonname/lua/vistracer.lua`.  
 
 Open the file in your text editor of choice (I recommend vscode with sumneko's Lua extension and the GLua annotations) and add the following
-~~~lua
+~~~ lua
 print("VisTracing in One Weekend!")
 ~~~
 
@@ -34,19 +34,19 @@ print("VisTracing in One Weekend!")
 Launch GMod and start singleplayer (or join a multiplayer server with clientside Lua enabled), open console with the grave/backtick key, and enter `lua_openscript_cl vistracer.lua`. You should see `VisTracing in One Weekend!` appear in your console! If not then check that `sv_allowcslua` is set to `1`, and that GMod has been restarted since you created `vistracer.lua` (it only hotloads existing files).  
 
 Now to draw something to the screen we need a render context, and in this case I've chosen the `PostDrawHUD` hook as a simple way to get pixels above everything except the menu. Remove the print we added and replace it with the hook
-~~~lua
+~~~ lua
 hook.Add("PostDrawHUD", "VisTracer", function()
 
 end)
 ~~~  
 
 This wont do anything yet, but go ahead and run it just to check everything's working. We have a render context, but we need to actually draw something. For now lets just use a red rectangle
-~~~lua
+~~~ lua
 hook.Add("PostDrawHUD", "VisTracer", function()
-	~~~~lua highlight
+	~~~ lua highlight
 	surface.SetDrawColor(255, 0, 0)
 	surface.DrawRect(0, 0, 256, 256)
-	~~~~
+	~~~ lua
 end)
 ~~~
 
@@ -57,7 +57,7 @@ You may be thinking that this is how we'll render an entire image, however if yo
 Instead we need a way to render a set of pixels only once, and save them for future frames. To do this we're going to use *render targets*, which are a special kind of texture we're able to draw to, and the pixels we draw will be saved indefinitely (quite literally in fact, GMod doesn't destroy render targets until the game closes).  
 
 First of all we need to create a render target to use, in addition to a material to assign the render target to as a base texture in order to draw it to the screen later
-~~~lua
+~~~ lua
 local rt = GetRenderTargetEx(
 	"VisTracer",                     -- Name of the render target
 	1, 1, RT_SIZE_FULL_FRAME_BUFFER, -- Resize to screen res automatically
@@ -76,40 +76,35 @@ local rtMat = CreateMaterial("VisTracer", "UnlitGeneric", {
 ~~~
 
 Next we draw the render target to the screen
-~~~lua
+~~~ lua
 ...
 
 hook.Add("PostDrawHUD", "VisTracer", function()
-	~~~~lua delete
+	~~~ lua delete
 	surface.SetDrawColor(255, 0, 0)
 	surface.DrawRect(0, 0, 256, 256)
-	~~~~
-
-	~~~~lua highlight
+	~~~ lua highlight
 	render.SetMaterial(rtMat)
 	render.DrawScreenQuad() -- Draws a quad to the entire screen
-	~~~~
+	~~~ lua
 end)
 ~~~
 
 If you run this with `lua_openscript_cl vistracer.lua` you should get a black screen (don't worry, use `lua_run_cl hook.Remove("PostDrawHUD", "VisTracer")` to get rid of the hook). This isn't exactly what we want, so lets try drawing some pixels.  
 
 While we could draw to the render target immediately when we run our script, we're going to want to split the drawing over multiple frames for later (ray tracing single threaded in Lua is not fast). To do this we can ignore more complicated (and slower) methods of spreading our code over multiple frames, and just render one row per frame. We also need to define an x and y resolution to draw, which we'll place at the top of the file (this is where all of our parameters will go)
-~~~lua
-
-	~~~~lua highlight
+~~~ lua highlight
 local RESX, RESY = 256, 256
-	~~~~
+~~~ lua
 
 ...
 
 
-	~~~~lua highlight
+~~~ lua highlight
 local y = 0
-	~~~~
+~~~ lua
 hook.Add("PostDrawHUD", "VisTracer", function()
-
-	~~~~lua highlight
+	~~~ lua highlight
 	if y < RESY then
 		render.PushRenderTarget(rt)
 
@@ -121,7 +116,7 @@ hook.Add("PostDrawHUD", "VisTracer", function()
 		render.PopRenderTarget()
 		y = y + 1
 	end
-	~~~~
+	~~~ lua
 
 	render.SetMaterial(rtMat)
 	render.DrawScreenQuad()
@@ -131,24 +126,24 @@ end)
 Running this should produce a 256x256 red rectangle just like the original `surface.DrawRect` method, except we now have control over the colour of individual pixels and we're only drawing each pixel once. You may also notice that we still have the same problem as before where the entire screen is black except for where we drew our rectangle.
 
 To fix that we'll add a `setup` flag and clear the render target with 0 alpha before we start writing.
-~~~lua
+~~~ lua
 ...
 
 local y = 0
 
-	~~~~lua highlight
+	~~~ lua highlight
 local setup = true
-	~~~~
+	~~~ lua
 hook.Add("PostDrawHUD", "VisTracer", function()
 	if y < RESY then
 		render.PushRenderTarget(rt)
 
-		~~~~lua highlight
+		~~~ lua highlight
 		if setup then
 			render.Clear(0, 0, 0, 0, true, true)
 			setup = false
 		end
-		~~~~
+		~~~ lua
 
 		for x = 0, RESX - 1 do
 			render.SetViewPort(x, y, 1, 1)
@@ -165,19 +160,19 @@ end)
 ~~~
 
 Et voila! You should now have a significantly slower to draw red rectangle! Not impressed? Well lets draw something slightly more interesting that we couldn't do with a simple `surface.DrawRect` call...
-~~~lua
+~~~ lua
 		...
 
 		for x = 0, RESX - 1
 			render.SetViewPort(x, y, 1, 1)
 
-			~~~~lua delete
+			~~~ lua delete
 			render.Clear(255, 0, 0, 255, true, true)
-			~~~~
+			~~~ lua
 
-			~~~~lua highlight
+			~~~ lua highlight
 			render.Clear(x / (RESX - 1) * 255, y / (RESY - 1) * 255, 0, 255, true, true)
-			~~~~
+			~~~ lua
 		end
 
 		...
