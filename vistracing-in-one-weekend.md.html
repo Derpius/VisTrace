@@ -15,7 +15,7 @@ While you could technically follow along without these, the book assumes you'll 
 
 You should also already be familiar with Lua (specifically GLua) and basic rendering terminology like shading.  
 
-You'll be implementing the tracer as a simple GLua script run with `lua_openscript_cl` from the console, however you could follow along from StarFall or even write a fully fledged addon around the renderer.  
+You'll be implementing the tracer as a simple GLua script run with `lua_openscript_cl` from the console, however you could follow along from Starfall or even write a fully fledged addon around the renderer.  
 
 Drawing an Image
 ----------------
@@ -25,38 +25,46 @@ Before we get into the nitty gritty of light transport, we need to actually be a
 To start with we need a script to work in, and an addon to place that script in. Create a new folder in your `garrysmod/addons` folder with any name you like, then create a subfolder called `lua` and a file in that folder called `vistracer.lua` (you can of course use whatever name you want, however the book assumes this is what you called it). You should now have the file `garrysmod/addons/youraddonname/lua/vistracer.lua`.  
 
 Open the file in your text editor of choice (I recommend vscode with sumneko's Lua extension and the GLua annotations) and add the following
-```lua
+~~~lua
 print("VisTracing in One Weekend!")
-```
+~~~
+
+![Console Output](./images/vistracing-in-one-weekend/console-print.png)
 
 Launch GMod and start singleplayer (or join a multiplayer server with clientside Lua enabled), open console with the grave/backtick key, and enter `lua_openscript_cl vistracer.lua`. You should see `VisTracing in One Weekend!` appear in your console! If not then check that `sv_allowcslua` is set to `1`, and that GMod has been restarted since you created `vistracer.lua` (it only hotloads existing files).  
 
 Now to draw something to the screen we need a render context, and in this case I've chosen the `PostDrawHUD` hook as a simple way to get pixels above everything except the menu. Remove the print we added and replace it with the hook
-```lua
+~~~lua
 hook.Add("PostDrawHUD", "VisTracer", function()
 
 end)
-```  
+~~~  
 
 This wont do anything yet, but go ahead and run it just to check everything's working. We have a render context, but we need to actually draw something. For now lets just use a red rectangle
-```lua
+~~~lua
 hook.Add("PostDrawHUD", "VisTracer", function()
+	~~~~lua highlight
 	surface.SetDrawColor(255, 0, 0)
 	surface.DrawRect(0, 0, 256, 256)
+	~~~~
 end)
-```
+~~~
 
-You may be thinking that this is how we'll render an entire image, however if you were to add a print to this hook you'd see that it's called every frame. You can imagine how laggy our game would get if we were ray tracing a scene every frame in Lua, so instead we need a way to render a set of pixels only once, and save them for future frames. To do this we're going to use *render targets*, which are a special kind of texture we're able to draw to, and the pixels we draw will be saved indefinitely (quite literally in fact, GMod doesn't destroy render targets until the game closes).  
+![`surface.DrawRect`](./images/vistracing-in-one-weekend/surface-draw.png)
+
+You may be thinking that this is how we'll render an entire image, however if you were to add a print to this hook you'd see that it's called every frame. You can imagine how laggy our game would get if we were ray tracing a scene every frame in Lua.
+
+Instead we need a way to render a set of pixels only once, and save them for future frames. To do this we're going to use *render targets*, which are a special kind of texture we're able to draw to, and the pixels we draw will be saved indefinitely (quite literally in fact, GMod doesn't destroy render targets until the game closes).  
 
 First of all we need to create a render target to use, in addition to a material to assign the render target to as a base texture in order to draw it to the screen later
-```lua
+~~~lua
 local rt = GetRenderTargetEx(
-	"VisTracer",                     -- Name of the render target (this will be available globally and persist for the entire time the game is open so use something unique!)
-	1, 1, RT_SIZE_FULL_FRAME_BUFFER, -- Built in feature of render targets to always resize to the screen resolution
-	MATERIAL_RT_DEPTH_SEPARATE,      -- Create a dedicated depth buffer. While this shouldn't be needed, I have encountered issues with the alpha channel by not using it
-	bit.bor(1, 256),                 -- Texture flags for point sampling and no mips (for some reason the TEXTUREFLAGS enum doesn't exist in GLua,so we have to write the numbers by hand)
+	"VisTracer",                     -- Name of the render target
+	1, 1, RT_SIZE_FULL_FRAME_BUFFER, -- Resize to screen res automatically
+	MATERIAL_RT_DEPTH_SEPARATE,      -- Create a dedicated depth/stencil buffer
+	bit.bor(1, 256),                 -- Texture flags for point sampling and no mips
 	0,                               -- No RT flags
-	IMAGE_FORMAT_RGBA8888
+	IMAGE_FORMAT_RGBA8888            -- RGB image format with 8 bits per channel
 )
 
 local rtMat = CreateMaterial("VisTracer", "UnlitGeneric", {
@@ -65,28 +73,43 @@ local rtMat = CreateMaterial("VisTracer", "UnlitGeneric", {
 })
 
 ...
-```
+~~~
 
 Next we draw the render target to the screen
-```lua
+~~~lua
 ...
 
 hook.Add("PostDrawHUD", "VisTracer", function()
+	~~~~lua delete
+	surface.SetDrawColor(255, 0, 0)
+	surface.DrawRect(0, 0, 256, 256)
+	~~~~
+
+	~~~~lua highlight
 	render.SetMaterial(rtMat)
-	render.DrawScreenQuad() -- Draws the rendertarget to the entire screen (this is why we used RT_SIZE_FULL_FRAME_BUFFER)
+	render.DrawScreenQuad() -- Draws a quad to the entire screen
+	~~~~
 end)
-```
+~~~
 
 If you run this with `lua_openscript_cl vistracer.lua` you should get a black screen (don't worry, use `lua_run_cl hook.Remove("PostDrawHUD", "VisTracer")` to get rid of the hook). This isn't exactly what we want, so lets try drawing some pixels.  
 
 While we could draw to the render target immediately when we run our script, we're going to want to split the drawing over multiple frames for later (ray tracing single threaded in Lua is not fast). To do this we can ignore more complicated (and slower) methods of spreading our code over multiple frames, and just render one row per frame. We also need to define an x and y resolution to draw, which we'll place at the top of the file (this is where all of our parameters will go)
-```lua
+~~~lua
+
+	~~~~lua highlight
 local RESX, RESY = 256, 256
+	~~~~
 
 ...
 
+
+	~~~~lua highlight
 local y = 0
+	~~~~
 hook.Add("PostDrawHUD", "VisTracer", function()
+
+	~~~~lua highlight
 	if y < RESY then
 		render.PushRenderTarget(rt)
 
@@ -98,25 +121,34 @@ hook.Add("PostDrawHUD", "VisTracer", function()
 		render.PopRenderTarget()
 		y = y + 1
 	end
+	~~~~
 
 	render.SetMaterial(rtMat)
 	render.DrawScreenQuad()
 end)
-```
+~~~
 
-Running this should produce a 256x256 red rectangle just like the original `surface.DrawRect` method, except we now have control over the colour of individual pixels and we're only drawing each pixel once. You may also notice that we still have the same problem as before where the entire screen is black except for where we drew our rectangle. To fix that we'll add a `setup` flag and clear the render target with 0 alpha before we start writing.
-```lua
+Running this should produce a 256x256 red rectangle just like the original `surface.DrawRect` method, except we now have control over the colour of individual pixels and we're only drawing each pixel once. You may also notice that we still have the same problem as before where the entire screen is black except for where we drew our rectangle.
+
+To fix that we'll add a `setup` flag and clear the render target with 0 alpha before we start writing.
+~~~lua
 ...
 
 local y = 0
+
+	~~~~lua highlight
 local setup = true
+	~~~~
 hook.Add("PostDrawHUD", "VisTracer", function()
 	if y < RESY then
 		render.PushRenderTarget(rt)
+
+		~~~~lua highlight
 		if setup then
 			render.Clear(0, 0, 0, 0, true, true)
-			setup = false -- We only want to do this once, otherwise we'd clear all the rows we drew previously
+			setup = false
 		end
+		~~~~
 
 		for x = 0, RESX - 1 do
 			render.SetViewPort(x, y, 1, 1)
@@ -130,21 +162,30 @@ hook.Add("PostDrawHUD", "VisTracer", function()
 	render.SetMaterial(rtMat)
 	render.DrawScreenQuad()
 end)
-```
+~~~
 
 Et voila! You should now have a significantly slower to draw red rectangle! Not impressed? Well lets draw something slightly more interesting that we couldn't do with a simple `surface.DrawRect` call...
-```lua
+~~~lua
 		...
 
 		for x = 0, RESX - 1
 			render.SetViewPort(x, y, 1, 1)
-			render.Clear(x / (RESX - 1), y / (RESY - 1), 0, 255, true, true)
+
+			~~~~lua delete
+			render.Clear(255, 0, 0, 255, true, true)
+			~~~~
+
+			~~~~lua highlight
+			render.Clear(x / (RESX - 1) * 255, y / (RESY - 1) * 255, 0, 255, true, true)
+			~~~~
 		end
 
 		...
-```
+~~~
 
 Running our script now should produce a nice gradient from black to red on the x axis, and black to green on the y axis. You may also notice that the pixels are black in the *top left* of the rectangle, and not the bottom left as you might expect.
+
+![Red on the X axis and green on the Y axis](./images/vistracing-in-one-weekend/xy-square.png)
 
 Tracing a Ray
 -------------
@@ -154,6 +195,13 @@ Ray Tracing
 
 Generating Camera Rays
 ----------------------
+
+The Rendering Equation
+----------------------
+
+\begin{equation}
+L_o(\mathbf{x}, \omega_o, \lambda, t) = L_e(\mathbf{x}, \omega_o, \lambda, t) + \int_{\Omega} f_r(\mathbf{x}, \omega_i, \omega_o, \lambda, t)L_i(\mathbf{x}, \omega_i, \lambda, t)(\omega_i \cdot \mathbf{n}) \,d\omega_i
+\end{equation}
 
 Lighting
 --------
@@ -169,6 +217,13 @@ Conclusion
 
 Path Tracing
 ============
+
+Revisiting the Rendering Equation
+----------------------
+
+\begin{equation}
+L_o(\mathbf{x}, \omega_o, \lambda, t) = L_e(\mathbf{x}, \omega_o, \lambda, t) + \int_{\Omega} f_r(\mathbf{x}, \omega_i, \omega_o, \lambda, t)L_i(\mathbf{x}, \omega_i, \lambda, t)(\omega_i \cdot \mathbf{n}) \,d\omega_i
+\end{equation}
 
 Brute Force Path Tracing
 ------------------------
@@ -187,13 +242,6 @@ Conclusion
 
 Shading
 =======
-
-The Rendering Equation
-----------------------
-
-\begin{equation}
-L_o(\mathbf{x}, \omega_o, \lambda, t) = L_e(\mathbf{x}, \omega_o, \lambda, t) + \int_{\Omega} f_r(\mathbf{x}, \omega_i, \omega_o, \lambda, t)L_i(\mathbf{x}, \omega_i, \lambda, t)(\omega_i \cdot \mathbf{n}) \,d\omega_i
-\end{equation}
 
 What is a BSDF?
 ---------------
@@ -216,4 +264,4 @@ Putting it All Together
 Further Reading
 ===============
 
-<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="markdeep.min.js" charset="utf-8"></script><script src="https://morgan3d.github.io/markdeep/latest/markdeep.min.js" charset="utf-8"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>
+<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><link rel="stylesheet" href="./css/book.css?v=1"><script src="markdeep.min.js" charset="utf-8"></script><script src="https://morgan3d.github.io/markdeep/latest/markdeep.min.js" charset="utf-8"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>
