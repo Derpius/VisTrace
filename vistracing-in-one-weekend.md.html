@@ -299,6 +299,10 @@ Because we're just adding onto the player camera's position the rays aren't cent
 Ray Tracing
 ===========
 
+We have pixels being drawn to the screen, and we have rays being traced, now it's time to simulate light with ray tracing. I wont bore you with a bunch of theory right away, but I will give you an overview of how the ray tracing algorithm works.
+
+We start by generating a ray from a pixel given our camera's properties as well as any additional properties that affect ray generation (like jittering for MSAA), we then trace this ray out into the scene to get a hit point. If we missed it's up to us how we want to colour that pixel, however if we hit an object we plug the information about the hit as well as our ray into the *rendering equation*, which will determine the colour of the hit point that we then assign to the pixel.
+
 Generating Camera Rays
 ----------------------
 
