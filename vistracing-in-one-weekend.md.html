@@ -185,6 +185,117 @@ Running our script now should produce a nice gradient from black to red on the x
 Tracing a Ray
 -------------
 
+Before we dig into the meat of ray tracing, we need to know how to trace a ray, and to know that we need to know what a "ray" even is.
+
+While it makes sense to think of a ray as a single "ray" of light (light is far more complicated than that in reality), it's actually the total of *all* light that follows a specific line defined by our ray.
+
+Additionally we can define a ray as $\mathbf{x} = \mathbf{o} + t\mathbf{d}$, where $\mathbf{x}$ is the hit point of the ray, $\mathbf{o}$ is the origin, $\mathbf{d}$ is the direction, and $t$ is the *time* or distance along the ray.
+
+Tracing a ray in this context is solving the above equation for the lowest positive value of $t$, which we do by testing every part of the scene geometry for intersections with the ray. We wont have to worry about tracing the ray ourselves, as VisTrace handles this for us, but it's good to know roughly what's going on under the hood.
+
+To trace a ray with VisTrace, it needs to know the scene geometry we want to trace before we can actually trace with it, which we can do by building an *acceleration structure*. The specifics of ray tracing acceleration structures are well outside the scope of this book, but if you want to look into them then VisTrace uses a [bounding volume hierarchy](https://en.wikipedia.org/wiki/Bounding_volume_hierarchy).
+
+Thankfully building an acceleration structure with modern versions of VisTrace is easy, we simply call a function passing in an array of entities we want to intersect with, along with a boolean to toggle intersections with the world (by default it's true). For now we'll just trace any entities whose class starts with `prop_` and disable world tracing. I've also added some comments to help keep our code clean
+
+~~~ lua highlight
+----------------
+-- Parameters --
+----------------
+~~~ lua
+local RESX, RESY = 256, 256
+
+
+~~~ lua highlight
+----------------
+--    Init    --
+----------------
+local accel = vistrace.CreateAccel(ents.FindByClass("prop_*"), false)
+~~~ lua
+
+local rt = GetRenderTargetEx(
+	"VisTracer",                     -- Name of the render target
+	1, 1, RT_SIZE_FULL_FRAME_BUFFER, -- Resize to screen res automatically
+	MATERIAL_RT_DEPTH_SEPARATE,      -- Create a dedicated depth/stencil buffer
+	bit.bor(1, 256),                 -- Texture flags for point sampling and no mips
+	0,                               -- No RT flags
+	IMAGE_FORMAT_RGBA8888            -- RGB image format with 8 bits per channel
+)
+
+...
+~~~
+
+Now we have our scene geometry in an acceleration structure we can start tracing some rays. While we could put all of this in the render hook from the previous section, to help with readability we're going to create a new function above our hook called `TracePixel`, which will be called from the hook with the x and y coordinates of the current pixel and will return an RGB vector
+~~~ lua
+...
+
+
+~~~ lua highlight
+local function TracePixel(x, y)
+	return Vector(x / (RESX - 1), y / (RESY - 1), 0)
+end
+~~~ lua
+
+local y = 0
+local setup = true
+hook.Add("PostDrawHUD", "VisTracer", function()
+	if y < RESY then
+		render.PushRenderTarget(rt)
+		if setup then
+			render.Clear(0, 0, 0, 0, true, true)
+			setup = false
+		end
+
+		for x = 0, RESX - 1 do
+			~~~ lua highlight
+			local rgb = TracePixel(x, y)
+			~~~ lua
+
+			render.SetViewPort(x, y, 1, 1)
+			~~~ lua delete
+			render.Clear(x / (RESX - 1) * 255, y / (RESY - 1) * 255, 0, 255, true, true)
+			~~~ lua highlight
+			render.Clear(rgb[1] * 255, rgb[2] * 255, rgb[3] * 255, 255, true, true)
+			~~~ lua
+		end
+
+		render.PopRenderTarget()
+		y = y + 1
+	end
+
+	render.SetMaterial(rtMat)
+	render.DrawScreenQuad() -- Draws a quad to the entire screen
+end)
+~~~
+
+This should produce the exact same image as the end of the last section, however now we can add as much code as we want to `TracePixel` without cluttering the render hook. Also if you're wondering why we're doing `* 255` on the final RGB vector, instead of using 0-255 colours in `TracePixel`, it's because when doing any kind of rendering having `grey * grey` produce 255 (after clamping) is really not helpful.
+
+To trace our ray, we need to know the start position and the direction to trace in. We'll get into generating camera rays in a bit but for now we're going to do [orthographic projection](https://en.wikipedia.org/wiki/Orthographic_projection), meaning all of our rays point in the exact same direction and the origin changes. This has the effect of no matter how close or far away something is, it will always look the same in our final image.
+
+We're also going to use the player camera's origin and angles for our rays, although you could use anything you want
+~~~ lua highlight
+local camPos, camAng = LocalPlayer():EyePos(), LocalPlayer():EyeAngles()
+~~~ lua
+local function TracePixel(x, y)
+	~~~ lua highlight
+	local origin = camPos + camAng:Right() * x / RESX * 100 + camAng:Up() * (1 - y / RESY) * 100
+	local camDir = camAng:Forward()
+
+	local result = accel:Traverse(origin, camDir)
+	if result then
+		return Vector(1, 1, 1)
+	else
+		return Vector(0, 0, 0)
+	end
+	~~~ lua delete
+	return Vector(x / (RESX - 1), y / (RESY - 1), 0)
+	~~~ lua
+end
+~~~
+
+![Kleiner sitting on a crate](./images/vistracing-in-one-weekend/orthographic.png)
+
+Because we're just adding onto the player camera's position the rays aren't centred, so you'll need to look down and to the left, but we're now tracing a scene!
+
 Ray Tracing
 ===========
 

@@ -154,6 +154,7 @@ div.indented {
 
 .md img {
     margin-top: 1.0em;
+	max-width: 72ex;
 }
 
 .md div.image {
