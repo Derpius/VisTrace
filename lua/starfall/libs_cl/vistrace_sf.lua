@@ -17,14 +17,22 @@ SF.Permissions.registerPrivilege("vistrace.hdri", "Load VisTrace HDRI Samplers",
 
 --- Constructs and traverses a BVH acceleration structure on the CPU allowing for high speed vismesh intersections
 --- Requires the binary module installed to use, which you can get here https://github.com/Derpius/VisTrace/releases
--- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 -- @name vistrace
 -- @class library
 -- @libtbl vistrace_library
 SF.RegisterLibrary("vistrace")
 
+--- VisTrace VTF texture interface for reading and sampling textures
+-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+-- @name VisTraceVTFTexture
+-- @class type
+-- @libtbl vistracevtf_methods
+-- @libtbl vistracevtf_meta
+SF.RegisterType("VisTraceVTFTexture", true, false, debug.getregistry().VisTraceVTFTexture)
+
 --- VisTrace render target object returned by vistrace.createRenderTarget
--- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 -- @name VisTraceRT
 -- @class type
 -- @libtbl vistracert_methods
@@ -32,7 +40,7 @@ SF.RegisterLibrary("vistrace")
 SF.RegisterType("VisTraceRT", true, false, debug.getregistry().VisTraceRT)
 
 --- VisTrace TraceResult object returned by AccelStruct:traverse
--- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 -- @name VisTraceResult
 -- @class type
 -- @libtbl traceresult_methods
@@ -40,7 +48,7 @@ SF.RegisterType("VisTraceRT", true, false, debug.getregistry().VisTraceRT)
 SF.RegisterType("VisTraceResult", true, false, debug.getregistry().VisTraceResult)
 
 --- VisTrace acceleration structure
--- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 -- @name AccelStruct
 -- @class type
 -- @libtbl accelstruct_methods
@@ -48,7 +56,7 @@ SF.RegisterType("VisTraceResult", true, false, debug.getregistry().VisTraceResul
 SF.RegisterType("AccelStruct", true, false, debug.getregistry().AccelStruct)
 
 --- VisTrace random sampler
--- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 -- @name Sampler
 -- @class type
 -- @libtbl sampler_methods
@@ -56,7 +64,7 @@ SF.RegisterType("AccelStruct", true, false, debug.getregistry().AccelStruct)
 SF.RegisterType("Sampler", true, false, debug.getregistry().Sampler)
 
 --- VisTrace HDRI sampler
--- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 -- @name HDRI
 -- @class type
 -- @libtbl hdri_methods
@@ -64,7 +72,7 @@ SF.RegisterType("Sampler", true, false, debug.getregistry().Sampler)
 SF.RegisterType("HDRI", true, false, debug.getregistry().HDRI)
 
 --- VisTrace BSDF material
--- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 -- @name BSDFMaterial
 -- @class type
 -- @libtbl bsdfmaterial_methods
@@ -74,6 +82,9 @@ SF.RegisterType("BSDFMaterial", true, false, debug.getregistry().BSDFMaterial)
 return function(instance)
 	local checkPermission = instance.player ~= SF.Superuser and SF.Permissions.check or function() end
 	local vistrace_library = instance.Libraries.vistrace
+
+	local vistracevtf_methods, vistracevtf_meta = instance.Types.VisTraceVTFTexture.Methods, instance.Types.VisTraceVTFTexture
+	local wrapVTF, uwrapVTF = instance.Types.VisTraceVTFTexture.Wrap, instance.Types.VisTraceVTFTexture.Unwrap
 
 	local vistracert_methods, vistracert_meta = instance.Types.VisTraceRT.Methods, instance.Types.VisTraceRT
 	local wrapRT, uwrapRT = instance.Types.VisTraceRT.Wrap, instance.Types.VisTraceRT.Unwrap
@@ -101,6 +112,10 @@ return function(instance)
 
 	local function checkVector(v)
 		if debug_getmetatable(v) ~= vecMetaTbl then SF.ThrowTypeError("Vector", SF.GetType(v), 3) end
+	end
+
+	function vistracevtf_meta.__tostring()
+		return "VisTraceVTFTexture"
 	end
 
 	function vistracert_meta.__tostring()
@@ -133,25 +148,162 @@ return function(instance)
 		end
 	end
 
+--#region VisTraceVTFTexture
+
+	--- Loads a VTF texture
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param string path Path to the VTF texture relative to the materials folder and without an extension
+	-- @return VisTraceVTFTexture
+	function vistrace_library.loadTexture(path)
+		canRun()
+		checkLuaType(path, TYPE_STRING)
+		return wrapVTF(vistrace.LoadTexture(path))
+	end
+
+	--- Returns true if the VTF texture is valid, false otherwise
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return boolean
+	function vistracevtf_methods:isValid()
+		canRun()
+		return uwrapVTF(self):IsValid()
+	end
+
+	--- Gets the width of the specified MIP level
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number? mip Mip level to get the width of (Defaults to 0)
+	-- @return number
+	function vistracevtf_methods:getWidth(mip)
+		canRun()
+
+		if mip ~= nil then checkLuaType(mip, TYPE_NUMBER) end
+		return uwrapVTF(self):GetWidth(mip)
+	end
+
+	--- Gets the height of the specified MIP level
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number? mip Mip level to get the height of (Defaults to 0)
+	-- @return number
+	function vistracevtf_methods:getHeight(mip)
+		canRun()
+
+		if mip ~= nil then checkLuaType(mip, TYPE_NUMBER) end
+		return uwrapVTF(self):GetHeight(mip)
+	end
+
+	--- Gets the depth of the specified MIP level (volumetric textures only)
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number? mip Mip level to get the depth of (Defaults to 0)
+	-- @return number
+	function vistracevtf_methods:getDepth(mip)
+		canRun()
+
+		if mip ~= nil then checkLuaType(mip, TYPE_NUMBER) end
+		return uwrapVTF(self):GetDepth(mip)
+	end
+
+	--- Gets the number offaces in this texture
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number
+	function vistracevtf_methods:getFaces()
+		canRun()
+		return uwrapVTF(self):GetFaces()
+	end
+
+	--- Gets the number of MIP levels in this texture
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number
+	function vistracevtf_methods:getMIPLevels()
+		canRun()
+		return uwrapVTF(self):GetMIPLevels()
+	end
+
+	--- Gets the number of frames in this texture (animated textures only)
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number
+	function vistracevtf_methods:getFrames()
+		canRun()
+		return uwrapVTF(self):GetFrames()
+	end
+
+	--- Gets the first frame of animation
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return number
+	function vistracevtf_methods:getFirstFrame()
+		canRun()
+		return uwrapVTF(self):GetFirstFrame()
+	end
+
+	--- Gets a pixel from the texture given a set of exact coordinates
+	--- In most cases you'll want to use VisTraceVTFTexture:sample()
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number x X coordinate of the pixel
+	-- @param number y Y coordinate of the pixel
+	-- @param number? z Z coordinate of the pixel (Defaults to 0)
+	-- @param number? mip MIP level to read from (Defaults to 0). This does not transform your X and Y coordinates automatically
+	-- @param number? frame Frame of animation to read from (Defaults to 0)
+	-- @param number? face Environment map face to read from (Defaults to 0)
+	-- @return Vector RGB components of the pixel
+	-- @return number Alpha component of the pixel
+	function vistracevtf_methods:getPixel(x, y, z, mip, frame, face)
+		canRun()
+
+		checkLuaType(x, TYPE_NUMBER)
+		checkLuaType(y, TYPE_NUMBER)
+		checkLuaType(z, TYPE_NUMBER)
+		if mip ~= nil then checkLuaType(mip, TYPE_NUMBER) end
+		if frame ~= nil then checkLuaType(frame, TYPE_NUMBER) end
+		if face ~= nil then checkLuaType(face, TYPE_NUMBER) end
+
+		local rgb, a = uwrapVTF(self):GetPixel(x, y, z, mip, frame, face)
+		return wrapVec(rgb), a
+	end
+
+	--- Samples a pixel with filtering
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number u U coordinate to sample (0-1)
+	-- @param number v V coordinate to sample (0-1)
+	-- @param number? mip MIP level to read from (Defaults to 0). This can be a number between mip levels for trilinear filtering
+	-- @param number? frame Frame of animation to read from (Defaults to 0)
+	-- @param number? face Environment map face to read from (Defaults to 0)
+	-- @return Vector RGB components of the pixel
+	-- @return number Alpha component of the pixel
+	function vistracevtf_methods:sample(u, v, mip, frame, face)
+		canRun()
+
+		checkLuaType(u, TYPE_NUMBER)
+		checkLuaType(v, TYPE_NUMBER)
+		if mip ~= nil then checkLuaType(mip, TYPE_NUMBER) end
+		if frame ~= nil then checkLuaType(frame, TYPE_NUMBER) end
+		if face ~= nil then checkLuaType(face, TYPE_NUMBER) end
+
+		local rgb, a = uwrapVTF(self):Sample(u, v, mip, frame, face)
+		return wrapVec(rgb), a
+	end
+
+--#endregion
+
 --#region VisTraceRT
 
 	--- Render target image formats
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @name vistrace_library.VisTraceRTFormat
 	-- @class table
 	-- @field R8
 	-- @field RG88
 	-- @field RGB888
+	-- @field RF
+	-- @field RGFF
 	-- @field RGBFFF
 	-- @field Albedo
 	-- @field Normal
 	instance.env.VisTraceRTFormat = VisTraceRTFormat
 
 	--- Creates a render target designed for high performance image processing
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number width
 	-- @param number height
 	-- @param number format Image format to use for the underlying pixel data (see VisTraceRTFormat)
-	-- @param boolean? createMips Create mip levels from the current resolution down to 1x1 (Defaults to false. Call generateMIPs to populate these automatically)
+	-- @param boolean? createMIPs Create mip levels from the current resolution down to 1x1 (Defaults to false. Call generateMIPs to populate these automatically)
 	-- @return VisTraceRT
 	function vistrace_library.createRenderTarget(width, height, format, createMIPs)
 		checkPermission(instance, nil, "vistrace.rendertarget")
@@ -160,53 +312,58 @@ return function(instance)
 		checkLuaType(width, TYPE_NUMBER)
 		checkLuaType(height, TYPE_NUMBER)
 		checkLuaType(format, TYPE_NUMBER)
-		if createMIPs ~= nil then checkLuaType(width, TYPE_BOOL) end
+		if createMIPs ~= nil then checkLuaType(createMIPs, TYPE_BOOL) end
 
 		return wrapRT(vistrace.CreateRenderTarget(width, height, format, createMIPs))
 	end
 
 	--- Returns true if the render target is valid, false otherwise
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return boolean
 	function vistracert_methods:isValid()
 		canRun()
 		return uwrapRT(self):IsValid()
 	end
 
-	--- Resizes the render target and returns true if the resize was successful
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	--- Resizes the render target and optionally creates empty MIP levels
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number width New width
 	-- @param number height New height
-	-- @param boolean? createMips Create mip levels from the current resolution down to 1x1 (Defaults to false. Call generateMIPs to populate these automatically)
-	-- @return boolean
+	-- @param boolean? createMIPs Create mip levels from the current resolution down to 1x1 (Defaults to false. Call generateMIPs to populate these automatically)
 	function vistracert_methods:resize(width, height, createMIPs)
 		canRun()
 
 		checkLuaType(width, TYPE_NUMBER)
 		checkLuaType(height, TYPE_NUMBER)
-		if createMIPs ~= nil then checkLuaType(width, TYPE_BOOL) end
+		if createMIPs ~= nil then checkLuaType(createMIPs, TYPE_BOOL) end
 
-		return uwrapRT(self):Resize(width, height, createMIPs)
+		uwrapRT(self):Resize(width, height, createMIPs)
 	end
 
-	--- Gets the width of the render target's largest MIP in pixels
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	--- Gets the width of the specified MIP level
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number? mip Mip level to get the width of (Defaults to 0)
 	-- @return number
-	function vistracert_methods:getWidth()
+	function vistracert_methods:getWidth(mip)
 		canRun()
-		return uwrapRT(self):GetWidth()
+
+		if mip ~= nil then checkLuaType(mip, TYPE_NUMBER) end
+		return uwrapRT(self):GetWidth(mip)
 	end
 
-	--- Gets the height of the render target's largest MIP in pixels
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	--- Gets the height of the specified MIP level
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number? mip Mip level to get the height of (Defaults to 0)
 	-- @return number
-	function vistracert_methods:getHeight()
+	function vistracert_methods:getHeight(mip)
 		canRun()
-		return uwrapRT(self):GetHeight()
+
+		if mip ~= nil then checkLuaType(mip, TYPE_NUMBER) end
+		return uwrapRT(self):GetHeight(mip)
 	end
 
 	--- Gets the number of MIP levels in this render target
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number
 	function vistracert_methods:getMIPs()
 		canRun()
@@ -214,7 +371,7 @@ return function(instance)
 	end
 
 	--- Gets the format of the render target
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number VisTraceRTFormat
 	function vistracert_methods:getFormat()
 		canRun()
@@ -222,12 +379,12 @@ return function(instance)
 	end
 
 	--- Gets the colour values of each channel of the pixel, normalised to 0-1
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number x X coordinate of the pixel
 	-- @param number y Y coordinate of the pixel
-	-- @param number? mip MIP level to get the pixel from (Defaults to 0. This does not transform your X and Y coordinates automatically)
-	-- @return Vector RGB components of the image
-	-- @return number Alpha component of the image
+	-- @param number? mip MIP level to get the pixel from (Defaults to 0). This does not transform your X and Y coordinates automatically
+	-- @return Vector RGB components of the pixel
+	-- @return number Alpha component of the pixel
 	function vistracert_methods:getPixel(x, y, mip)
 		canRun()
 
@@ -240,7 +397,7 @@ return function(instance)
 	end
 
 	--- Sets the colour values of each channel of the pixel, normalised to 0-1
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number x X coordinate of the pixel
 	-- @param number y Y coordinate of the pixel
 	-- @param Vector rgb RGB components to write
@@ -260,15 +417,41 @@ return function(instance)
 
 	--- Automatically populates the mip levels below the highest with a scaled down version of the texture  
 	--- You need to have set createMIPs to true when creating/resizing this render target
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	function vistracert_methods:generateMIPs()
 		canRun()
 		return uwrapRT(self):GenerateMIPs()
 	end
 
-	--- Tonemaps a HDR render target using ACES fitted  
+	--- Saves the contents of the render target to a file in garrysmod/data/vistrace
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param string path Path relative to garrysmod/data/vistrace. If a valid extension isn't used, will default to either .png or .hdr depending on RT format
+	-- @param number? mip Mip level to save (Defaults to 0)
+	function vistracert_methods:save(path, mip)
+		canRun()
+
+		checkLuaType(path, TYPE_STRING)
+		if mip ~= nil then checkLuaType(mip, TYPE_NUMBER) end
+
+		return uwrapRT(self):Save(path, mip)
+	end
+
+	--- Loads the contents of a file in garrysmod/data/vistrace into the render target, resizing the RT to fit
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param string path Path relative to garrysmod/data/vistrace
+	-- @param boolean? createMIPs Create mip levels from the file's resolution down to 1x1 (Defaults to false. Call generateMIPs to populate these automatically)
+	function vistracert_methods:load(path, createMIPs)
+		canRun()
+
+		checkLuaType(path, TYPE_STRING)
+		if createMIPs ~= nil then checkLuaType(createMIPs, TYPE_BOOL) end
+
+		return uwrapRT(self):Load(path, createMIPs)
+	end
+
+	--- Tonemaps a HDR image target using ACES fitted  
 	--- Apply exposure before calling this and gamma correction after
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	function vistracert_methods:tonemap()
 		canRun()
 		return uwrapRT(self):Tonemap()
@@ -279,7 +462,7 @@ return function(instance)
 --#region VisTraceResult
 
 	--- Gets the hit pos of the result
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return Vector Position of the point of intersection
 	function traceresult_methods:pos()
 		canRun()
@@ -288,7 +471,7 @@ return function(instance)
 
 	--- Gets the distance from the ray origin to the hit pos of the result  
 	--- This is extremely fast compared to computing the distance between origin and pos yourself, as it's calculated during triangle intersection
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number Distance to the point of intersection
 	function traceresult_methods:distance()
 		canRun()
@@ -296,7 +479,7 @@ return function(instance)
 	end
 
 	--- Gets the entity the ray hit
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return Entity Entity that was hit
 	function traceresult_methods:entity()
 		canRun()
@@ -304,28 +487,28 @@ return function(instance)
 	end
 
 	--- Gets the geometric normal of the tri that was hit
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return Vector Geometric normal
 	function traceresult_methods:geometricNormal()
 		canRun()
 		return wrapVec(uwrapResult(self):GeometricNormal())
 	end
 	--- Gets the shading normal of the intersection
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return Vector Shading normal after weighting and normal mapping
 	function traceresult_methods:normal()
 		canRun()
 		return wrapVec(uwrapResult(self):Normal())
 	end
 	--- Gets the shading tangent of the intersection
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return Vector Shading tangent after weighting and normal mapping
 	function traceresult_methods:tangent()
 		canRun()
 		return wrapVec(uwrapResult(self):Tangent())
 	end
 	--- Gets the shading binormal of the intersection
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return Vector Shading binormal after weighting and normal mapping
 	function traceresult_methods:binormal()
 		canRun()
@@ -333,7 +516,7 @@ return function(instance)
 	end
 
 	--- Gets the barycentric coordinates of the intersection
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return Vector Vector containing the UVW of the intersection mapped to XYZ
 	function traceresult_methods:barycentric()
 		canRun()
@@ -341,7 +524,7 @@ return function(instance)
 	end
 
 	--- Gets the texture UV of the intersection
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return table Table with keys u, v
 	function traceresult_methods:textureUV()
 		canRun()
@@ -349,7 +532,7 @@ return function(instance)
 	end
 
 	--- Gets the submaterial index of the hit tri
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number Submat index
 	function traceresult_methods:subMaterialIndex()
 		canRun()
@@ -357,28 +540,28 @@ return function(instance)
 	end
 
 	--- Gets the albedo of the intersection after applying entity colour and base texture
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return Vector Colour normalised to 0-1
 	function traceresult_methods:albedo()
 		canRun()
 		return wrapVec(uwrapResult(self):Albedo())
 	end
 	--- Gets the alpha of the intersection after applying entity colour and base texture
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number Alpha normalised to 0-1
 	function traceresult_methods:alpha()
 		canRun()
 		return uwrapResult(self):Alpha()
 	end
 	--- Gets the metalness of the intersection after applying MRAO texture
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number Metalness normailsed to 0-1 (defaults to 0 if no MRAO found)
 	function traceresult_methods:metalness()
 		canRun()
 		return uwrapResult(self):Metalness()
 	end
 	--- Gets the roughness of the intersection after applying MRAO texture
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number roughness normailsed to 0-1 (defaults to 1 if no MRAO found)
 	function traceresult_methods:roughness()
 		canRun()
@@ -386,14 +569,14 @@ return function(instance)
 	end
 
 	--- Gets the material's $flags value
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number Bitflags
 	function traceresult_methods:materialFlags()
 		canRun()
 		return uwrapResult(self):MaterialFlags()
 	end
 	--- Gets the material's SURF flags (only present on world)
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number Bitflags
 	function traceresult_methods:surfaceFlags()
 		canRun()
@@ -401,7 +584,7 @@ return function(instance)
 	end
 
 	--- Gets whether we hit the sky
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return boolean True if we hit the sky of the map
 	function traceresult_methods:hitSky()
 		canRun()
@@ -409,7 +592,7 @@ return function(instance)
 	end
 
 	--- Gets whether we hit water
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return boolean True if we hit a tri using a water shader
 	function traceresult_methods:hitWater()
 		canRun()
@@ -417,7 +600,7 @@ return function(instance)
 	end
 
 	--- Gets whether we hit the front side of a tri
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return boolean True if we hit the front face of a tri
 	function traceresult_methods:frontFacing()
 		canRun()
@@ -426,7 +609,7 @@ return function(instance)
 
 	--- Gets the floating point MIP level that was sampled from the base texture  
 	--- Mainly used for debugging texture LoD calculation
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number Floating point MIP level (where 0 is the highest resolution)
 	function traceresult_methods:baseMIPLevel()
 		canRun()
@@ -438,7 +621,7 @@ return function(instance)
 --#region AccelStruct
 
 	--- Rebuild the acceleration structure
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param table? entities Sequential list of entities to rebuild the acceleration structure with (or nil to clear the structure)
 	-- @param boolean? traceWorld Whether to include the world in the acceleration structure (defaults to true)
 	function accelstruct_methods:rebuild(entities, traceWorld)
@@ -460,7 +643,7 @@ return function(instance)
 	end
 
 	--- Traverses the acceleration structure
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Vector origin Ray origin
 	-- @param Vector direction Ray direction
 	-- @param number? tMin Minimum distance of the ray (basically offset from start along direction)
@@ -489,7 +672,7 @@ return function(instance)
 	end
 
 	--- Creates an acceleration struction (AccelStruct)
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param table? entities Sequential list of entities to build the acceleration structure from (or nil to create an empty structure)
 	-- @param boolean? traceWorld Whether to include the world in the acceleration structure (defaults to true)
 	-- @return AccelStruct Built acceleration structure
@@ -516,7 +699,7 @@ return function(instance)
 --#region Sampler
 
 	--- Gets a uniform random float from the sampler
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number Random float in a 0-1 range
 	function sampler_methods:getFloat()
 		canRun()
@@ -524,7 +707,7 @@ return function(instance)
 	end
 
 	--- Gets two uniform random floats from the sampler
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return number Random float in a 0-1 range
 	-- @return number Random float in a 0-1 range
 	function sampler_methods:getFloat2D()
@@ -533,7 +716,7 @@ return function(instance)
 	end
 
 	--- Creates a random sampler
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number? seed uint32_t to seed the sampler with
 	-- @return Sampler Sampler object
 	function vistrace_library.createSampler(seed)
@@ -548,7 +731,7 @@ return function(instance)
 --#region BSDFMaterial
 
 	--- Creates a new material for use with BSDF sampling
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return BSDFMaterial New material object
 	function vistrace_library.createMaterial()
 		canRun()
@@ -556,15 +739,33 @@ return function(instance)
 	end
 
 	--- Set the colour of the material (multiplies by the sampled colour)
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Vector colour Colour to set as a 0-1 normalised vector
 	function bsdfmaterial_methods:colour(colour)
 		canRun()
 		uwrapMat(self):Colour(uwrapVec(colour))
 	end
 
+	--- Set the colour of the material's dielectric lobes  
+	--- Overridden by BSDFMaterial:colour()
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param Vector colour Colour to set as a 0-1 normalised vector
+	function bsdfmaterial_methods:dielectricColour(colour)
+		canRun()
+		uwrapMat(self):DielectricColour(uwrapVec(colour))
+	end
+
+	--- Set the colour of the material's conductor lobes  
+	--- Overridden by BSDFMaterial:colour()
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param Vector colour Colour to set as a 0-1 normalised vector
+	function bsdfmaterial_methods:conductorColour(colour)
+		canRun()
+		uwrapMat(self):ConductorColour(uwrapVec(colour))
+	end
+
 	--- Set the metalness of the material (overrides PBR textures)
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number metalness Metalness to set
 	function bsdfmaterial_methods:metalness(metalness)
 		canRun()
@@ -572,7 +773,7 @@ return function(instance)
 		uwrapMat(self):Metalness(metalness)
 	end
 	--- Set the roughness of the material (overrides PBR textures)
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number roughness Roughness to set
 	function bsdfmaterial_methods:roughness(roughness)
 		canRun()
@@ -581,25 +782,16 @@ return function(instance)
 	end
 
 	--- Set the index of refraction of the material
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number ior Index of refraction to set
 	function bsdfmaterial_methods:ior(ior)
 		canRun()
 		checkLuaType(ior, TYPE_NUMBER)
 		uwrapMat(self):IoR(ior)
 	end
-	--- Set the relative index of refraction of the material
-	--- Used to implement nested dielectrics (dont use if you dont know what you're doing)
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param number relativeIor Relative index of refraction to set
-	function bsdfmaterial_methods:relativeIor(relativeIor)
-		canRun()
-		checkLuaType(relativeIor, TYPE_NUMBER)
-		uwrapMat(self):RelativeIoR(relativeIor)
-	end
 
 	--- Set the diffuse transmission amount
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number diffuseTransmission 0-1 where 0 is no light transmitted and 1 is all light transmitted
 	function bsdfmaterial_methods:diffuseTransmission(diffuseTransmission)
 		canRun()
@@ -607,7 +799,7 @@ return function(instance)
 		uwrapMat(self):DiffuseTransmission(diffuseTransmission)
 	end
 	--- Set the specular transmission amount
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number specularTransmission 0-1 where 0 is no light refracted and 1 is all light refracted
 	function bsdfmaterial_methods:specularTransmission(specularTransmission)
 		canRun()
@@ -616,7 +808,7 @@ return function(instance)
 	end
 
 	--- Toggle thin film
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param boolean thin True to simulate the material as thin film
 	function bsdfmaterial_methods:thin(thin)
 		canRun()
@@ -624,59 +816,46 @@ return function(instance)
 		uwrapMat(self):Thin(thin)
 	end
 
+	--- Sets which BSDF lobes should be sampled/evaluated
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	function bsdfmaterial_methods:activeLobes(lobes)
+		canRun()
+		checkLuaType(thin, TYPE_NUMBER)
+		uwrapMat(self):ActiveLobes(lobes)
+	end
+
 --#endregion
 
 --#region BSDF
 
 	--- BSDF Lobes
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @name vistrace_library.LobeType
 	-- @class table
 	-- @field None
 	-- @field DiffuseReflection
-	-- @field SpecularReflection
-	-- @field DeltaReflection
 	-- @field DiffuseTransmission
-	-- @field SpecularTransmission
-	-- @field DeltaTransmission
-	-- @field Diffuse
-	-- @field Specular
-	-- @field Delta
-	-- @field NonDelta
+	-- @field DielectricReflection
+	-- @field DielectricTransmission
+	-- @field ConductiveReflection
+	-- @field DeltaDielectricReflection
+	-- @field DeltaDielectricTransmission
+	-- @field DeltaConductiveReflection
 	-- @field Reflection
 	-- @field Transmission
-	-- @field NonDeltaReflection
-	-- @field NonDeltaTransmission
+	-- @field Delta
+	-- @field NonDelta
+	-- @field Diffuse
+	-- @field Specular
+	-- @field SpecularDielectric
+	-- @field SpecularConductive
 	-- @field All
-	instance.env.LobeType = {
-		None = 0x00,
+	instance.env.LobeType = LobeType
 
-		DiffuseReflection = 0x01,
-		SpecularReflection = 0x02,
-		DeltaReflection = 0x04,
-
-		DiffuseTransmission = 0x10,
-		SpecularTransmission = 0x20,
-		DeltaTransmission = 0x40,
-
-		Diffuse = 0x11,
-		Specular = 0x22,
-		Delta = 0x44,
-		NonDelta = 0x33,
-
-		Reflection = 0x0f,
-		Transmission = 0xf0,
-
-		NonDeltaReflection = 0x03,
-		NonDeltaTransmission = 0x30,
-
-		All = 0xff,
-	}
-
-	--- Importance samples the Falcor BSDF
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	--- Importance samples the VisTrace BSDF
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Sampler sampler Sampler object
 	-- @param BSDFMaterial material Material parameters
-	-- @return bool valid Whether the sample is valid or not
 	-- @return table? sample Sample generated (if valid)
 	function traceresult_methods:sampleBSDF(sampler, material)
 		canRun()
@@ -684,47 +863,125 @@ return function(instance)
 		if debug_getmetatable(sampler) ~= sampler_meta then SF.ThrowTypeError("Sampler", SF.GetType(sampler), 2) end
 		if debug_getmetatable(material) ~= bsdfmaterial_meta then SF.ThrowTypeError("BSDFMaterial", SF.GetType(material), 2) end
 
-		local valid, sample = uwrapResult(self):SampleBSDF(uwrapSampler(sampler), uwrapMat(material))
-		if not valid then return false end
-
-		return true, {
-			wo = wrapVec(sample.wo),
-			pdf = sample.pdf,
-			weight = wrapVec(sample.weight),
-			lobe = sample.lobe
-		}
+		local sample = uwrapResult(self):SampleBSDF(uwrapSampler(sampler), uwrapMat(material))
+		if sample then
+			return {
+				scattered = wrapVec(sample.scattered),
+				pdf = sample.pdf,
+				weight = wrapVec(sample.weight),
+				lobe = sample.lobe
+			}
+		end
 	end
 
-	--- Evaluates the Falcor BSDF
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	--- Evaluates the VisTrace BSDF
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param BSDFMaterial material Material parameters
-	-- @param Vector wi Incoming light direction (towards sampled direction or light)
+	-- @param Vector scattered Scattered light direction
 	-- @return Vector Evaluated surface colour
-	function traceresult_methods:evalBSDF(material, wi)
+	function traceresult_methods:evalBSDF(material, scattered)
 		canRun()
 
 		if debug_getmetatable(material) ~= bsdfmaterial_meta then SF.ThrowTypeError("BSDFMaterial", SF.GetType(material), 2) end
 
-		checkVector(wi)
-		validateVector(wi)
+		checkVector(scattered)
+		validateVector(scattered)
 
-		return wrapVec(uwrapResult(self):EvalBSDF(uwrapMat(material), uwrapVec(wi)))
+		return wrapVec(uwrapResult(self):EvalBSDF(uwrapMat(material), uwrapVec(scattered)))
 	end
 
-	--- Evaluates the Falcor BSDF's PDF
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	--- Evaluates the VisTrace BSDF's PDF
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param BSDFMaterial material Material parameters
-	-- @param Vector wi Incoming light direction (towards sampled direction or light)
+	-- @param Vector scattered Scattered light direction
 	-- @return number Evaluated PDF
-	function traceresult_methods:evalPDF(material, wi)
+	function traceresult_methods:evalPDF(material, scattered)
 		canRun()
 
 		if debug_getmetatable(material) ~= bsdfmaterial_meta then SF.ThrowTypeError("BSDFMaterial", SF.GetType(material), 2) end
 
-		checkVector(wi)
-		validateVector(wi)
+		checkVector(scattered)
+		validateVector(scattered)
 
-		return uwrapResult(self):EvalPDF(uwrapMat(material), uwrapVec(wi))
+		return uwrapResult(self):EvalPDF(uwrapMat(material), uwrapVec(scattered))
+	end
+
+	--- Importance samples the VisTrace BSDF
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param Sampler sampler Sampler object
+	-- @param BSDFMaterial material Material parameters
+	-- @param Vector normal Normal of the surface
+	-- @param Vector incident Incident vector (negative direction of the ray that hit the surface)
+	-- @return table? sample Sample generated (if valid)
+	function vistrace_library.sampleBSDF(sampler, material, normal, incident)
+		canRun()
+
+		if debug_getmetatable(sampler) ~= sampler_meta then SF.ThrowTypeError("Sampler", SF.GetType(sampler), 2) end
+		if debug_getmetatable(material) ~= bsdfmaterial_meta then SF.ThrowTypeError("BSDFMaterial", SF.GetType(material), 2) end
+
+		checkVector(normal)
+		validateVector(normal)
+
+		checkVector(incident)
+		validateVector(incident)
+	
+		local sample = vistrace.SampleBSDF(uwrapSampler(sampler), uwrapMat(material), uwrapVec(normal), uwrapVec(incident))
+		if sample then
+			return {
+				scattered = wrapVec(sample.scattered),
+				pdf = sample.pdf,
+				weight = wrapVec(sample.weight),
+				lobe = sample.lobe
+			}
+		end
+	end
+
+	--- Evaluates the VisTrace BSDF
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param BSDFMaterial material Material parameters
+	-- @param Vector normal Normal of the surface
+	-- @param Vector incident Incident vector (negative direction of the ray that hit the surface)
+	-- @param Vector scattered Scattered light direction
+	-- @return Vector Evaluated surface colour
+	function vistrace_library.evalBSDF(material, normal, incident, scattered)
+		canRun()
+
+		if debug_getmetatable(material) ~= bsdfmaterial_meta then SF.ThrowTypeError("BSDFMaterial", SF.GetType(material), 2) end
+
+		checkVector(normal)
+		validateVector(normal)
+
+		checkVector(incident)
+		validateVector(incident)
+
+		checkVector(scattered)
+		validateVector(scattered)
+
+		return wrapVec(vistrace.EvalBSDF(uwrapMat(material), uwrapVec(normal), uwrapVec(incident), uwrapVec(scattered)))
+	end
+
+	--- Evaluates the VisTrace BSDF's PDF
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param BSDFMaterial material Material parameters
+	-- @param Vector normal Normal of the surface
+	-- @param Vector incident Incident vector (negative direction of the ray that hit the surface)
+	-- @param Vector scattered Scattered light direction
+	-- @return number Evaluated PDF
+	function vistrace_library.evalPDF(material, normal, incident, scattered)
+		canRun()
+
+		if debug_getmetatable(material) ~= bsdfmaterial_meta then SF.ThrowTypeError("BSDFMaterial", SF.GetType(material), 2) end
+
+		checkVector(normal)
+		validateVector(normal)
+
+		checkVector(incident)
+		validateVector(incident)
+
+		checkVector(scattered)
+		validateVector(scattered)
+
+		return vistrace.EvalPDF(uwrapMat(material), uwrapVec(normal), uwrapVec(incident), uwrapVec(scattered))
 	end
 
 --#endregion
@@ -733,7 +990,7 @@ return function(instance)
 
 	--- Loads a HDRI from `garrysmod/data/vistrace_hdris/` and appends the `.hdr` extension automatically  
 	--- Subfolders are allowed
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param string path Path to the HDRI
 	-- @param number? radianceThreshold Minimum total radiance in a sample bin before the bin is no longer divided
 	-- @param number? areaThreshold Minimum area (in pixels) of a sample bin before the bin is no longer divided
@@ -750,7 +1007,7 @@ return function(instance)
 	end
 
 	--- Checks if the HDRI is valid
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @return boolean Whether the HDRI is valid
 	function hdri_methods:isValid()
 		canRun()
@@ -758,7 +1015,7 @@ return function(instance)
 	end
 
 	--- Samples a pixel from the HDRI
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Vector direction Direction to get the colour of
 	-- @return Vector Colour value
 	function hdri_methods:getPixel(direction)
@@ -769,7 +1026,7 @@ return function(instance)
 	end
 
 	--- Calculates the probability of sampling this direction
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Vector direction Direction to get the probability of
 	-- @return number Probability
 	function hdri_methods:evalPDF(direction)
@@ -781,7 +1038,7 @@ return function(instance)
 	end
 
 	--- Importance samples the HDRI (only the first value is returned if the sample is invalid)
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Sampler
 	-- @return boolean Whether the sample is valid
 	-- @return Vector? Sampled direction
@@ -798,7 +1055,7 @@ return function(instance)
 	end
 
 	--- Sets the rotation of the HDRI
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Angle angle Angle to set
 	function hdri_methods:setAngles(angle)
 		canRun()
@@ -809,7 +1066,7 @@ return function(instance)
 --#endregion
 
 	--- Calculates a biased offset from an intersection point to prevent self intersection
-	-- @src https://github.com/Derpius/VisTrace/blob/master/Addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param Vector origin
 	-- @param Vector normal
 	-- @return Vector New ray origin
