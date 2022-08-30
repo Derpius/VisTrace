@@ -33,16 +33,16 @@ print("VisTracing in One Weekend!")
 
 Launch GMod and start singleplayer (or join a multiplayer server with clientside Lua enabled), open console with the grave/backtick key, and enter `lua_openscript_cl vistracer.lua`. You should see `VisTracing in One Weekend!` appear in your console! If not then check that `sv_allowcslua` is set to `1`, and that GMod has been restarted since you created `vistracer.lua` (it only hotloads existing files).  
 
-Now to draw something to the screen we need a render context, and in this case I've chosen the `PostDrawHUD` hook as a simple way to get pixels above everything except the menu. Remove the print we added and replace it with the hook
+Now to draw something to the screen we need a render context, and in this case I've chosen the `HUDPaint` hook as a simple way to get pixels above everything except the menu. Remove the print we added and replace it with the hook
 ~~~ lua
-hook.Add("PostDrawHUD", "VisTracer", function()
+hook.Add("HUDPaint", "VisTracer", function()
 
 end)
 ~~~  
 
 This wont do anything yet, but go ahead and run it just to check everything's working. We have a render context, but we need to actually draw something. For now lets just use a red rectangle
 ~~~ lua
-hook.Add("PostDrawHUD", "VisTracer", function()
+hook.Add("HUDPaint", "VisTracer", function()
 	~~~ lua highlight
 	surface.SetDrawColor(255, 0, 0)
 	surface.DrawRect(0, 0, 256, 256)
@@ -79,7 +79,7 @@ Next we draw the render target to the screen
 ~~~ lua
 ...
 
-hook.Add("PostDrawHUD", "VisTracer", function()
+hook.Add("HUDPaint", "VisTracer", function()
 	~~~ lua delete
 	surface.SetDrawColor(255, 0, 0)
 	surface.DrawRect(0, 0, 256, 256)
@@ -90,7 +90,7 @@ hook.Add("PostDrawHUD", "VisTracer", function()
 end)
 ~~~
 
-If you run this with `lua_openscript_cl vistracer.lua` you should get a black screen (don't worry, use `lua_run_cl hook.Remove("PostDrawHUD", "VisTracer")` to get rid of the hook). This isn't exactly what we want, so lets try drawing some pixels.  
+If you run this with `lua_openscript_cl vistracer.lua` you should get a black screen (don't worry, use `lua_run_cl hook.Remove("HUDPaint", "VisTracer")` to get rid of the hook). This isn't exactly what we want, so lets try drawing some pixels.  
 
 While we could draw to the render target immediately when we run our script, we're going to want to split the drawing over multiple frames for later (ray tracing single threaded in Lua is not fast). To do this we can ignore more complicated (and slower) methods of spreading our code over multiple frames, and just render one row per frame. We also need to define an x and y resolution to draw, which we'll place at the top of the file (this is where all of our parameters will go)
 ~~~ lua highlight
@@ -103,7 +103,7 @@ local RESX, RESY = 256, 256
 ~~~ lua highlight
 local y = 0
 ~~~ lua
-hook.Add("PostDrawHUD", "VisTracer", function()
+hook.Add("HUDPaint", "VisTracer", function()
 	~~~ lua highlight
 	if y < RESY then
 		render.PushRenderTarget(rt)
@@ -134,7 +134,7 @@ local y = 0
 	~~~ lua highlight
 local setup = true
 	~~~ lua
-hook.Add("PostDrawHUD", "VisTracer", function()
+hook.Add("HUDPaint", "VisTracer", function()
 	if y < RESY then
 		render.PushRenderTarget(rt)
 
@@ -237,7 +237,7 @@ end
 
 local y = 0
 local setup = true
-hook.Add("PostDrawHUD", "VisTracer", function()
+hook.Add("HUDPaint", "VisTracer", function()
 	if y < RESY then
 		render.PushRenderTarget(rt)
 		if setup then
