@@ -415,6 +415,39 @@ The Rendering Equation
 L_o(\mathbf{x}, \omega_o, \lambda, t) = L_e(\mathbf{x}, \omega_o, \lambda, t) + \int_{\Omega} f_r(\mathbf{x}, \omega_i, \omega_o, \lambda, t)L_i(\mathbf{x}, \omega_i, \lambda, t)(\omega_i \cdot \mathbf{n}) \,d\omega_i
 \end{equation}
 
+There it is, the rendering equation, the singular equation that underpins all modern renderers. You may be thinking you chose the wrong project to work on this week looking at that, but it's actually far simpler than it looks, and even simpler because most of it we will be ignoring in ray tracing.
+
+To start with lets strip out the symbols we dont need, $\lambda$ is the wavelength of light, which we're abstracting away by using an RGB vector for everything, and $t$ is the current time (not time along the ray, but some time value for animation). This leaves us with the following
+
+\begin{equation}
+L_o(\mathbf{x}, \omega_o) = L_e(\mathbf{x}, \omega_o) + \int_{\Omega} f_r(\mathbf{x}, \omega_i, \omega_o)L_i(\mathbf{x}, \omega_i)(\omega_i \cdot \mathbf{n}) \,d\omega_i
+\end{equation}
+
+There's still that scary integral in there, but we wont actually be using that until path tracing later on. Instead we're only sampling a single direction at every hit point.
+
+\begin{equation}
+L_o(\mathbf{x}, \omega_o) = L_e(\mathbf{x}, \omega_o) + f_r(\mathbf{x}, \omega_i, \omega_o)L_i(\mathbf{x}, \omega_i)(\omega_i \cdot \mathbf{n})
+\end{equation}
+
+One more term we can remove is $L_e$, which is the emitted radiance at the hit point. As we wont be sampling emissives directly (well outside the scope of this book) and we wont be bouncing around the scene randomly (path tracing), the only effect we'd get from including this is emissive objects appearing bright when viewed by the camera directly, as well as in reflection and refraction, but they wouldn't light the scene.
+
+\begin{equation}
+L_o(\mathbf{x}, \omega_o) = f_r(\mathbf{x}, \omega_i, \omega_o)L_i(\mathbf{x}, \omega_i)(\omega_i \cdot \mathbf{n})
+\end{equation}
+
+Now we've cut the equation down to size, lets go over the terms
+
+* $\mathbf{x}$ is the hit point of the ray
+* $\omega_o$ is the direction pointing back along the ray ($-\mathbf{d}$ from the ray equation in [1.2](#introduction/tracingaray))
+* $\omega_i$ is the direction of scattered light, which in ray tracing is just light samples, reflection, and refraction
+* $\mathbf{n}$ is the normal of the surface we hit
+* $L_o(\mathbf{x}, \omega_o)$ is the rendering function itself, which calculates the radiance in the outgoing direction $\omega_o$ at the point $\mathbf{x}$
+* $f_r(\mathbf{x}, \omega_i, \omega_o)$ is the *bidirectional shading distribution function*, which calculates the amount of light reflected/transmitted/absorbed from the incoming direction $\omega_i$ in the outgoing direction $\omega_o$. You wont need to worry about the more complex forms of this function, as we'll only be simulating very basic light interaction.
+* $L_i(\mathbf{x}, \omega_i)$ is the radiance coming from the incoming direction of light, which is actually the exact same function as $L_o$, except from the hit point and in the direction of incoming light instead of from the camera, making the rendering equation recursive
+* $(\omega_i \cdot \mathbf{n})$ is the weakening factor of irradiance due to light smearing over a surface. This will be 1 for our perfect specular reflection and transmission (a detailed explanation of why can be found [here](https://stackoverflow.com/questions/22431912/path-tracing-why-is-there-no-cosine-term-when-calculating-perfect-mirror-reflec))
+
+Armed with this simplified rendering equation, we can now move on to implementing lighting for diffuse surfaces.
+
 Lighting
 --------
 
