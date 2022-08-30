@@ -643,7 +643,7 @@ bool SampleBSDF(
 		vec3f wi, weight;
 		if (!SampleDielectric(dielectric, data, n, wo, sg, result.lobe, wi, weight, result.pdf)) return false;
 
-		result.dir = vec3(wi.x, wi.y, wi.z);
+		result.scattered = vec3(wi.x, wi.y, wi.z);
 		result.weight = vec3(weight.x, weight.y, weight.z) * (1.f - data.metallic) * (1.f - data.specularTransmission) / pDielectric;
 
 		result.pdf *= pDielectric;
@@ -653,7 +653,7 @@ bool SampleBSDF(
 		vec3f wi, weight;
 		if (!SampleSpecularTransmission(dielectric, data, n, wo, sg, result.lobe, wi, weight, result.pdf)) return false;
 
-		result.dir = vec3(wi.x, wi.y, wi.z);
+		result.scattered = vec3(wi.x, wi.y, wi.z);
 		result.weight = vec3(weight.x, weight.y, weight.z) * (1.f - data.metallic) * data.specularTransmission / pSpecTrans;
 
 		result.pdf *= pSpecTrans;
@@ -663,7 +663,7 @@ bool SampleBSDF(
 		vec3f wi, weight;
 		if (!SampleConductor(conductor, data, n, wo, sg, result.lobe, wi, weight, result.pdf)) return false;
 
-		result.dir = vec3(wi.x, wi.y, wi.z);
+		result.scattered = vec3(wi.x, wi.y, wi.z);
 		result.weight = vec3(weight.x, weight.y, weight.z) * data.metallic * pConductor;
 
 		result.pdf *= pConductor;

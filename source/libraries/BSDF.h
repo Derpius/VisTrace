@@ -80,7 +80,7 @@ struct BSDFMaterial
 
 struct BSDFSample
 {
-	glm::vec3 dir = glm::vec3(0.f);
+	glm::vec3 scattered = glm::vec3(0.f);
 	float pdf = 0.f;
 	glm::vec3 weight = glm::vec3(0.f);
 	LobeType lobe = LobeType::None;

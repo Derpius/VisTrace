@@ -252,6 +252,7 @@ LUA_FUNCTION(VTFTexture_tostring)
 	uint8_t            width
 	uint8_t            height
 	RenderTargetFormat format
+	boolean            createMips
 */
 LUA_FUNCTION(CreateRenderTarget)
 {
@@ -259,17 +260,7 @@ LUA_FUNCTION(CreateRenderTarget)
 	RTFormat format = static_cast<RTFormat>(LUA->CheckNumber(3));
 
 	// Automatically determine correct number of mips to make the Lua API easier
-	uint8_t mips = 1;
-	if (LUA->GetBool(4)) { // false on failure which disables mips
-		while (width > 1 || height > 1) {
-			width >>= 1;
-			height >>= 1;
-			if (width < 1) width = 1;
-			if (height < 1) height = 1;
-
-			mips++;
-		}
-	}
+	uint8_t mips = LUA->GetBool(4) ? floorf(log2f(std::max(width, height))) + 1 : 1;
 
 	switch (format) {
 	case RTFormat::R8:
@@ -312,20 +303,11 @@ LUA_FUNCTION(RT_Resize)
 	uint16_t width = LUA->CheckNumber(2), height = LUA->CheckNumber(3);
 
 	// Automatically determine correct number of mips to make the Lua API easier
-	uint8_t mips = 1;
-	if (LUA->GetBool(4)) { // false on failure which disables mips
-		while (width > 1 || height > 1) {
-			width >>= 1;
-			height >>= 1;
-			if (width < 1) width = 1;
-			if (height < 1) height = 1;
+	uint8_t mips = LUA->GetBool(4) ? floorf(log2f(std::max(width, height))) + 1 : 1;
 
-			mips++;
-		}
-	}
-
-	LUA->PushBool(pRt->Resize(width, height, mips));
-	return 1;
+	if (!pRt->Resize(width, height, mips))
+		LUA->ThrowError("Failed to resize render target");
+	return 0;
 }
 
 LUA_FUNCTION(RT_GetWidth)
@@ -869,7 +851,6 @@ LUA_FUNCTION(Material_tostring)
 	BSDFMaterial material
 
 	returns:
-	bool valid
 	BSDFSample? sample
 */
 LUA_FUNCTION(TraceResult_SampleBSDF)
@@ -897,16 +878,11 @@ LUA_FUNCTION(TraceResult_SampleBSDF)
 		sample
 	);
 
-	if (!valid) {
-		LUA->PushBool(false);
-		return 1;
-	}
-
-	LUA->PushBool(true);
+	if (!valid) return 0;
 
 	LUA->CreateTable();
-	LUA->PushVector(MakeVector(sample.dir.x, sample.dir.y, sample.dir.z));
-	LUA->SetField(-2, "wo");
+	LUA->PushVector(MakeVector(sample.scattered.x, sample.scattered.y, sample.scattered.z));
+	LUA->SetField(-2, "scattered");
 	LUA->PushVector(MakeVector(sample.weight.x, sample.weight.y, sample.weight.z));
 	LUA->SetField(-2, "weight");
 
@@ -916,13 +892,13 @@ LUA_FUNCTION(TraceResult_SampleBSDF)
 	LUA->PushNumber(static_cast<double>(sample.lobe));
 	LUA->SetField(-2, "lobe");
 
-	return 2;
+	return 1;
 }
 
 /*
 	TraceResult  self
 	BSDFMaterial material
-	Vector       wi
+	Vector       scattered
 
 	returns:
 	Vector colour
@@ -935,10 +911,10 @@ LUA_FUNCTION(TraceResult_EvalBSDF)
 
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
 
-	glm::vec3 incoming;
+	glm::vec3 scattered;
 	{
 		Vector v = LUA->GetVector(3);
-		incoming = glm::vec3(v.x, v.y, v.z);
+		scattered = glm::vec3(v.x, v.y, v.z);
 	}
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(2, BSDFMaterial::id);
@@ -952,7 +928,7 @@ LUA_FUNCTION(TraceResult_EvalBSDF)
 	glm::vec3 colour = EvalBSDF(
 		*pMat,
 		pResult->GetNormal(),
-		pResult->wo, incoming
+		pResult->wo, scattered
 	);
 
 	LUA->PushVector(MakeVector(colour.x, colour.y, colour.z));
@@ -962,7 +938,7 @@ LUA_FUNCTION(TraceResult_EvalBSDF)
 /*
 	TraceResult  self
 	BSDFMaterial material
-	Vector       wi
+	Vector       scattered
 
 	returns:
 	float pdf
@@ -975,10 +951,10 @@ LUA_FUNCTION(TraceResult_EvalPDF)
 
 	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
 
-	glm::vec3 incoming;
+	glm::vec3 scattered;
 	{
 		Vector v = LUA->GetVector(3);
-		incoming = glm::vec3(v.x, v.y, v.z);
+		scattered = glm::vec3(v.x, v.y, v.z);
 	}
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(2, BSDFMaterial::id);
@@ -992,7 +968,7 @@ LUA_FUNCTION(TraceResult_EvalPDF)
 	float pdf = EvalPDF(
 		*pMat,
 		pResult->GetNormal(),
-		pResult->wo, incoming
+		pResult->wo, scattered
 	);
 
 	LUA->PushNumber(pdf);
@@ -1006,10 +982,9 @@ LUA_FUNCTION(TraceResult_EvalPDF)
 	Vector       incident
 
 	returns:
-	bool valid
 	BSDFSample? sample
 */
-LUA_FUNCTION(SampleBSDF)
+LUA_FUNCTION(vistrace_SampleBSDF)
 {
 	LUA->CheckType(1, Sampler::id);
 	LUA->CheckType(2, BSDFMaterial::id);
@@ -1035,16 +1010,11 @@ LUA_FUNCTION(SampleBSDF)
 		sample
 	);
 
-	if (!valid) {
-		LUA->PushBool(false);
-		return 1;
-	}
-
-	LUA->PushBool(true);
+	if (!valid) return 0;
 
 	LUA->CreateTable();
-	LUA->PushVector(MakeVector(sample.dir.x, sample.dir.y, sample.dir.z));
-	LUA->SetField(-2, "wo");
+	LUA->PushVector(MakeVector(sample.scattered.x, sample.scattered.y, sample.scattered.z));
+	LUA->SetField(-2, "scattered");
 	LUA->PushVector(MakeVector(sample.weight.x, sample.weight.y, sample.weight.z));
 	LUA->SetField(-2, "weight");
 
@@ -1054,7 +1024,7 @@ LUA_FUNCTION(SampleBSDF)
 	LUA->PushNumber(static_cast<double>(sample.lobe));
 	LUA->SetField(-2, "lobe");
 
-	return 2;
+	return 1;
 }
 
 /*
@@ -1066,7 +1036,7 @@ LUA_FUNCTION(SampleBSDF)
 	returns:
 	Vector colour
 */
-LUA_FUNCTION(EvalBSDF)
+LUA_FUNCTION(vistrace_EvalBSDF)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
 	LUA->CheckType(2, Type::Vector);
@@ -1098,7 +1068,7 @@ LUA_FUNCTION(EvalBSDF)
 	returns:
 	float pdf
 */
-LUA_FUNCTION(EvalPDF)
+LUA_FUNCTION(vistrace_EvalPDF)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
 	LUA->CheckType(2, Type::Vector);
@@ -1583,9 +1553,9 @@ GMOD_MODULE_OPEN()
 
 			PUSH_C_FUNC(CalcRayOrigin);
 
-			PUSH_C_FUNC(SampleBSDF);
-			PUSH_C_FUNC(EvalBSDF);
-			PUSH_C_FUNC(EvalPDF);
+			PUSH_C_FUNC(vistrace_SampleBSDF);
+			PUSH_C_FUNC(vistrace_EvalBSDF);
+			PUSH_C_FUNC(vistrace_EvalPDF);
 		LUA->SetField(-2, "vistrace");
 
 		LUA->CreateTable();
