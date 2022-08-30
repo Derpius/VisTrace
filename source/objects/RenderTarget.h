@@ -29,7 +29,7 @@ private:
 
 	uint8_t mMips = 0;
 	size_t mMipOffsets[VisTrace::MAX_MIPS];
-	uint8_t mMipDims[VisTrace::MAX_MIPS][2];
+	uint16_t mMipDims[VisTrace::MAX_MIPS][2];
 
 	VisTrace::Pixel SampleBilinear(float u, float v, uint8_t mip) const;
 
