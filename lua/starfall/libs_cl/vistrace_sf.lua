@@ -648,10 +648,10 @@ return function(instance)
 	-- @param Vector direction Ray direction
 	-- @param number? tMin Minimum distance of the ray (basically offset from start along direction)
 	-- @param number? tMax Maximum distance of the ray
-	-- @param boolean? hitWorld Enables calling util.TraceLine internally to hit the world (default: true)
-	-- @param boolean? hitWater Enables calling util.TraceLine internally to hit water (default: false)
+	-- @param number? coneWidth Starting width of the ray cone (Defaults to -1 which disables mipmapping)
+	-- @param number? coneAngle Starting angle of the ray cone (Defaults to -1 which disables mipmapping)
 	-- @return VisTraceResult? Result of the traversal, or nil if ray missed
-	function accelstruct_methods:traverse(origin, direction, tMin, tMax, hitWorld, hitWater)
+	function accelstruct_methods:traverse(origin, direction, tMin, tMax, coneWidth, coneAngle)
 		canRun()
 
 		checkVector(origin)
@@ -662,10 +662,10 @@ return function(instance)
 
 		if tMin then checkLuaType(tMin, TYPE_NUMBER) end
 		if tMax then checkLuaType(tMax, TYPE_NUMBER) end
-		if hitWorld then checkLuaType(hitWorld, TYPE_BOOL) end
-		if hitWater then checkLuaType(hitWater, TYPE_BOOL) end
+		if coneWidth then checkLuaType(coneWidth, TYPE_NUMBER) end
+		if coneAngle then checkLuaType(coneAngle, TYPE_NUMBER) end
 
-		local res = uwrapAccel(self):Traverse(uwrapVec(origin), uwrapVec(direction), tMin, tMax, hitWorld, hitWater)
+		local res = uwrapAccel(self):Traverse(uwrapVec(origin), uwrapVec(direction), tMin, tMax, coneWidth, coneAngle)
 		if res then
 			return wrapResult(res)
 		end
