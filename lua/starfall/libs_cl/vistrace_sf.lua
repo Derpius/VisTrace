@@ -988,7 +988,7 @@ return function(instance)
 
 --#region HDRI
 
-	--- Loads a HDRI from `garrysmod/data/vistrace_hdris/` and appends the `.hdr` extension automatically  
+	--- Loads a HDRI from garrysmod/data/vistrace_hdris and appends the .hdr extension automatically  
 	--- Subfolders are allowed
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param string path Path to the HDRI
