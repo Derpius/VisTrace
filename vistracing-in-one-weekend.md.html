@@ -303,8 +303,110 @@ We have pixels being drawn to the screen, and we have rays being traced, now it'
 
 We start by generating a ray from a pixel given our camera's properties as well as any additional properties that affect ray generation (like jittering for MSAA), we then trace this ray out into the scene to get a hit point. If we missed it's up to us how we want to colour that pixel, however if we hit an object we plug the information about the hit as well as our ray into the *rendering equation*, which will determine the colour of the hit point that we then assign to the pixel.
 
+We'll be simulating three kinds of light interactions in our ray tracer:
+* Perfect diffuse reflection - Light is scattered in roughly all directions from the surface, i.e. Lambertian reflection.
+* Perfect specular reflection - Light is scattered entirely in the direction obtained by reflecting our view direction about the surface normal
+* Perfect specular transmission - Light is scattered entirely in the direction obtained by refracting our view direction about the surface normal
+
 Generating Camera Rays
 ----------------------
+
+Before we start lighting our scene, we need to replace the orthographic projection we did earlier with a perspective camera, specifically a [pinhole camera](https://en.wikipedia.org/wiki/Pinhole_camera).
+
+We could parameterise our camera with a field of view value, however I've chosen focal length and sensor height as this can be integrated into various physically based post processing steps and ray generation upgrades like depth of field.
+
+Add these to our parameters section at the top of the file. I've chosen a full frame sensor height of 35mm and a focal length of 60mm fairly arbitrarily, so feel free to play around with them
+~~~ lua
+----------------
+-- Parameters --
+----------------
+local RESX, RESY = 256, 256
+~~~ lua highlight
+local FOCAL_LENGTH = 60
+local SENSOR_HEIGHT = 35
+~~~
+
+Next we'll cache a couple of values that we'll use when generating a ray that wont change over a trace. These values are derived from using a field of view to determine the vertical scale, and then simplifying the equation using focal length to FoV conversion equations.
+~~~ lua
+----------------
+--    Init    --
+----------------
+local accel = vistrace.CreateAccel(ents.FindByClass("prop_*"), false)
+
+
+~~~ lua highlight
+local camScaleVertical = 0.5 * SENSOR_HEIGHT / FOCAL_LENGTH
+local camScaleHorizontal = RESX / RESY * camScaleVertical
+~~~
+
+If you want a more detailed explanation of these or the FoV equivalents then take a look at [Scratchapixel's raygen tutorial](https://www.scratchapixel.com/lessons/3d-basic-rendering/ray-tracing-generating-camera-rays/generating-camera-rays).
+
+Now lets change our old orthographic projection code to the pinhole camera model using our vertical and horizontal scale values. Before we can scale our values though we need to centre our pixel coordinate to the camera's origin, as well as converting it to a unit square coordinate.
+
+To start with we'll offset our pixel by 0.5 so that our coordinate represents the centre of the pixel and not the corner, and then normalise it by dividing by the width and height of the image respectively
+\begin{equation}
+cam_x = \frac{pixel_x + 0.5}{res_x} \\
+cam_y = \frac{pixel_y + 0.5}{res_y}
+\end{equation}
+
+Then we'll convert this 0-1 coordinate to the unit square coordinates of -1 to 1. Note that whether you subtract the normalised pixel from 1, or 1 from the pixel, depends on the handedness of your coordinate system
+\begin{equation}
+cam_x = 1 - 2 * \frac{pixel_x + 0.5}{res_x} \\
+cam_y = 1 - 2 * \frac{pixel_y + 0.5}{res_y}
+\end{equation}
+
+Finally we'll apply our horizontal and vertical scale values
+\begin{equation}
+cam_x = (1 - 2 * \frac{pixel_x + 0.5}{res_x}) * scale_h \\
+cam_y = (1 - 2 * \frac{pixel_y + 0.5}{res_y}) * scale_v
+\end{equation}
+
+This gives us a position in camera space, which we'll then normalise and rotate to give us a direction in world space.
+
+Finally, lets add this in code
+~~~ lua
+local camPos, camAng = LocalPlayer():EyePos(), LocalPlayer():EyeAngles()
+local function TracePixel(x, y)
+	~~~ lua delete
+	local origin = camPos + camAng:Right() * x / RESX * 100 + camAng:Up() * (1 - y / RESY) * 100
+	local camDir = camAng:Forward()
+	~~~ lua highlight
+	local camX = (1 - 2 * (x + 0.5) / RESX) * camScaleHorizontal
+	local camY = (1 - 2 * (y + 0.5) / RESY) * camScaleVertical
+
+	local camDir = Vector(1, camX, camY)
+	camDir:Rotate(camAng)
+	camDir:Normalize()
+	~~~ lua
+
+
+	~~~ lua delete
+	local result = accel:Traverse(origin, camDir)
+	~~~ lua highlight
+	local result = accel:Traverse(camPos, camDir)
+	~~~ lua
+	if result then
+		return Vector(1, 1, 1)
+	else
+		return Vector(0, 0, 0)
+	end
+end
+~~~
+
+This should work just fine but lets replace our boring black and white view with one of the best features in VisTrace, automatic texturing
+~~~ lua
+	if result then
+		~~~ lua delete
+		return Vector(1, 1, 1)
+		~~~ lua highlight
+		return result:Albedo()
+		~~~ lua
+	else
+		return Vector(0, 0, 0)
+	end
+~~~
+
+![The fruits of our labour](./images/vistracing-in-one-weekend/pinhole-camera.png)
 
 The Rendering Equation
 ----------------------
@@ -316,8 +418,11 @@ L_o(\mathbf{x}, \omega_o, \lambda, t) = L_e(\mathbf{x}, \omega_o, \lambda, t) + 
 Lighting
 --------
 
-Reflection and Refraction
--------------------------
+Reflection
+----------
+
+Refraction
+----------
 
 Post Processing
 ---------------
