@@ -98,7 +98,7 @@ function TOOL:RightClick(trace)
 	self:GetOwner():ConCommand("bsdf_material_ior "       .. mat.IoR)
 	self:GetOwner():ConCommand("bsdf_material_difftrans " .. mat.DiffuseTransmission)
 	self:GetOwner():ConCommand("bsdf_material_spectrans " .. mat.SpecularTransmission)
-	self:GetOwner():ConCommand("bsdf_material_thin "      .. mat.Thin and "1" or "0")
+	self:GetOwner():ConCommand("bsdf_material_thin "      .. (mat.Thin and "1" or "0"))
 
 	return true
 end
