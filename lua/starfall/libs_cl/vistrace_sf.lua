@@ -104,9 +104,11 @@ return function(instance)
 	local bsdfmaterial_methods, bsdfmaterial_meta = instance.Types.BSDFMaterial.Methods, instance.Types.BSDFMaterial
 	local wrapMat, uwrapMat = instance.Types.BSDFMaterial.Wrap, instance.Types.BSDFMaterial.Unwrap
 
-	local uwrapVec, wrapVec, uwrapAng = instance.Types.Vector.Unwrap, instance.Types.Vector.Wrap, instance.Types.Angle.Unwrap
+	local ents_methods, ent_meta = instance.Types.Entity.Methods, instance.Types.Entity
 	local wrapEnt, uwrapEnt = instance.Types.Entity.Wrap, instance.Types.Entity.Unwrap
-	local entMetaTable, vecMetaTbl, angleMetaTbl = instance.Types.Entity, instance.Types.Vector, instance.Types.Angle
+
+	local vecMetaTbl, angleMetaTbl = instance.Types.Vector, instance.Types.Angle
+	local uwrapVec, wrapVec, uwrapAng = instance.Types.Vector.Unwrap, instance.Types.Vector.Wrap, instance.Types.Angle.Unwrap
 
 	local uwrapObj, wrapObj = instance.UnwrapObject, instance.WrapObject
 
@@ -634,7 +636,7 @@ return function(instance)
 			checkLuaType(entities, TYPE_TABLE)
 			local unwrapped = {}
 			for k, v in pairs(entities) do
-				if debug_getmetatable(v) ~= entMetaTable then SF.ThrowTypeError("Entity", SF.GetType(v), 2, "Entity table entry not an entity.") end
+				if debug_getmetatable(v) ~= ent_meta then SF.ThrowTypeError("Entity", SF.GetType(v), 2, "Entity table entry not an entity.") end
 				unwrapped[k] = uwrapEnt(v)
 			end
 			entities = unwrapped
@@ -686,7 +688,7 @@ return function(instance)
 			checkLuaType(entities, TYPE_TABLE)
 			local unwrapped = {}
 			for k, v in pairs(entities) do
-				if debug_getmetatable(v) ~= entMetaTable then SF.ThrowTypeError("Entity", SF.GetType(v), 2, "Entity table entry not an entity.") end
+				if debug_getmetatable(v) ~= ent_meta then SF.ThrowTypeError("Entity", SF.GetType(v), 2, "Entity table entry not an entity.") end
 				unwrapped[k] = uwrapEnt(v)
 			end
 			entities = unwrapped
@@ -822,6 +824,14 @@ return function(instance)
 		canRun()
 		checkLuaType(thin, TYPE_NUMBER)
 		uwrapMat(self):ActiveLobes(lobes)
+	end
+
+	--- Gets the entity's BSDFMaterial
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return BSDFMaterial Material object
+	function ents_methods:getBSDFMaterial()
+		canRun()
+		return wrapMat(uwrapEnt(self):GetBSDFMaterial())
 	end
 
 --#endregion
