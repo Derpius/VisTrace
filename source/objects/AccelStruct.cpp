@@ -721,6 +721,14 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 		if (!LUA->GetBool()) LUA->ThrowError("Attempted to build accel from an invalid entity");
 		LUA->Pop(); // Pop the bool
 
+		// If the entity defines a custom draw function, continue
+		LUA->GetField(-1, "Draw");
+		if (LUA->IsType(-1, Type::Function)) {
+			LUA->Pop(2); // Pop function and entity
+			continue;
+		}
+		LUA->Pop(); // Pop nil
+
 		// Get entity id
 		{
 			LUA->GetField(-1, "EntIndex");
