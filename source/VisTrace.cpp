@@ -20,7 +20,7 @@ using namespace GarrysMod::Lua;
 using namespace VisTrace;
 
 #pragma region Sampler
-LUA_FUNCTION(CreateSampler)
+LUA_FUNCTION(vistrace_CreateSampler)
 {
 	uint32_t seed = time(NULL);
 	if (LUA->IsType(1, Type::Number)) seed = LUA->GetNumber(1);
@@ -72,7 +72,7 @@ LUA_FUNCTION(Sampler_tostring)
 /*
 	string path
 */
-LUA_FUNCTION(LoadTexture)
+LUA_FUNCTION(vistrace_LoadTexture)
 {
 	const char* path = LUA->CheckString(1);
 
@@ -254,7 +254,7 @@ LUA_FUNCTION(VTFTexture_tostring)
 	RenderTargetFormat format
 	boolean            createMips
 */
-LUA_FUNCTION(CreateRenderTarget)
+LUA_FUNCTION(vistrace_CreateRenderTarget)
 {
 	uint16_t width = LUA->CheckNumber(1), height = LUA->CheckNumber(2);
 	RTFormat format = static_cast<RTFormat>(LUA->CheckNumber(3));
@@ -650,7 +650,7 @@ LUA_FUNCTION(AccelStruct_gc)
 
 	returns AccelStruct
 */
-LUA_FUNCTION(CreateAccel)
+LUA_FUNCTION(vistrace_CreateAccel)
 {
 	bool traceWorld = true;
 	if (LUA->IsType(2, Type::Bool)) traceWorld = LUA->GetBool(2);
@@ -678,7 +678,7 @@ LUA_FUNCTION(CreateAccel)
 	AccelStruct   accel
 	table[Entity] entities = {}
 */
-LUA_FUNCTION(RebuildAccel)
+LUA_FUNCTION(AccelStruct_Rebuild)
 {
 	LUA->CheckType(1, AccelStruct_id);
 
@@ -711,7 +711,7 @@ LUA_FUNCTION(RebuildAccel)
 
 	returns TraceResult
 */
-LUA_FUNCTION(TraverseScene)
+LUA_FUNCTION(AccelStruct_Traverse)
 {
 	LUA->CheckType(1, AccelStruct_id);
 	AccelStruct* pAccelStruct = *LUA->GetUserType<AccelStruct*>(1, AccelStruct_id);
@@ -726,7 +726,7 @@ LUA_FUNCTION(AccelStruct_tostring)
 #pragma endregion
 
 #pragma region BSDFMaterial
-LUA_FUNCTION(CreateMaterial)
+LUA_FUNCTION(vistrace_CreateMaterial)
 {
 	LUA->PushUserType_Value(BSDFMaterial{}, BSDFMaterial::id);
 	return 1;
@@ -1093,7 +1093,7 @@ LUA_FUNCTION(vistrace_EvalPDF)
 #pragma endregion
 
 #pragma region HDRI API
-LUA_FUNCTION(LoadHDRI)
+LUA_FUNCTION(vistrace_LoadHDRI)
 {
 	LUA->CheckString(1);
 
@@ -1215,7 +1215,7 @@ LUA_FUNCTION(HDRI_gc)
 #pragma endregion
 
 #pragma region Helpers
-LUA_FUNCTION(CalcRayOrigin)
+LUA_FUNCTION(vistrace_CalcRayOrigin)
 {
 	assert(sizeof(int) == sizeof(float));
 	using namespace glm;
@@ -1289,7 +1289,7 @@ LUA_FUNCTION(GM_Initialize)
 	return 0;
 }
 
-#define PUSH_C_FUNC(function) LUA->PushCFunction(function); LUA->SetField(-2, #function)
+#define PUSH_C_FUNC(prefix, name) LUA->PushCFunction(prefix##_##name); LUA->SetField(-2, #name)
 
 #define PUSH_ENUM(enum, field) \
 LUA->PushNumber(static_cast<double>(enum::field)); \
@@ -1320,31 +1320,21 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(VTFTexture_gc);
 		LUA->SetField(-2, "__gc");
 
-		LUA->PushCFunction(VTFTexture_IsValid);
-		LUA->SetField(-2, "IsValid");
+		PUSH_C_FUNC(VTFTexture, IsValid);
 
-		LUA->PushCFunction(VTFTexture_GetWidth);
-		LUA->SetField(-2, "GetWidth");
-		LUA->PushCFunction(VTFTexture_GetHeight);
-		LUA->SetField(-2, "GetHeight");
-		LUA->PushCFunction(VTFTexture_GetDepth);
-		LUA->SetField(-2, "GetDepth");
+		PUSH_C_FUNC(VTFTexture, GetWidth);
+		PUSH_C_FUNC(VTFTexture, GetHeight);
+		PUSH_C_FUNC(VTFTexture, GetDepth);
 
-		LUA->PushCFunction(VTFTexture_GetFaces);
-		LUA->SetField(-2, "GetFaces");
+		PUSH_C_FUNC(VTFTexture, GetFaces);
 
-		LUA->PushCFunction(VTFTexture_GetMIPLevels);
-		LUA->SetField(-2, "GetMIPLevels");
+		PUSH_C_FUNC(VTFTexture, GetMIPLevels);
 
-		LUA->PushCFunction(VTFTexture_GetFrames);
-		LUA->SetField(-2, "GetFrames");
-		LUA->PushCFunction(VTFTexture_GetFirstFrame);
-		LUA->SetField(-2, "GetFirstFrame");
+		PUSH_C_FUNC(VTFTexture, GetFrames);
+		PUSH_C_FUNC(VTFTexture, GetFirstFrame);
 
-		LUA->PushCFunction(VTFTexture_GetPixel);
-		LUA->SetField(-2, "GetPixel");
-		LUA->PushCFunction(VTFTexture_Sample);
-		LUA->SetField(-2, "Sample");
+		PUSH_C_FUNC(VTFTexture, GetPixel);
+		PUSH_C_FUNC(VTFTexture, Sample);
 	LUA->Pop();
 
 	RenderTarget::id = LUA->CreateMetaTable("VisTraceRT");
@@ -1359,34 +1349,23 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(RT_gc);
 		LUA->SetField(-2, "__gc");
 
-		LUA->PushCFunction(RT_IsValid);
-		LUA->SetField(-2, "IsValid");
+		PUSH_C_FUNC(RT, IsValid);
 
-		LUA->PushCFunction(RT_Resize);
-		LUA->SetField(-2, "Resize");
+		PUSH_C_FUNC(RT, Resize);
 
-		LUA->PushCFunction(RT_GetWidth);
-		LUA->SetField(-2, "GetWidth");
-		LUA->PushCFunction(RT_GetHeight);
-		LUA->SetField(-2, "GetHeight");
-		LUA->PushCFunction(RT_GetFormat);
-		LUA->SetField(-2, "GetFormat");
+		PUSH_C_FUNC(RT, GetWidth);
+		PUSH_C_FUNC(RT, GetHeight);
+		PUSH_C_FUNC(RT, GetFormat);
 
-		LUA->PushCFunction(RT_GetPixel);
-		LUA->SetField(-2, "GetPixel");
-		LUA->PushCFunction(RT_SetPixel);
-		LUA->SetField(-2, "SetPixel");
+		PUSH_C_FUNC(RT, GetPixel);
+		PUSH_C_FUNC(RT, SetPixel);
 
-		LUA->PushCFunction(RT_GenerateMIPs);
-		LUA->SetField(-2, "GenerateMIPs");
+		PUSH_C_FUNC(RT, GenerateMIPs);
 
-		LUA->PushCFunction(RT_Save);
-		LUA->SetField(-2, "Save");
-		LUA->PushCFunction(RT_Load);
-		LUA->SetField(-2, "Load");
+		PUSH_C_FUNC(RT, Save);
+		PUSH_C_FUNC(RT, Load);
 
-		LUA->PushCFunction(RT_Tonemap);
-		LUA->SetField(-2, "Tonemap");
+		PUSH_C_FUNC(RT, Tonemap);
 	LUA->Pop();
 
 	TraceResult::id = LUA->CreateMetaTable("VisTraceResult");
@@ -1395,62 +1374,39 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(TraceResult_tostring);
 		LUA->SetField(-2, "__tostring");
 
-		LUA->PushCFunction(TraceResult_Pos);
-		LUA->SetField(-2, "Pos");
-		LUA->PushCFunction(TraceResult_Distance);
-		LUA->SetField(-2, "Distance");
+		PUSH_C_FUNC(TraceResult, Pos);
+		PUSH_C_FUNC(TraceResult, Distance);
 
-		LUA->PushCFunction(TraceResult_Entity);
-		LUA->SetField(-2, "Entity");
+		PUSH_C_FUNC(TraceResult, Entity);
 
-		LUA->PushCFunction(TraceResult_GeometricNormal);
-		LUA->SetField(-2, "GeometricNormal");
-		LUA->PushCFunction(TraceResult_Normal);
-		LUA->SetField(-2, "Normal");
-		LUA->PushCFunction(TraceResult_Tangent);
-		LUA->SetField(-2, "Tangent");
-		LUA->PushCFunction(TraceResult_Binormal);
-		LUA->SetField(-2, "Binormal");
+		PUSH_C_FUNC(TraceResult, GeometricNormal);
+		PUSH_C_FUNC(TraceResult, Normal);
+		PUSH_C_FUNC(TraceResult, Tangent);
+		PUSH_C_FUNC(TraceResult, Binormal);
 
-		LUA->PushCFunction(TraceResult_Barycentric);
-		LUA->SetField(-2, "Barycentric");
-		LUA->PushCFunction(TraceResult_TextureUV);
-		LUA->SetField(-2, "TextureUV");
+		PUSH_C_FUNC(TraceResult, Barycentric);
+		PUSH_C_FUNC(TraceResult, TextureUV);
 
-		LUA->PushCFunction(TraceResult_SubMaterialIndex);
-		LUA->SetField(-2, "SubMaterialIndex");
+		PUSH_C_FUNC(TraceResult, SubMaterialIndex);
 
-		LUA->PushCFunction(TraceResult_Albedo);
-		LUA->SetField(-2, "Albedo");
-		LUA->PushCFunction(TraceResult_Alpha);
-		LUA->SetField(-2, "Alpha");
-		LUA->PushCFunction(TraceResult_Metalness);
-		LUA->SetField(-2, "Metalness");
-		LUA->PushCFunction(TraceResult_Roughness);
-		LUA->SetField(-2, "Roughness");
+		PUSH_C_FUNC(TraceResult, Albedo);
+		PUSH_C_FUNC(TraceResult, Alpha);
+		PUSH_C_FUNC(TraceResult, Metalness);
+		PUSH_C_FUNC(TraceResult, Roughness);
 
-		LUA->PushCFunction(TraceResult_MaterialFlags);
-		LUA->SetField(-2, "MaterialFlags");
-		LUA->PushCFunction(TraceResult_SurfaceFlags);
-		LUA->SetField(-2, "SurfaceFlags");
+		PUSH_C_FUNC(TraceResult, MaterialFlags);
+		PUSH_C_FUNC(TraceResult, SurfaceFlags);
 
-		LUA->PushCFunction(TraceResult_HitSky);
-		LUA->SetField(-2, "HitSky");
-		LUA->PushCFunction(TraceResult_HitWater);
-		LUA->SetField(-2, "HitWater");
+		PUSH_C_FUNC(TraceResult, HitSky);
+		PUSH_C_FUNC(TraceResult, HitWater);
 
-		LUA->PushCFunction(TraceResult_FrontFacing);
-		LUA->SetField(-2, "FrontFacing");
+		PUSH_C_FUNC(TraceResult, FrontFacing);
 
-		LUA->PushCFunction(TraceResult_BaseMIPLevel);
-		LUA->SetField(-2, "BaseMIPLevel");
+		PUSH_C_FUNC(TraceResult, BaseMIPLevel);
 
-		LUA->PushCFunction(TraceResult_SampleBSDF);
-		LUA->SetField(-2, "SampleBSDF");
-		LUA->PushCFunction(TraceResult_EvalBSDF);
-		LUA->SetField(-2, "EvalBSDF");
-		LUA->PushCFunction(TraceResult_EvalPDF);
-		LUA->SetField(-2, "EvalPDF");
+		PUSH_C_FUNC(TraceResult, SampleBSDF);
+		PUSH_C_FUNC(TraceResult, EvalBSDF);
+		PUSH_C_FUNC(TraceResult, EvalPDF);
 	LUA->Pop();
 
 	AccelStruct_id = LUA->CreateMetaTable("AccelStruct");
@@ -1461,10 +1417,8 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(AccelStruct_gc);
 		LUA->SetField(-2, "__gc");
 
-		LUA->PushCFunction(RebuildAccel);
-		LUA->SetField(-2, "Rebuild");
-		LUA->PushCFunction(TraverseScene);
-		LUA->SetField(-2, "Traverse");
+		PUSH_C_FUNC(AccelStruct, Traverse);
+		PUSH_C_FUNC(AccelStruct, Rebuild);
 	LUA->Pop();
 
 	Sampler::id = LUA->CreateMetaTable("Sampler");
@@ -1479,10 +1433,8 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(Sampler_gc);
 		LUA->SetField(-2, "__gc");
 
-		LUA->PushCFunction(Sampler_GetFloat);
-		LUA->SetField(-2, "GetFloat");
-		LUA->PushCFunction(Sampler_GetFloat2D);
-		LUA->SetField(-2, "GetFloat2D");
+		PUSH_C_FUNC(Sampler, GetFloat);
+		PUSH_C_FUNC(Sampler, GetFloat2D);
 	LUA->Pop();
 
 	HDRI::id = LUA->CreateMetaTable("HDRI");
@@ -1493,19 +1445,14 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(HDRI_gc);
 		LUA->SetField(-2, "__gc");
 
-		LUA->PushCFunction(HDRI_IsValid);
-		LUA->SetField(-2, "IsValid");
+		PUSH_C_FUNC(HDRI, IsValid);
 
-		LUA->PushCFunction(HDRI_GetPixel);
-		LUA->SetField(-2, "GetPixel");
+		PUSH_C_FUNC(HDRI, GetPixel);
 
-		LUA->PushCFunction(HDRI_EvalPDF);
-		LUA->SetField(-2, "EvalPDF");
-		LUA->PushCFunction(HDRI_Sample);
-		LUA->SetField(-2, "Sample");
+		PUSH_C_FUNC(HDRI, EvalPDF);
+		PUSH_C_FUNC(HDRI, Sample);
 
-		LUA->PushCFunction(HDRI_SetAngles);
-		LUA->SetField(-2, "SetAngles");
+		PUSH_C_FUNC(HDRI, SetAngles);
 	LUA->Pop();
 
 	BSDFMaterial::id = LUA->CreateMetaTable("BSDFMaterial");
@@ -1514,48 +1461,38 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(Material_tostring);
 		LUA->SetField(-2, "__tostring");
 
-		LUA->PushCFunction(Material_Colour);
-		LUA->SetField(-2, "Colour");
-		LUA->PushCFunction(Material_DielectricColour);
-		LUA->SetField(-2, "DielectricColour");
-		LUA->PushCFunction(Material_ConductorColour);
-		LUA->SetField(-2, "ConductorColour");
+		PUSH_C_FUNC(Material, Colour);
+		PUSH_C_FUNC(Material, DielectricColour);
+		PUSH_C_FUNC(Material, ConductorColour);
 
-		LUA->PushCFunction(Material_Metalness);
-		LUA->SetField(-2, "Metalness");
-		LUA->PushCFunction(Material_Roughness);
-		LUA->SetField(-2, "Roughness");
+		PUSH_C_FUNC(Material, Metalness);
+		PUSH_C_FUNC(Material, Roughness);
 
-		LUA->PushCFunction(Material_IoR);
-		LUA->SetField(-2, "IoR");
+		PUSH_C_FUNC(Material, IoR);
 
-		LUA->PushCFunction(Material_DiffuseTransmission);
-		LUA->SetField(-2, "DiffuseTransmission");
-		LUA->PushCFunction(Material_SpecularTransmission);
-		LUA->SetField(-2, "SpecularTransmission");
+		PUSH_C_FUNC(Material, DiffuseTransmission);
+		PUSH_C_FUNC(Material, SpecularTransmission);
 
-		LUA->PushCFunction(Material_Thin);
-		LUA->SetField(-2, "Thin");
+		PUSH_C_FUNC(Material, Thin);
 
-		LUA->PushCFunction(Material_ActiveLobes);
-		LUA->SetField(-2, "ActiveLobes");
+		PUSH_C_FUNC(Material, ActiveLobes);
 	LUA->Pop();
 
 	LUA->PushSpecial(SPECIAL_GLOB);
 		LUA->CreateTable();
-			PUSH_C_FUNC(CreateRenderTarget);
-			PUSH_C_FUNC(CreateAccel);
-			PUSH_C_FUNC(CreateSampler);
-			PUSH_C_FUNC(CreateMaterial);
+			PUSH_C_FUNC(vistrace, CreateRenderTarget);
+			PUSH_C_FUNC(vistrace, CreateAccel);
+			PUSH_C_FUNC(vistrace, CreateSampler);
+			PUSH_C_FUNC(vistrace, CreateMaterial);
 
-			PUSH_C_FUNC(LoadHDRI);
-			PUSH_C_FUNC(LoadTexture);
+			PUSH_C_FUNC(vistrace, LoadHDRI);
+			PUSH_C_FUNC(vistrace, LoadTexture);
 
-			PUSH_C_FUNC(CalcRayOrigin);
+			PUSH_C_FUNC(vistrace, CalcRayOrigin);
 
-			PUSH_C_FUNC(vistrace_SampleBSDF);
-			PUSH_C_FUNC(vistrace_EvalBSDF);
-			PUSH_C_FUNC(vistrace_EvalPDF);
+			PUSH_C_FUNC(vistrace, SampleBSDF);
+			PUSH_C_FUNC(vistrace, EvalBSDF);
+			PUSH_C_FUNC(vistrace, EvalPDF);
 		LUA->SetField(-2, "vistrace");
 
 		LUA->CreateTable();
