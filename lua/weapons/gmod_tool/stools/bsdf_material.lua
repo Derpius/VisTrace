@@ -273,8 +273,8 @@ if CLIENT then
 			local throughput = Vector(0, 0, 0)
 			local validSamples = PREVIEW_INDIRECT_SAMPLES
 			for j = 1, PREVIEW_INDIRECT_SAMPLES do
-				local valid, sample = vistrace.SampleBSDF(sampler, mat, normal, incident)
-				if valid then
+				local sample = vistrace.SampleBSDF(sampler, mat, normal, incident)
+				if sample then
 					throughput = throughput + sample.weight
 				else
 					validSamples = validSamples - 1
@@ -287,8 +287,8 @@ if CLIENT then
 			throughput = Vector(0, 0, 0)
 			validSamples = PREVIEW_INDIRECT_SAMPLES * roughness + 1
 			for j = 0, PREVIEW_INDIRECT_SAMPLES * roughness do
-				local valid, sample = vistrace.SampleBSDF(sampler, mat, normal, incident)
-				if valid then
+				local sample = vistrace.SampleBSDF(sampler, mat, normal, incident)
+				if sample then
 					throughput = throughput + sample.weight
 				else
 					validSamples = validSamples - 1
@@ -301,8 +301,8 @@ if CLIENT then
 			throughput = Vector(0, 0, 0)
 			validSamples = PREVIEW_INDIRECT_SAMPLES * roughness + 1
 			for j = 0, PREVIEW_INDIRECT_SAMPLES * roughness do
-				local valid, sample = vistrace.SampleBSDF(sampler, mat, normal, incident)
-				if valid then
+				local sample = vistrace.SampleBSDF(sampler, mat, normal, incident)
+				if sample then
 					throughput = throughput + sample.weight
 				else
 					validSamples = validSamples - 1
