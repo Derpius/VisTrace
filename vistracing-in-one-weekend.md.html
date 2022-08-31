@@ -412,7 +412,7 @@ The Rendering Equation
 ----------------------
 
 \begin{equation}
-L_o(\mathbf{x}, \omega_o, \lambda, t) = L_e(\mathbf{x}, \omega_o, \lambda, t) + \int_{\Omega} f_r(\mathbf{x}, \omega_i, \omega_o, \lambda, t)L_i(\mathbf{x}, \omega_i, \lambda, t)(\omega_i \cdot \mathbf{n}) \,d\omega_i
+L_o(\mathbf{x}, \omega_o, \lambda, t) = L_e(\mathbf{x}, \omega_o, \lambda, t) + \int_{\Omega} f_s(\mathbf{x}, \omega_i, \omega_o, \lambda, t)L_i(\mathbf{x}, \omega_i, \lambda, t)(\omega_i \cdot \mathbf{n}) \,d\omega_i
 \end{equation}
 
 There it is, the rendering equation, the singular equation that underpins all modern renderers. You may be thinking you chose the wrong project to work on this week looking at that, but it's actually far simpler than it looks, and even simpler because most of it we will be ignoring in ray tracing.
@@ -420,19 +420,19 @@ There it is, the rendering equation, the singular equation that underpins all mo
 To start with lets strip out the symbols we dont need, $\lambda$ is the wavelength of light, which we're abstracting away by using an RGB vector for everything, and $t$ is the current time (not time along the ray, but some time value for animation). This leaves us with the following
 
 \begin{equation}
-L_o(\mathbf{x}, \omega_o) = L_e(\mathbf{x}, \omega_o) + \int_{\Omega} f_r(\mathbf{x}, \omega_i, \omega_o)L_i(\mathbf{x}, \omega_i)(\omega_i \cdot \mathbf{n}) \,d\omega_i
+L_o(\mathbf{x}, \omega_o) = L_e(\mathbf{x}, \omega_o) + \int_{\Omega} f_s(\mathbf{x}, \omega_i, \omega_o)L_i(\mathbf{x}, \omega_i)(\omega_i \cdot \mathbf{n}) \,d\omega_i
 \end{equation}
 
 There's still that scary integral in there, but we wont actually be using that until path tracing later on. Instead we're only sampling a single direction at every hit point.
 
 \begin{equation}
-L_o(\mathbf{x}, \omega_o) = L_e(\mathbf{x}, \omega_o) + f_r(\mathbf{x}, \omega_i, \omega_o)L_i(\mathbf{x}, \omega_i)(\omega_i \cdot \mathbf{n})
+L_o(\mathbf{x}, \omega_o) = L_e(\mathbf{x}, \omega_o) + f_s(\mathbf{x}, \omega_i, \omega_o)L_i(\mathbf{x}, \omega_i)(\omega_i \cdot \mathbf{n})
 \end{equation}
 
 One more term we can remove is $L_e$, which is the emitted radiance at the hit point. As we wont be sampling emissives directly (well outside the scope of this book) and we wont be bouncing around the scene randomly (path tracing), the only effect we'd get from including this is emissive objects appearing bright when viewed by the camera directly, as well as in reflection and refraction, but they wouldn't light the scene.
 
 \begin{equation}
-L_o(\mathbf{x}, \omega_o) = f_r(\mathbf{x}, \omega_i, \omega_o)L_i(\mathbf{x}, \omega_i)(\omega_i \cdot \mathbf{n})
+L_o(\mathbf{x}, \omega_o) = f_s(\mathbf{x}, \omega_i, \omega_o)L_i(\mathbf{x}, \omega_i)(\omega_i \cdot \mathbf{n})
 \end{equation}
 
 Now we've cut the equation down to size, lets go over the terms
@@ -442,7 +442,7 @@ Now we've cut the equation down to size, lets go over the terms
 * $\omega_i$ is the direction of scattered light, which in ray tracing is just light samples, reflection, and refraction
 * $\mathbf{n}$ is the normal of the surface we hit
 * $L_o(\mathbf{x}, \omega_o)$ is the rendering function itself, which calculates the radiance in the outgoing direction $\omega_o$ at the point $\mathbf{x}$
-* $f_r(\mathbf{x}, \omega_i, \omega_o)$ is the *bidirectional shading distribution function*, which calculates the amount of light reflected/transmitted/absorbed from the incoming direction $\omega_i$ in the outgoing direction $\omega_o$. You wont need to worry about the more complex forms of this function, as we'll only be simulating very basic light interaction.
+* $f_s(\mathbf{x}, \omega_i, \omega_o)$ is the [bidirectional scattering distribution function](https://en.wikipedia.org/wiki/Bidirectional_scattering_distribution_function), which calculates the amount of light reflected/transmitted from the incoming direction $\omega_i$ in the outgoing direction $\omega_o$. You wont need to worry about the more complex forms of this function, as we'll only be simulating very basic light interaction.
 * $L_i(\mathbf{x}, \omega_i)$ is the radiance coming from the incoming direction of light, which is actually the exact same function as $L_o$, except from the hit point and in the direction of incoming light instead of from the camera, making the rendering equation recursive
 * $(\omega_i \cdot \mathbf{n})$ is the weakening factor of irradiance due to light smearing over a surface. This will be 1 for our perfect specular reflection and transmission (a detailed explanation of why can be found [here](https://stackoverflow.com/questions/22431912/path-tracing-why-is-there-no-cosine-term-when-calculating-perfect-mirror-reflec))
 
@@ -450,6 +450,273 @@ Armed with this simplified rendering equation, we can now move on to implementin
 
 Lighting
 --------
+
+Before we can light our scene, we need a source of light. There are many types of lights available to use and we can implement any that we want, but here's a few of the easiest
+
+* Point lights are defined by a single point in space (hence the name) and are a good option for simple and versatile lights
+* Directional/distance lights emulate the sun by being defined by a direction instead of a point. These are the simplest to implement however produce the least realistic looking lighting
+* Area lights are a good alternative to emissives (in fact they're basically how emissives are sampled directly). While a rectangle is the most commonly used form of these, they can be any primitive shape or even a collection of primitives
+
+There are also a few more complex light types
+
+* Emissives are ordinary objects that emit light, and are the most realistic light source. Sampling these however is the hardest, especially when using emissive textures.
+* Spot lights are effectively an extension of the point light to emit only in a cone extending from the light. These can also be given soft shadows at the edges, however as they're still an infinitely small point objects will cast hard shadows.
+* HDRIs can be used to provide image based lighting. IBL provides both the most realistic lighting information for an environment, as well as being relatively easy to sample and produces minimal noise in the final render
+
+We'll be implementing HDRIs as VisTrace provides functions that completely abstract the details of sampling away from us, and we can use a wide variety of HDRIs for different lighting conditions. This will have the downside of adding a small amount of noise to our ray tracer, but the results will be worth it.
+
+First of all we need a HDRI to load, which I recommend getting from [Poly Haven](https://polyhaven.com/hdris). I'll be using [Drackenstein Quarry](https://polyhaven.com/a/drackenstein_quarry) by [Andreas Mischok](https://www.artstation.com/andreasmischok) throughout the book but you can grab whatever takes your fancy (everything is CC0 licensed!).
+
+Note that while you can download both HDR and EXR formats, VisTrace only supports the HDR format.
+
+Once you have some images you like, place them in `garrysmod/data/vistrace_hdris` so VisTrace can find them. All we have to do now is load one. We also need to create a *sampler* which we'll use in a second
+~~~ lua
+----------------
+--    Init    --
+----------------
+local accel = vistrace.CreateAccel(ents.FindByClass("prop_*"), false)
+~~~ lua highlight
+local hdri = vistrace.LoadHDRI("drackenstein_quarry_4k")
+local sampler = vistrace.CreateSampler()
+~~~
+
+Before we start using this for lighting, lets change our black background to the HDRI
+~~~ lua
+	local result = accel:Traverse(camPos, camDir)
+	if result then
+		return result:Albedo()
+	else
+		~~~ lua delete
+		return Vector(0, 0, 0)
+		~~~ lua highlight
+		return hdri:GetPixel(camDir)
+		~~~ lua
+	end
+~~~
+
+If you look towards the sun you'll notice that everything turns into clown vomit. This is because our HDRIs are *hdr* images, meaning high dynamic range. As colours can be greater than 1 we need to convert them before drawing to our render target that stores 0-1.
+
+We'll use something a little more complex to convert our 0-$\infty$ colours to 0-1 later on, however for now we'll just clamp before drawing to the RT
+~~~ lua
+		...
+
+		for x = 0, RESX - 1 do
+			local rgb = TracePixel(x, y)
+
+			render.SetViewPort(x, y, 1, 1)
+			~~~ lua delete
+			render.Clear(rgb[1] * 255, rgb[2] * 255, rgb[3] * 255, 255, true, true)
+			~~~ lua highlight
+			render.Clear(
+				math.Clamp(rgb[1] * 255, 0, 255),
+				math.Clamp(rgb[2] * 255, 0, 255),
+				math.Clamp(rgb[3] * 255, 0, 255),
+				255, true, true
+			)
+			~~~ lua
+		end
+
+		...
+~~~
+
+Running our script now should render the HDRI whenever a camera ray misses the scene.
+
+That was the easy part, we now need to use the HDRI sampling function along with our simplified rendering equation to determine the colour of the rays that hit.
+
+\begin{equation}
+L_o(\mathbf{x}, \omega_o) = f_s(\mathbf{x}, \omega_i, \omega_o)L_i(\mathbf{x}, \omega_i)(\omega_i \cdot \mathbf{n})
+\end{equation}
+
+Revisiting the equation we can see we need to calculate the value of $f_s$, $L_i$, and $(\omega_i \cdot \mathbf{n})$ in order to determine our outgoing colour. To start with we'll assume that $f_s$ is 1 and focus on the rest of the equation.
+
+To calculate $L_i$ we can use the `HDRI:Sample()` function to pick a random value for $\omega_i$, we then trace a *shadow ray* out from our hit point in the sampled direction and if it misses the scene, we use the sampled colour. If the sample is invalid or the shadow ray hits an object, no lighting is calculated. We're also going to use the sampler we created earlier as the random number generator for the HDRI sampling function
+~~~ lua
+	local result = accel:Traverse(camPos, camDir)
+	if result then
+		~~~ lua delete
+		return result:Albedo()
+		~~~ lua highlight
+		local colour = Vector()
+
+		local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+		if envValid then
+			local shadowRay = accel:Traverse(result:Pos(), envDir)
+			if not shadowRay then
+				colour = ...
+			end
+		end
+
+		return colour
+		~~~ lua
+	else
+		return hdri:GetPixel(camDir)
+	end
+~~~
+
+We have our sampled $\omega_i$, as well as a shadow ray so we dont light the scene if the light is blocked. Now we need to compute $L_i$ and $(\omega_i \cdot \mathbf{n})$.
+
+While it seems like we could just use `envCol` for $L_i$, this would heavily *bias* our renderer. The reason for this is because we're only sampling a single direction when we actually want to know all possible directions. This means that the amount of light we're saying is reaching the surface is far lower than it would be if we added together every possible sample direction.
+
+To solve this and *unbias* our renderer, we can divide `envCol` by `envPdf` in order to boost the contribution of samples depending on their probability. We'll go into this in detail in the path tracing chapter, but for now just take it as read
+~~~ lua
+			if not shadowRay then
+				~~~ lua highlight
+				local Li = envCol / envPdf
+				colour = Li
+				~~~ lua
+			end
+~~~
+
+That's $L_i$ done, next is $(\omega_i \cdot \mathbf{n})$ which is just the dot product between our sampled $\omega_i$ and surface normal $\mathbf{n}$
+~~~ lua
+			if not shadowRay then
+				local Li = envCol / envPdf
+				~~~ lua highlight
+				colour = Li * envDir:Dot(result:Normal())
+				~~~ lua
+			end
+~~~
+
+If we run this now we should get some extremely noisy lighitng which we'll handle in a second, but we still need to add $f_s$.
+
+In our case this will just be a bidirectional reflectance distribution function, specifically the Lambert BRDF which is about as simple as it gets.
+\begin{equation}
+f_{lambert} = \frac{albedo}{\pi}
+\end{equation}
+
+How this equation is derived is available [here](https://sakibsaikia.github.io/graphics/2019/09/10/Deriving-Lambertian-BRDF-From-First-Principles.html) which you can read if you feel like it, however you wont need to know how BRDFs etc are derived for this book.
+
+Turning that into code is extremely simple
+~~~ lua
+			if not shadowRay then
+				local Li = envCol / envPdf
+				~~~ lua highlight
+				local bsdf = result:Albedo() / math.pi
+				colour = bsdf * li * envDir:Dot(result:Normal())
+				~~~ lua
+			end
+~~~
+
+Congratulations, you just implemented the rendering equation!
+
+We still have a few issues to fix though, well one big issue spread all over our renders. *Noise*.
+
+Our noise is actually a product of two things, the inherent randomness of sampling our HDRI, and something called *shadow acne*.
+
+Shadow acne is an issue caused by floating point precision where the shadow ray starts too close to the surface and immediately intersects with it. Thankfully VisTrace provides a helper function to solve this
+~~~ lua
+	local result = accel:Traverse(camPos, camDir)
+	if result then
+		local colour = Vector()
+		~~~ lua highlight
+		local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+		~~~ lua
+
+		local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+		if envValid then
+			~~~ lua delete
+			local shadowRay = accel:Traverse(result:Pos(), envDir)
+			~~~ lua highlight
+			local shadowRay = accel:Traverse(origin, envDir)
+			~~~ lua
+			if not shadowRay then
+				local Li = envCol / envPdf
+				local bsdf = result:Albedo() / math.pi
+				colour = bsdf * Li * envDir:Dot(result:Normal())
+			end
+		end
+
+		return colour
+	else
+		return hdri:GetPixel(camDir)
+	end
+~~~
+
+![Woah that makes a difference!](./images/vistracing-in-one-weekend/shadow-acne.png)
+
+The second source of noise, the random sampling, can't be solved with a single function call...
+
+The only way we can reduce the noise of our random sampling (there are others but they're already being used by VisTrace in this instance) is by taking more than one sample.
+
+We'll see this used across our entire renderer when path tracing, but for now we just need to take multiple samples from the HDRI. We can do this by averaging together samples.
+
+This is actually a subset of the integral present in the rendering equation, and this method of approximating the integral by averaging random samples is [Monte Carlo integration](https://en.wikipedia.org/wiki/Monte_Carlo_integration), which we'll dig our teeth into when path tracing.
+
+Lets start by adding a new parameter called `SAMPLES` which will be the number of samples to take at each hit
+~~~ lua
+----------------
+-- Parameters --
+----------------
+local RESX, RESY = 512, 512
+~~~ lua highlight
+local SAMPLES = 8
+~~~ lua
+
+local FOCAL_LENGTH = 60
+local SENSOR_HEIGHT = 35
+~~~
+
+Then wrap our hdri sampling in a for loop and divide the final colour by the number of samples
+~~~ lua
+	local result = accel:Traverse(camPos, camDir)
+	if result then
+		local colour = Vector()
+		local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+
+
+		~~~ lua highlight
+		for i = 1, SAMPLES do
+		~~~ lua
+			local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+			if envValid then
+				local shadowRay = accel:Traverse(origin, envDir)
+				if not shadowRay then
+					local brdf = result:Albedo() / math.pi
+					local Li = envCol / envPdf
+					~~~ lua delete
+					colour = brdf * Li * envDir:Dot(result:Normal())
+					~~~ lua highlight
+					colour = colour + brdf * Li * envDir:Dot(result:Normal())
+					~~~ lua
+				end
+			end
+		~~~ lua highlight
+		end
+		colour = colour / SAMPLES
+		~~~ lua
+
+		return colour
+	else
+		return hdri:GetPixel(camDir)
+	end
+~~~
+
+One last improvement we can make is discarding invalid samples. The HDRI sampler shouldn't produce many but we don't want to let them contribute to the final image when it does
+~~~ lua highlight
+		local validSamples = SAMPLES
+		~~~ lua
+		for i = 1, SAMPLES do
+			local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+			if envValid then
+				local shadowRay = accel:Traverse(origin, envDir)
+				if not shadowRay then
+					local brdf = result:Albedo() / math.pi
+					local Li = envCol / envPdf
+					colour = colour + brdf * Li * envDir:Dot(result:Normal())
+				end
+			~~~ lua highlight
+			else
+				validSamples = validSamples - 1
+			~~~ lua
+			end
+		end
+		~~~ lua delete
+		colour = colour / SAMPLES
+		~~~ lua highlight
+		colour = colour / validSamples
+~~~
+
+![With as few as 32 samples the lighting converges almost completely](./images/vistracing-in-one-weekend/hdri-sampling.png)
 
 Reflection
 ----------
@@ -470,7 +737,7 @@ Revisiting the Rendering Equation
 ----------------------
 
 \begin{equation}
-L_o(\mathbf{x}, \omega_o, \lambda, t) = L_e(\mathbf{x}, \omega_o, \lambda, t) + \int_{\Omega} f_r(\mathbf{x}, \omega_i, \omega_o, \lambda, t)L_i(\mathbf{x}, \omega_i, \lambda, t)(\omega_i \cdot \mathbf{n}) \,d\omega_i
+L_o(\mathbf{x}, \omega_o, \lambda, t) = L_e(\mathbf{x}, \omega_o, \lambda, t) + \int_{\Omega} f_s(\mathbf{x}, \omega_i, \omega_o, \lambda, t)L_i(\mathbf{x}, \omega_i, \lambda, t)(\omega_i \cdot \mathbf{n}) \,d\omega_i
 \end{equation}
 
 Brute Force Path Tracing
