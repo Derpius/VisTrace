@@ -674,7 +674,7 @@ bool SampleBSDF(
 	return true;
 }
 
-vec3 __attribute__((optnone)) EvalBSDF(
+vec3 EvalBSDF(
 	const BSDFMaterial& data,
 	const vec3& normal, const vec3& outgoing, const vec3& incoming
 )
