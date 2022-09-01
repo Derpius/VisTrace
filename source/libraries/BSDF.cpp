@@ -625,14 +625,14 @@ bool SampleSpecularTransmission(
 
 bool SampleBSDF(
 	const BSDFMaterial& data, ISampler* sg,
-	const vec3& normal, const vec3& outgoing,
+	const vec3& normal, const vec3& incident,
 	BSDFSample& result
 )
 {
 	vec3f dielectric{ data.dielectric.r, data.dielectric.g, data.dielectric.b };
 	vec3f conductor{ data.conductor.r, data.conductor.g, data.conductor.b };
 	vec3f n{ normal.x, normal.y, normal.z };
-	vec3f wo{ outgoing.x, outgoing.y, outgoing.z };
+	vec3f wo{ incident.x, incident.y, incident.z };
 
 	float pDielectric, pConductor, pSpecTrans;
 	CalculateLobePDFs(data, pDielectric, pConductor, pSpecTrans);
@@ -676,14 +676,14 @@ bool SampleBSDF(
 
 vec3 EvalBSDF(
 	const BSDFMaterial& data,
-	const vec3& normal, const vec3& outgoing, const vec3& incoming
+	const vec3& normal, const vec3& incident, const vec3& scattered
 )
 {
 	vec3f dielectric{ data.dielectric.r, data.dielectric.g, data.dielectric.b };
 	vec3f conductor{ data.conductor.r, data.conductor.g, data.conductor.b };
 	vec3f n{ normal.x, normal.y, normal.z };
-	vec3f wo{ outgoing.x, outgoing.y, outgoing.z };
-	vec3f wi{ incoming.x, incoming.y, incoming.z };
+	vec3f wo{ incident.x, incident.y, incident.z };
+	vec3f wi{ scattered.x, scattered.y, scattered.z };
 
 	float pDielectric, pConductor, pSpecTrans;
 	CalculateLobePDFs(data, pDielectric, pConductor, pSpecTrans);
@@ -704,14 +704,14 @@ vec3 EvalBSDF(
 
 float EvalPDF(
 	const BSDFMaterial& data,
-	const vec3& normal, const vec3& outgoing, const vec3& incoming
+	const vec3& normal, const vec3& incident, const vec3& scattered
 )
 {
 	vec3f dielectric{ data.dielectric.r, data.dielectric.g, data.dielectric.b };
 	vec3f conductor{ data.conductor.r, data.conductor.g, data.conductor.b };
 	vec3f n{ normal.x, normal.y, normal.z };
-	vec3f wo{ outgoing.x, outgoing.y, outgoing.z };
-	vec3f wi{ incoming.x, incoming.y, incoming.z };
+	vec3f wo{ incident.x, incident.y, incident.z };
+	vec3f wi{ scattered.x, scattered.y, scattered.z };
 
 	float pDielectric, pConductor, pSpecTrans;
 	CalculateLobePDFs(data, pDielectric, pConductor, pSpecTrans);
