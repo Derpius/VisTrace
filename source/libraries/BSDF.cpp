@@ -647,7 +647,7 @@ bool SampleBSDF(
 		result.weight = vec3(weight.x, weight.y, weight.z) * (1.f - data.metallic) * (1.f - data.specularTransmission) / pDielectric;
 
 		result.pdf *= pDielectric;
-		if (pConductor > 0) result.pdf += pConductor * SampleConductorPDF(conductor, data, n, wo, wi);
+		if (pConductor > 0.f) result.pdf += pConductor * SampleConductorPDF(conductor, data, n, wo, wi);
 		if (pSpecTrans > 0.f) result.pdf += pSpecTrans * SampleSpecularTransmissionPDF(dielectric, data, n, wo, wi);
 	} else if (lobeSelect < pDielectric + pSpecTrans) {
 		vec3f wi, weight;
@@ -657,17 +657,17 @@ bool SampleBSDF(
 		result.weight = vec3(weight.x, weight.y, weight.z) * (1.f - data.metallic) * data.specularTransmission / pSpecTrans;
 
 		result.pdf *= pSpecTrans;
-		if (pDielectric > 0) result.pdf += pDielectric * SampleDielectricPDF(dielectric, data, n, wo, wi);
+		if (pDielectric > 0.f) result.pdf += pDielectric * SampleDielectricPDF(dielectric, data, n, wo, wi);
 		if (pConductor > 0.f) result.pdf += pConductor * SampleConductorPDF(conductor, data, n, wo, wi);
 	} else if (pConductor > 0.f) {
 		vec3f wi, weight;
 		if (!SampleConductor(conductor, data, n, wo, sg, result.lobe, wi, weight, result.pdf)) return false;
 
 		result.scattered = vec3(wi.x, wi.y, wi.z);
-		result.weight = vec3(weight.x, weight.y, weight.z) * data.metallic * pConductor;
+		result.weight = vec3(weight.x, weight.y, weight.z) * data.metallic / pConductor;
 
 		result.pdf *= pConductor;
-		if (pDielectric > 0) result.pdf += pDielectric * SampleDielectricPDF(dielectric, data, n, wo, wi);
+		if (pDielectric > 0.f) result.pdf += pDielectric * SampleDielectricPDF(dielectric, data, n, wo, wi);
 		if (pSpecTrans > 0.f) result.pdf += pSpecTrans * SampleSpecularTransmissionPDF(dielectric, data, n, wo, wi);
 	}
 
