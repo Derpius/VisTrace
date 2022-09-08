@@ -721,6 +721,360 @@ One last improvement we can make is discarding invalid samples. The HDRI sampler
 Reflection
 ----------
 
+Our diffuse shading looks nice, but could be replicated by a decent rasteriser. To truly showcase the power of ray tracing lets do something that can't be done accurately with rasterising, *specular reflection*.
+
+Specular reflection differs from diffuse reflection in that it's view dependent, it's also one of the two types of light interactions we'll fully explore in our ray tracer (diffuse interreflection is ignored as it's part of path tracing).
+
+While specular reflection comes in many different forms, we're only going to implement perfect (aka delta) reflection for *conductive* surfaces. While we could implement a much wider variety of materials at this stage, this chapter is to prime you for path tracing and not to develop a complex ray tracer.
+
+The details for why conductive and dielectric (non-conductive) materials interact with light differently is complex and not at all important for rendering. The only distinction it will make in our renderer is the type of Fresnel used (more on this later) and whether light not reflected specularly is transmitted or absorbed.
+
+Before we start reflecting any rays we need to make some major modifications to our `TracePixel` function in order to handle multiple bounces. We could handle multiple bounces via recursion, however this is slow and can cause issues later on when you want access to information from the previous bounce.
+
+To start we'll add a new parameter called `MAX_DEPTH` to prevent bouncing too many times
+~~~ lua
+----------------
+-- Parameters --
+----------------
+local RESX, RESY = 512, 512
+local SAMPLES = 32
+~~~ lua highlight
+local MAX_DEPTH = 8
+~~~ lua
+
+local FOCAL_LENGTH = 60
+local SENSOR_HEIGHT = 35
+~~~
+
+Then we'll wrap our shading code in a loop and our diffuse shading code in an if statement, which for now will always be true as every surface is diffuse
+~~~ lua
+	local result = accel:Traverse(camPos, camDir)
+	if result then
+		local colour = Vector()
+
+
+		~~~ lua highlight
+		for depth = 1, MAX_DEPTH do
+		~~~ lua
+			local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+
+
+			~~~ lua highlight
+			if true then
+			~~~ lua
+				local validSamples = SAMPLES
+				for i = 1, SAMPLES do
+					local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+					if envValid then
+						local shadowRay = accel:Traverse(origin, envDir)
+						if not shadowRay then
+							local brdf = result:Albedo() / math.pi
+							local Li = envCol / envPdf
+							colour = colour + brdf * Li * envDir:Dot(result:Normal())
+						end
+					else
+						validSamples = validSamples - 1
+					end
+				end
+
+				colour = colour / validSamples
+				~~~ lua highlight
+				break
+			end
+		end
+		~~~ lua
+
+		return colour
+	else
+		return hdri:GetPixel(camDir)
+	end
+~~~
+
+Now we need a way to determine when a surface is diffuse, and when it's specular.
+
+We'll do this using a very rudementry method of checking if the material on an entity is `debug/env_cubemap_model`, which is the equivalent of a perfectly reflective surface in Source. This will be replaced with a more advanced system later on
+~~~ lua
+		for depth = 1, MAX_DEPTH do
+			local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+			~~~ lua highlight
+			local diffuse = true
+			if result:Entity():IsValid() then
+				diffuse = result:Entity():GetMaterial() ~= "debug/env_cubemap_model"
+			end
+			~~~ lua
+
+
+			~~~ lua delete
+			if true then
+			~~~ lua highlight
+			if diffuse then
+			~~~ lua
+				local validSamples = SAMPLES
+				for i = 1, SAMPLES do
+					local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+					if envValid then
+						local shadowRay = accel:Traverse(origin, envDir)
+						if not shadowRay then
+							local brdf = result:Albedo() / math.pi
+							local Li = envCol / envPdf
+							colour = colour + brdf * Li * envDir:Dot(result:Normal())
+						end
+					else
+						validSamples = validSamples - 1
+					end
+				end
+
+				colour = colour / validSamples
+				break
+			~~~ lua highlight
+			else
+				colour = Vector(1, 0, 0)
+				break
+			~~~ lua
+			end
+		end
+~~~
+
+This should make all entities with the debug cubemap material appear red.  
+
+The next step is to actually bounce off the surface to achieve reflection. Before adding a vector reflection function though, we'll bounce in the direction of the surface normal to make sure our loop works as we'd expect.
+~~~ lua
+			else
+				~~~ lua delete
+				colour = Vector(1, 0, 0)
+				break
+				~~~ lua highlight
+				local direction = result:Normal()
+				result = accel:Traverse(origin, direction)
+
+				if not result then
+					colour = hdri:GetPixel(direction)
+					break
+				end
+				~~~ lua
+			end
+~~~
+
+![This generates a strange effect that almost looks like specular reflection, but is entirely view independent](./images/vistracing-in-one-weekend/proto-reflection.png)
+
+We only have a couple things to add now to have conductive reflection, the first of which is an actual vector reflection function.  
+
+As the following images from Scratchapixel show, the angle between the incident vector and the surface normal is equal to the angle between the reflected vector and the surface normal
+
+![The angle of incidence and the angle of reflection are equal](https://www.scratchapixel.com/images/upload/shading-intro/shad-reflection.png)
+
+Additionally, we can express the incident and reflected vectors using $A$ and $B$ like so
+
+![The component vectors A and B of the reflection](https://www.scratchapixel.com/images/upload/shading-intro/shad-reflection2.png)
+
+The equations for the incident vector $I$ and reflected vector $R$ are therefore
+
+\begin{equation}
+I = A + B \\
+R = A - B
+\end{equation}
+
+Where $B$ is equal to
+
+\begin{equation}
+B = \cos\theta * N
+\end{equation}
+
+Substituting $B$ in the equations for $I$ and $R$ then gives us
+
+\begin{equation}
+I = A + \cos\theta * N \\
+R = A - \cos\theta * N
+\end{equation}
+
+We then rearrange the equation for $I$ to solve for $A$
+
+\begin{equation}
+A = I - \cos\theta * N
+\end{equation}
+
+And finally we can substitute $A$ in the equation for $R$ and simplify, giving us the vector reflection equation
+
+\begin{equation}
+R = I - \cos\theta * N - \cos\theta * N \\
+R = I - 2\cos\theta * N
+\end{equation}
+
+Now lets implement the above as a function in our tracer. Add a new function above `TracePixel` called `Reflect` which will take the surface normal and our incident vector
+~~~ lua
+...
+
+
+~~~ lua highlight
+local function Reflect(i, n)
+	return i - 2 * i:Dot(n) * n
+end
+~~~ lua
+
+local camPos, camAng = LocalPlayer():EyePos(), LocalPlayer():EyeAngles()
+local function TracePixel(x, y)
+	...
+end
+~~~
+
+Then call this function to calculate a new direction to bounce in `TracePixel`. We'll also add a variable to store the direction that was traced to reach this point
+~~~ lua
+	...
+
+	local result = accel:Traverse(camPos, camDir)
+	if result then
+		~~~ lua highlight
+		local direction = camDir
+		~~~ lua
+		local colour = Vector()
+
+		for depth = 1, MAX_DEPTH do
+			local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+			local diffuse = true
+			if result:Entity():IsValid() then
+				diffuse = result:Entity():GetMaterial() ~= "debug/env_cubemap_model"
+			end
+
+			if diffuse then
+				local validSamples = SAMPLES
+				for i = 1, SAMPLES do
+					local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+					if envValid then
+						local shadowRay = accel:Traverse(origin, envDir)
+						if not shadowRay then
+							local brdf = result:Albedo() / math.pi
+							local Li = envCol / envPdf
+							colour = colour + brdf * Li * envDir:Dot(result:Normal())
+						end
+					else
+						validSamples = validSamples - 1
+					end
+				end
+
+				colour = colour / validSamples
+				break
+			else
+				~~~ lua delete
+				local direction = result:Normal()
+				~~~ lua highlight
+				direction = Reflect(direction, result:Normal())
+				~~~ lua
+				result = accel:Traverse(origin, direction)
+
+				if not result then
+					colour = hdri:GetPixel(direction)
+					break
+				end
+			end
+		end
+
+		return colour
+	else
+		return hdri:GetPixel(camDir)
+	end
+~~~
+
+Note that we've left `camDir` as a separate variable, this is redundant at the moment but will be useful when we start path tracing.
+
+![Real specular reflection](./images/vistracing-in-one-weekend/delta-reflection.png)
+
+We have one last step to complete in order to simulate conductors fully though, Fresnel.
+
+The Fresnel equations describe the ratio between reflected and transmitted light, and are completely different for conductive and dielectric surfaces.
+
+However the effect of Fresnel on conductors is extremely subtle, so instead we'll use an approximation common in both real time and offline renderers called [Schlick's approximation](https://en.wikipedia.org/wiki/Schlick%27s_approximation).
+
+\begin{equation}
+F(\theta) = F_0 + (1 - F_0)(1 - |\cos\theta|)^5
+\end{equation}
+
+Then we can simply use the colour of the surface hit as $F_0$ to achieve an approximate conductive material.
+
+Add a new function called `FresnelSchlicks` after `Reflect`
+~~~ lua
+local function Reflect(i, n)
+	return i - 2 * i:Dot(n) * n
+end
+
+
+~~~ lua highlight
+local function FresnelSchlicks(i, n, f0)
+	return f0 + (Vector(1, 1, 1) - f0) * math.pow(1 - math.abs(i:Dot(n)), 5)
+end
+~~~ lua
+
+...
+~~~
+
+We now need to make another small change to our rendering code. At the moment we bounce around then set the colour to the first diffuse surface hit, however we want to colour our reflections.
+
+To do this we use a throughput variable that's persistent throughout the ray's journey. This throughput holds the weight of the entire path a ray takes, including all interactions with surfaces along the way.
+~~~ lua
+	...
+
+	local result = accel:Traverse(camPos, camDir)
+	if result then
+		local direction = camDir
+		local colour = Vector()
+		~~~ lua highlight
+		local throughput = Vector(1, 1, 1)
+		~~~ lua
+
+		...
+~~~
+
+Then simply multiply throughput by the Fresnel coefficient when we reflect, and multiply colour by the throughput when we terminate the path (diffuse surfaces and missed reflection rays)
+~~~ lua
+			...
+
+			if diffuse then
+				local validSamples = SAMPLES
+				for i = 1, SAMPLES do
+					local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+					if envValid then
+						local shadowRay = accel:Traverse(origin, envDir)
+						if not shadowRay then
+							local brdf = result:Albedo() / math.pi
+							local Li = envCol / envPdf
+							colour = colour + brdf * Li * envDir:Dot(result:Normal())
+						end
+					else
+						validSamples = validSamples - 1
+					end
+				end
+
+				~~~ lua delete
+				colour = colour / validSamples
+				~~~ lua highlight
+				colour = colour / validSamples * throughput
+				~~~ lua
+				break
+			else
+				direction = Reflect(direction, result:Normal())
+				~~~ lua highlight
+				local f0 = result:Entity():GetColor()
+				throughput = throughput * FresnelSchlicks(
+					direction, result:Normal(),
+					Vector(f0.r / 255, f0.g / 255, f0.b / 255)
+				)
+				~~~ lua
+				result = accel:Traverse(origin, direction)
+
+				if not result then
+					~~~ lua delete
+					colour = hdri:GetPixel(direction)
+					~~~ lua highlight
+					colour = hdri:GetPixel(direction) * throughput
+					~~~ lua
+					break
+				end
+			end
+~~~
+
+We can't use `result:Albedo()` to get the entity's colour as the debug cubemap material has no base texture, meaning VisTrace would fall back to the missing texture.
+
+![I love gold!](./images/vistracing-in-one-weekend/conductor.png)
+
 Refraction
 ----------
 
