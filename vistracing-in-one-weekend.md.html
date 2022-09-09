@@ -25,6 +25,7 @@ Before we get into the nitty gritty of light transport, we need to actually be a
 To start with we need a script to work in, and an addon to place that script in. Create a new folder in your `garrysmod/addons` folder with any name you like, then create a subfolder called `lua` and a file in that folder called `vistracer.lua` (you can of course use whatever name you want, however the book assumes this is what you called it). You should now have the file `garrysmod/addons/youraddonname/lua/vistracer.lua`.  
 
 Open the file in your text editor of choice (I recommend vscode with sumneko's Lua extension and the GLua annotations) and add the following
+
 ~~~ lua
 print("VisTracing in One Weekend!")
 ~~~
@@ -34,6 +35,7 @@ print("VisTracing in One Weekend!")
 Launch GMod and start singleplayer (or join a multiplayer server with clientside Lua enabled), open console with the grave/backtick key, and enter `lua_openscript_cl vistracer.lua`. You should see `VisTracing in One Weekend!` appear in your console! If not then check that `sv_allowcslua` is set to `1`, and that GMod has been restarted since you created `vistracer.lua` (it only hotloads existing files).  
 
 Now to draw something to the screen we need a render context, and in this case I've chosen the `HUDPaint` hook as a simple way to get pixels above everything except the menu. Remove the print we added and replace it with the hook
+
 ~~~ lua
 hook.Add("HUDPaint", "VisTracer", function()
 
@@ -41,6 +43,7 @@ end)
 ~~~  
 
 This wont do anything yet, but go ahead and run it just to check everything's working. We have a render context, but we need to actually draw something. For now lets just use a red rectangle
+
 ~~~ lua
 hook.Add("HUDPaint", "VisTracer", function()
 	~~~ lua highlight
@@ -57,6 +60,7 @@ You may be thinking that this is how we'll render an entire image, however if yo
 Instead we need a way to render a set of pixels only once, and save them for future frames. To do this we're going to use *render targets*, which are a special kind of texture we're able to draw to, and the pixels we draw will be saved indefinitely (quite literally in fact, GMod doesn't destroy render targets until the game closes).  
 
 First of all we need to create a render target to use, in addition to a material to assign the render target to as a base texture in order to draw it to the screen later
+
 ~~~ lua
 local rt = GetRenderTargetEx(
 	"VisTracer",                     -- Name of the render target
@@ -76,6 +80,7 @@ local rtMat = CreateMaterial("VisTracer", "UnlitGeneric", {
 ~~~
 
 Next we draw the render target to the screen
+
 ~~~ lua
 ...
 
@@ -93,6 +98,7 @@ end)
 If you run this with `lua_openscript_cl vistracer.lua` you should get a black screen (don't worry, use `lua_run_cl hook.Remove("HUDPaint", "VisTracer")` to get rid of the hook). This isn't exactly what we want, so lets try drawing some pixels.  
 
 While we could draw to the render target immediately when we run our script, we're going to want to split the drawing over multiple frames for later (ray tracing single threaded in Lua is not fast). To do this we can ignore more complicated (and slower) methods of spreading our code over multiple frames, and just render one row per frame. We also need to define an x and y resolution to draw, which we'll place at the top of the file (this is where all of our parameters will go)
+
 ~~~ lua highlight
 local RESX, RESY = 256, 256
 ~~~ lua
@@ -125,7 +131,8 @@ end)
 
 Running this should produce a 256x256 red rectangle just like the original `surface.DrawRect` method, except we now have control over the colour of individual pixels and we're only drawing each pixel once. You may also notice that we still have the same problem as before where the entire screen is black except for where we drew our rectangle.
 
-To fix that we'll add a `setup` flag and clear the render target with 0 alpha before we start writing.
+To fix that we'll add a `setup` flag and clear the render target with 0 alpha before we start writing
+
 ~~~ lua
 ...
 
@@ -160,6 +167,7 @@ end)
 ~~~
 
 Et voila! You should now have a significantly slower to draw red rectangle! Not impressed? Well lets draw something slightly more interesting that we couldn't do with a simple `surface.DrawRect` call...
+
 ~~~ lua
 		...
 
@@ -225,6 +233,7 @@ local rt = GetRenderTargetEx(
 ~~~
 
 Now we have our scene geometry in an acceleration structure we can start tracing some rays. While we could put all of this in the render hook from the previous section, to help with readability we're going to create a new function above our hook called `TracePixel`, which will be called from the hook with the x and y coordinates of the current pixel and will return an RGB vector
+
 ~~~ lua
 ...
 
@@ -272,6 +281,7 @@ This should produce the exact same image as the end of the last section, however
 To trace our ray, we need to know the start position and the direction to trace in. We'll get into generating camera rays in a bit but for now we're going to do [orthographic projection](https://en.wikipedia.org/wiki/Orthographic_projection), meaning all of our rays point in the exact same direction and the origin changes. This has the effect of no matter how close or far away something is, it will always look the same in our final image.
 
 We're also going to use the player camera's origin and angles for our rays, although you could use anything you want
+
 ~~~ lua highlight
 local camPos, camAng = LocalPlayer():EyePos(), LocalPlayer():EyeAngles()
 ~~~ lua
@@ -316,6 +326,7 @@ Before we start lighting our scene, we need to replace the orthographic projecti
 We could parameterise our camera with a field of view value, however I've chosen focal length and sensor height as this can be integrated into various physically based post processing steps and ray generation upgrades like depth of field.
 
 Add these to our parameters section at the top of the file. I've chosen a full frame sensor height of 35mm and a focal length of 60mm fairly arbitrarily, so feel free to play around with them
+
 ~~~ lua
 ----------------
 -- Parameters --
@@ -326,7 +337,8 @@ local FOCAL_LENGTH = 60
 local SENSOR_HEIGHT = 35
 ~~~
 
-Next we'll cache a couple of values that we'll use when generating a ray that wont change over a trace. These values are derived from using a field of view to determine the vertical scale, and then simplifying the equation using focal length to FoV conversion equations.
+Next we'll cache a couple of values that we'll use when generating a ray that wont change over a trace. These values are derived from using a field of view to determine the vertical scale, and then simplifying the equation using focal length to FoV conversion equations
+
 ~~~ lua
 ----------------
 --    Init    --
@@ -344,18 +356,21 @@ If you want a more detailed explanation of these or the FoV equivalents then tak
 Now lets change our old orthographic projection code to the pinhole camera model using our vertical and horizontal scale values. Before we can scale our values though we need to centre our pixel coordinate to the camera's origin, as well as converting it to a unit square coordinate.
 
 To start with we'll offset our pixel by 0.5 so that our coordinate represents the centre of the pixel and not the corner, and then normalise it by dividing by the width and height of the image respectively
+
 \begin{align}
 cam_x &= \frac{pixel_x + 0.5}{res_x} \\
 cam_y &= \frac{pixel_y + 0.5}{res_y}
 \end{align}
 
 Then we'll convert this 0-1 coordinate to the unit square coordinates of -1 to 1. Note that whether you subtract the normalised pixel from 1, or 1 from the pixel, depends on the handedness of your coordinate system
+
 \begin{align}
 cam_x &= 1 - 2 * \frac{pixel_x + 0.5}{res_x} \\
 cam_y &= 1 - 2 * \frac{pixel_y + 0.5}{res_y}
 \end{align}
 
 Finally we'll apply our horizontal and vertical scale values
+
 \begin{align}
 cam_x &= (1 - 2 * \frac{pixel_x + 0.5}{res_x}) * scale_h \\
 cam_y &= (1 - 2 * \frac{pixel_y + 0.5}{res_y}) * scale_v
@@ -364,6 +379,7 @@ cam_y &= (1 - 2 * \frac{pixel_y + 0.5}{res_y}) * scale_v
 This gives us a position in camera space, which we'll then normalise and rotate to give us a direction in world space.
 
 Finally, lets add this in code
+
 ~~~ lua
 local camPos, camAng = LocalPlayer():EyePos(), LocalPlayer():EyeAngles()
 local function TracePixel(x, y)
@@ -394,6 +410,7 @@ end
 ~~~
 
 This should work just fine but lets replace our boring black and white view with one of the best features in VisTrace, automatic texturing
+
 ~~~ lua
 	if result then
 		~~~ lua delete
@@ -470,6 +487,7 @@ First of all we need a HDRI to load, which I recommend getting from [Poly Haven]
 Note that while you can download both HDR and EXR formats, VisTrace only supports the HDR format.
 
 Once you have some images you like, place them in `garrysmod/data/vistrace_hdris` so VisTrace can find them. All we have to do now is load one. We also need to create a *sampler* which we'll use in a second
+
 ~~~ lua
 ----------------
 --    Init    --
@@ -481,6 +499,7 @@ local sampler = vistrace.CreateSampler()
 ~~~
 
 Before we start using this for lighting, lets change our black background to the HDRI
+
 ~~~ lua
 	local result = accel:Traverse(camPos, camDir)
 	if result then
@@ -497,6 +516,7 @@ Before we start using this for lighting, lets change our black background to the
 If you look towards the sun you'll notice that everything turns into clown vomit. This is because our HDRIs are *hdr* images, meaning high dynamic range. As colours can be greater than 1 we need to convert them before drawing to our render target that stores 0-1.
 
 We'll use something a little more complex to convert our 0-$\infty$ colours to 0-1 later on, however for now we'll just clamp before drawing to the RT
+
 ~~~ lua
 		...
 
@@ -530,6 +550,7 @@ L_o(\mathbf{x}, \omega_o) = f_s(\mathbf{x}, \omega_i, \omega_o)L_i(\mathbf{x}, \
 Revisiting the equation we can see we need to calculate the value of $f_s$, $L_i$, and $(\omega_i \cdot \mathbf{n})$ in order to determine our outgoing colour. To start with we'll assume that $f_s$ is 1 and focus on the rest of the equation.
 
 To calculate $L_i$ we can use the `HDRI:Sample()` function to pick a random value for $\omega_i$, we then trace a *shadow ray* out from our hit point in the sampled direction and if it misses the scene, we use the sampled colour. If the sample is invalid or the shadow ray hits an object, no lighting is calculated. We're also going to use the sampler we created earlier as the random number generator for the HDRI sampling function
+
 ~~~ lua
 	local result = accel:Traverse(camPos, camDir)
 	if result then
@@ -558,6 +579,7 @@ We have our sampled $\omega_i$, as well as a shadow ray so we dont light the sce
 While it seems like we could just use `envCol` for $L_i$, this would heavily *bias* our renderer. The reason for this is because we're only sampling a single direction when we actually want to know all possible directions. This means that the amount of light we're saying is reaching the surface is far lower than it would be if we added together every possible sample direction.
 
 To solve this and *unbias* our renderer, we can divide `envCol` by `envPdf` in order to boost the contribution of samples depending on their probability. We'll go into this in detail in the path tracing chapter, but for now just take it as read
+
 ~~~ lua
 			if not shadowRay then
 				~~~ lua highlight
@@ -568,6 +590,7 @@ To solve this and *unbias* our renderer, we can divide `envCol` by `envPdf` in o
 ~~~
 
 That's $L_i$ done, next is $(\omega_i \cdot \mathbf{n})$ which is just the dot product between our sampled $\omega_i$ and surface normal $\mathbf{n}$
+
 ~~~ lua
 			if not shadowRay then
 				local Li = envCol / envPdf
@@ -587,6 +610,7 @@ f_{lambert} = \frac{albedo}{\pi}
 How this equation is derived is available [here](https://sakibsaikia.github.io/graphics/2019/09/10/Deriving-Lambertian-BRDF-From-First-Principles.html) which you can read if you feel like it, however you wont need to know how BRDFs etc are derived for this book.
 
 Turning that into code is extremely simple
+
 ~~~ lua
 			if not shadowRay then
 				local Li = envCol / envPdf
@@ -604,6 +628,7 @@ We still have a few issues to fix though, well one big issue spread all over our
 Our noise is actually a product of two things, the inherent randomness of sampling our HDRI, and something called *shadow acne*.
 
 Shadow acne is an issue caused by floating point precision where the shadow ray starts too close to the surface and immediately intersects with it. Thankfully VisTrace provides a helper function to solve this
+
 ~~~ lua
 	local result = accel:Traverse(camPos, camDir)
 	if result then
@@ -643,6 +668,7 @@ We'll see this used across our entire renderer when path tracing, but for now we
 This is actually a subset of the integral present in the rendering equation, and this method of approximating the integral by averaging random samples is [Monte Carlo integration](https://en.wikipedia.org/wiki/Monte_Carlo_integration), which we'll dig our teeth into when path tracing.
 
 Lets start by adding a new parameter called `SAMPLES` which will be the number of samples to take at each hit
+
 ~~~ lua
 ----------------
 -- Parameters --
@@ -657,6 +683,7 @@ local SENSOR_HEIGHT = 35
 ~~~
 
 Then wrap our hdri sampling in a for loop and divide the final colour by the number of samples
+
 ~~~ lua
 	local result = accel:Traverse(camPos, camDir)
 	if result then
@@ -692,6 +719,7 @@ Then wrap our hdri sampling in a for loop and divide the final colour by the num
 ~~~
 
 One last improvement we can make is discarding invalid samples. The HDRI sampler shouldn't produce many but we don't want to let them contribute to the final image when it does
+
 ~~~ lua highlight
 		local validSamples = SAMPLES
 		~~~ lua
@@ -732,6 +760,7 @@ The details for why conductive and dielectric (non-conductive) materials interac
 Before we start reflecting any rays we need to make some major modifications to our `TracePixel` function in order to handle multiple bounces. We could handle multiple bounces via recursion, however this is slow and can cause issues later on when you want access to information from the previous bounce.
 
 To start we'll add a new parameter called `MAX_DEPTH` to prevent bouncing too many times
+
 ~~~ lua
 ----------------
 -- Parameters --
@@ -747,6 +776,7 @@ local SENSOR_HEIGHT = 35
 ~~~
 
 Then we'll wrap our shading code in a loop and our diffuse shading code in an if statement, which for now will always be true as every surface is diffuse
+
 ~~~ lua
 	local result = accel:Traverse(camPos, camDir)
 	if result then
@@ -793,6 +823,7 @@ Then we'll wrap our shading code in a loop and our diffuse shading code in an if
 Now we need a way to determine when a surface is diffuse, and when it's specular.
 
 We'll do this using a very rudementry method of checking if the material on an entity is `debug/env_cubemap_model`, which is the equivalent of a perfectly reflective surface in Source. This will be replaced with a more advanced system later on
+
 ~~~ lua
 		for depth = 1, MAX_DEPTH do
 			local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
@@ -837,7 +868,8 @@ We'll do this using a very rudementry method of checking if the material on an e
 
 This should make all entities with the debug cubemap material appear red.  
 
-The next step is to actually bounce off the surface to achieve reflection. Before adding a vector reflection function though, we'll bounce in the direction of the surface normal to make sure our loop works as we'd expect.
+The next step is to actually bounce off the surface to achieve reflection. Before adding a vector reflection function though, we'll bounce in the direction of the surface normal to make sure our loop works as we'd expect
+
 ~~~ lua
 			else
 				~~~ lua delete
@@ -901,6 +933,7 @@ R &= I - 2\cos\theta * N
 \end{align}
 
 Now lets implement the above as a function in our tracer. Add a new function above `TracePixel` called `Reflect` which will take the surface normal and our incident vector
+
 ~~~ lua
 ...
 
@@ -918,6 +951,7 @@ end
 ~~~
 
 Then call this function to calculate a new direction to bounce in `TracePixel`. We'll also add a variable to store the direction that was traced to reach this point
+
 ~~~ lua
 	...
 
@@ -991,6 +1025,7 @@ F(\theta) = F_0 + (1 - F_0)(1 - |\cos\theta|)^5
 Then we can simply use the colour of the surface hit as $F_0$ to achieve an approximate conductive material.
 
 Add a new function called `FresnelSchlicks` after `Reflect`
+
 ~~~ lua
 local function Reflect(i, n)
 	return i - 2 * i:Dot(n) * n
@@ -1008,7 +1043,8 @@ end
 
 We now need to make another small change to our rendering code. At the moment we bounce around then set the colour to the first diffuse surface hit, however we want to colour our reflections.
 
-To do this we use a throughput variable that's persistent throughout the ray's journey. This throughput holds the weight of the entire path a ray takes, including all interactions with surfaces along the way.
+To do this we use a throughput variable that's persistent throughout the ray's journey. This throughput holds the weight of the entire path a ray takes, including all interactions with surfaces along the way
+
 ~~~ lua
 	...
 
@@ -1024,6 +1060,7 @@ To do this we use a throughput variable that's persistent throughout the ray's j
 ~~~
 
 Then simply multiply throughput by the Fresnel coefficient when we reflect, and multiply colour by the throughput when we terminate the path (diffuse surfaces and missed reflection rays)
+
 ~~~ lua
 			...
 
@@ -1082,7 +1119,8 @@ Refraction, or specular transmission, is quite a different beast than specular r
 
 We'll need to handle two separate ray paths, front and back surface interactions, a more complex Fresnel, and indices of refraction.
 
-Lets start out the same way we started with reflection by adding a new clause to `TracePixel` for refractive objects. We'll classify all objects marked as specular with the cubemap that have an alpha value below 255 as refractive.
+Lets start out the same way we started with reflection by adding a new clause to `TracePixel` for refractive objects. We'll classify all objects marked as specular with the cubemap that have an alpha value below 255 as refractive
+
 ~~~ lua
 			else
 				~~~ lua highlight
@@ -1118,6 +1156,7 @@ Lets start out the same way we started with reflection by adding a new clause to
 ~~~
 
 We then need to compute a new origin based on whether we're entering or exiting the surface, and whether it's a front or back hit. We also need to flip the normal if we hit the back of the surface. Additionally lets "refract" by setting the direction to the negative of that upwards facing normal like we did for reflection
+
 ~~~ lua
 			else
 				local entColour = result:Entity():GetColor()
@@ -1131,14 +1170,18 @@ We then need to compute a new origin based on whether we're entering or exiting 
 					result = accel:Traverse(origin, direction)
 				else
 					~~~ lua highlight
-					local upNormal = -result:Normal()
-					if result:FrontFacing() then
+					local upNormal = result:Normal()
+
+					if not result:FrontFacing() then
 						upNormal = -upNormal
-						origin = vistrace.CalcRayOrigin(
+					end
+
+					origin = not result:FrontFacing() and
+						origin or
+						vistrace.CalcRayOrigin(
 							result:Pos(),
 							-result:GeometricNormal()
 						)
-					end
 
 					direction = -upNormal
 					result = accel:Traverse(origin, direction)
@@ -1154,8 +1197,6 @@ We then need to compute a new origin based on whether we're entering or exiting 
 				end
 			end
 ~~~
-
-Note that we're assuming we hit the back of a surface by default, this is because the initial `CalcRayOrigin` pushes the origin *out* of the surface, which is what we want when transmitting through from the back.
 
 ![Equally strange looking transmission to the prototype reflection earlier](./images/vistracing-in-one-weekend/proto-refraction.png)
 
@@ -1221,21 +1262,22 @@ T &= \frac{\eta_I}{\eta_T}(I + N\cos\theta_I) - N\sqrt{1 - \left( \frac{\eta_I}{
 Finally, we can simplify this equation further, first by defining some coefficients
 
 \begin{align}
-\eta &= \frac{\eta_I}{\eta_T} \\
+\eta^{-1} &= \frac{\eta_I}{\eta_T} \\
 c_1 &= \cos\theta_I = -(N \cdot I) \\
-c_2 &= \sqrt{1 - \left( \frac{\eta_I}{\eta_T} \right)^{2}(1 - \cos^{2}\theta_I)} = \sqrt{1 - \eta^{2}(1 - c_1^{2})}
+c_2 &= \sqrt{1 - \left( \frac{\eta_I}{\eta_T} \right)^{2}(1 - \cos^{2}\theta_I)} = \sqrt{1 - \eta^{-2}(1 - c_1^{2})}
 \end{align}
 
 And then substituting in the equation for $T$
 
 \begin{align}
 T &= \frac{\eta_I}{\eta_T}(I + N\cos\theta_I) - N\sqrt{1 - \left( \frac{\eta_I}{\eta_T} \right)^{2}(1 - \cos^{2}\theta_I)} \\
-T &= \eta(I + c_1N) - c_2N \\
-T &= \eta I + \eta c_1N - c_2N \\
-T &= \eta I + (\eta c_1 - c_2)N
+T &= \eta^{-1}(I + c_1N) - c_2N \\
+T &= \eta^{-1} I + \eta^{-1} c_1N - c_2N \\
+T &= \eta^{-1} I + (\eta^{-1} c_1 - c_2)N
 \end{align}
 
 Now to implement in code. We'll need to add a special case for when the term in the square root is below 0. This is total internal reflection
+
 ~~~ lua
 ...
 
@@ -1245,15 +1287,15 @@ end
 
 
 ~~~ lua highlight
-local function Refract(i, n, eta)
+local function Refract(i, n, invEta)
 	local c1 = -i:Dot(n)
-	local c2sqr = 1 - eta * eta * (1 - c1 * c1)
+	local c2sqr = 1 - invEta * invEta * (1 - c1 * c1)
 
 	if c2sqr < 0 then -- Total internal reflection
 		return Vector(0, 0, 0)
 	end
 
-	return eta * i + (eta * c1 - math.sqrt(c2sqr)) * n
+	return invEta * i + (invEta * c1 - math.sqrt(c2sqr)) * n
 end
 ~~~ lua
 
@@ -1265,27 +1307,33 @@ end
 ~~~
 
 Then we can replace our prototype transmission with our new refraction function. I'm using the approximate IoR of air and glass here
+
 ~~~ lua
 				else
-					local upNormal = -result:Normal()
+					local upNormal = result:Normal()
 					~~~ lua highlight
 					local eta = 1.5 / 1
 					~~~ lua
-					if result:FrontFacing() then
+
+					if not result:FrontFacing() then
 						upNormal = -upNormal
 						~~~ lua highlight
-						eta = 1 / 1.5
+						eta = 1 / eta
 						~~~ lua
-						origin = vistrace.CalcRayOrigin(
+					end
+
+					origin = not result:FrontFacing() and
+						origin or
+						vistrace.CalcRayOrigin(
 							result:Pos(),
 							-result:GeometricNormal()
 						)
-					end
+
 
 					~~~ lua delete
 					direction = -upNormal
 					~~~ lua highlight
-					direction = Refract(direction, upNormal, eta)
+					direction = Refract(direction, upNormal, 1 / eta)
 					if direction == Vector(0, 0, 0) then
 						colour = Vector(1, 0, 0)
 						break
@@ -1296,6 +1344,267 @@ Then we can replace our prototype transmission with our new refraction function.
 ~~~
 
 ![This still looks wrong as it's missing reflection, but the hard part is done](./images/vistracing-in-one-weekend/delta-refraction.png)
+
+We have a problem though, we need to trace both a reflection and refraction ray however our iterative algorithm only allows exploring a single path (although it's most likely possible, it would be difficult compared to a recursive algorithm).
+
+Tracing both a reflection and refraction path has an additional flaw though, in a scene with many refractive objects close together, each ray will split in half again and again creating an exponentially increasing number of paths. Additionally, when the Fresnel coefficient is either high or low, we'd be performing the same amount of sampling on diffuse surfaces visible in both reflection and refraction paths.
+
+The solution to all of these problems is to stochastically sample either a reflection or refraction path using the Fresnel coefficient. Recall when we implemented conductors that Fresnel describes the amount of light reflected, meaning we can use it as the probability a ray is reflected.
+
+A downside with this method is that to implement this sampling effectively into our rendering algorithm, we'll need to sample the entire path minus the camera ray again and again. This will cause our delta reflection only conductors to be far less efficient, however this method is by far the best for any other surface type including rough reflections and diffuse reflection when we start path tracing.
+
+First of all we need to drastically modify our `TracePixel` function once again to sample the entire path instead of only diffuse direct lighting
+
+~~~ lua
+local camPos, camAng = LocalPlayer():EyePos(), LocalPlayer():EyeAngles()
+local function TracePixel(x, y)
+	local camX = (1 - 2 * (x + 0.5) / RESX) * camScaleHorizontal
+	local camY = (1 - 2 * (y + 0.5) / RESY) * camScaleVertical
+
+	local camDir = Vector(1, camX, camY)
+	camDir:Rotate(camAng)
+	camDir:Normalize()
+
+	~~~ lua delete
+	local result = accel:Traverse(camPos, camDir)
+	if result then
+	~~~ lua highlight
+	local camRay = accel:Traverse(camPos, camDir)
+	if camRay then
+		~~~ lua delete
+		local direction = camDir
+		~~~ lua
+		local colour = Vector()
+
+
+		~~~ lua highlight
+		local validSamples = SAMPLES
+		for sample = 1, SAMPLES do
+			local result = camRay
+			local direction = camDir
+			~~~ lua
+			local throughput = Vector(1, 1, 1)
+
+			for depth = 1, MAX_DEPTH do
+				local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+				local diffuse = true
+				if result:Entity():IsValid() then
+					diffuse = result:Entity():GetMaterial() ~= "debug/env_cubemap_model"
+				end
+
+				if diffuse then
+					~~~ lua delete
+					local validSamples = SAMPLES
+					for i = 1, SAMPLES do
+					~~~ lua
+					local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+					if envValid then
+						local shadowRay = accel:Traverse(origin, envDir)
+						if not shadowRay then
+							local brdf = result:Albedo() / math.pi
+							local Li = envCol / envPdf
+							~~~ lua delete
+							colour = colour + brdf * Li * envDir:Dot(result:Normal())
+							~~~ lua highlight
+							local integral = brdf * Li * envDir:Dot(result:Normal())
+							colour = colour + integral * throughput
+							~~~ lua
+						end
+					else
+						validSamples = validSamples - 1
+					end
+					~~~ lua delete
+					end
+
+					colour = colour / validSamples * throughput
+					~~~ lua
+					break
+				else
+					local entColour = result:Entity():GetColor()
+
+					if entColour.a == 255 then
+						direction = Reflect(direction, result:Normal())
+						throughput = throughput * FresnelSchlicks(
+							direction, result:Normal(),
+							Vector(entColour.r / 255, entColour.g / 255, entColour.b / 255)
+						)
+						result = accel:Traverse(origin, direction)
+					else
+						local upNormal = result:Normal()
+						local eta = 1.5 / 1
+
+						if not result:FrontFacing() then
+							upNormal = -upNormal
+							eta = 1 / eta
+						end
+
+						origin = not result:FrontFacing() and
+							origin or
+							vistrace.CalcRayOrigin(
+								result:Pos(),
+								-result:GeometricNormal()
+							)
+
+						direction = Refract(direction, upNormal, 1 / eta)
+						if direction == Vector(0, 0, 0) then
+							~~~ lua delete
+							colour = Vector(1, 0, 0)
+							~~~ lua highlight
+							colour = colour + Vector(1, 0, 0)
+							~~~ lua
+							break
+						end
+						result = accel:Traverse(origin, direction)
+					end
+
+					if not result then
+						~~~ lua delete
+						colour = hdri:GetPixel(direction) * throughput
+						~~~ lua highlight
+						colour = colour + hdri:GetPixel(direction) * throughput
+						~~~ lua
+						break
+					end
+				end
+			end
+		~~~ lua highlight
+		end
+		~~~ lua
+
+
+		~~~ lua delete
+		return colour
+		~~~ lua highlight
+		return colour / validSamples
+		~~~ lua
+	else
+		return hdri:GetPixel(camDir)
+	end
+end
+~~~
+
+That's quite a few changes, so double check each deletion and addition if anything isn't working after this step.
+
+All going well you should have the exact same renders as before, however both conductors and our half implemented specular transmissive materials will render far slower.
+
+Now we can stochastically sample reflection and refraction in our transmissive material. Lets test with a hardcoded 20% chance of reflection
+
+~~~ lua
+					else
+						local upNormal = result:Normal()
+						local eta = 1.5 / 1
+
+						if not result:FrontFacing() then
+							upNormal = -upNormal
+							eta = 1 / eta
+						end
+
+
+						~~~ lua highlight
+						local reflection = sampler:GetFloat() < 0.2
+						~~~ lua delete
+						origin = not result:FrontFacing() and
+						~~~ lua highlight
+						origin = reflection == result:FrontFacing() and
+						~~~ lua
+							origin or
+							vistrace.CalcRayOrigin(
+								result:Pos(),
+								-result:GeometricNormal()
+							)
+
+
+						~~~ lua delete
+						direction = Refract(direction, upNormal, 1 / eta)
+						~~~ lua highlight
+						direction = reflection and
+							Reflect(direction, upNormal) or
+							Refract(direction, upNormal, 1 / eta)
+						~~~ lua
+
+						if direction == Vector(0, 0, 0) then
+							colour = colour + Vector(1, 0, 0)
+							break
+						end
+						result = accel:Traverse(origin, direction)
+					end
+~~~
+
+![That definitely looks a lot more like a real world material than before](./images/vistracing-in-one-weekend/proto-reflection-transmission.png)
+
+Now while we could use the nice and simple Schlick's approximation here too, the effect of Fresnel on dielectrics is far more apparent, so we'll implement the full dielectric Fresnel.
+
+The equations for each polarity are taken from a [blog post](https://seblagarde.wordpress.com/2013/04/29/memo-on-fresnel-equations/) by Sebastien Lagarde. We're entirely ignoring the polarisation of light so the final coefficient is just the average of the two
+
+\begin{align}
+r_\bot &= \frac{\cos\theta_I - \eta\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)}}{\cos\theta_I + \eta\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)}} \\
+r_\| &= \frac{\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)} - \eta\cos\theta_I}{\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)} + \eta\cos\theta_I} \\
+R &= \frac{r_\bot + r_\|}{2}
+\end{align}
+
+You may notice that a few of these terms are repeated so we'll save them to some temporary variables. We'll also use the same trigonometric identity trick we used in the refraction function in order to avoid calling `math.sin`
+
+~~~ lua
+...
+
+local function FresnelSchlicks(i, n, f0)
+	return f0 + (Vector(1, 1, 1) - f0) * math.pow(1 - math.abs(i:Dot(n)), 5)
+end
+
+
+~~~ lua highlight
+local function FresnelDielectric(i, n, eta)
+	local c1 = -i:Dot(n)
+	local c2sqr = 1 - (1 - c1 * c1) / (eta * eta)
+
+	if c2sqr < 0 then -- Total internal reflection
+		return 1
+	end
+
+	local c2 = math.sqrt(c2sqr)
+	local c3 = eta * c2
+	local c4 = eta * c1
+
+	local rs = (c1 - c3) / (c1 + c3)
+	local rp = (c2 - c4) / (c2 + c4)
+
+	return 0.5 * (rs * rs + rp * rp)
+end
+~~~ lua
+
+...
+~~~
+
+We can then replace our hardcoded reflection probability with this function like so
+
+~~~ lua
+						...
+
+						~~~ lua delete
+						local reflection = sampler:GetFloat() < 0.2
+						~~~ lua highlight
+						local reflection = sampler:GetFloat() < FresnelDielectric(
+							direction, upNormal,
+							eta
+						)
+						~~~ lua
+						origin = reflection == result:FrontFacing() and
+							origin or
+							vistrace.CalcRayOrigin(
+								result:Pos(),
+								-result:GeometricNormal()
+							)
+
+						...
+~~~
+
+You may be wondering why we're not adjusting the throughput here. The contribution of the reflection and refraction paths are $\text{Fresnel}$ and $1 - \text{Fresnel}$ respectively, however those are also the probability that each path was sampled. This is actually a taste of what we'll see a lot more of in path tracing, where we divide the contribution of a path by the probability that it was sampled.
+
+As the probability is the same as the contribution of each path in this instance, dividing them by each other produces $1$, leaving the throughput unchanged.
+
+This may not make intuitive sense if you're not already familiar with statistics, however I will explain it in more detail when we start path tracing. For now, admire your work.
+
+![A display of all facets of a specular transmissive material](./images/vistracing-in-one-weekend/fresnel.png)
 
 Post Processing
 ---------------
