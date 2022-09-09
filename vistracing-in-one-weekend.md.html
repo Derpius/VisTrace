@@ -1200,7 +1200,7 @@ We then need to compute a new origin based on whether we're entering or exiting 
 
 ![Equally strange looking transmission to the prototype reflection earlier](./images/vistracing-in-one-weekend/proto-refraction.png)
 
-Unfortunately the vector refraction function isn't quite as simple as reflection, however the method is the same. We'll construct our transmitted vector using $A$ and $B$ vectors in the plane of incidence as with reflection, except this time the angle between the incident vector and transmitted vector is defined by Snell's law
+Unfortunately the vector refraction function isn't quite as simple as reflection, however the method is the same. We'll construct our transmitted vector using $A$ and $B$ vectors in the plane of incidence as with reflection, except this time the angle between the surface normal and transmitted vector is defined by Snell's law
 
 \begin{equation}
 \frac{\sin\theta_I}{\sin{\theta_T}} = \frac{\eta_T}{\eta_I}
@@ -1242,14 +1242,14 @@ Using Snell's law we can remove the unkown $\theta_T$ in the first half of the e
 T &= \frac{\eta_I}{\eta_T}(I + N\cos\theta_I) - N\cos\theta_T
 \end{align}
 
-For the second half of the equation, we can use a trigonometric identity like so
+For the second half of the equation, we can use the following trigonometric identity
 
 \begin{align}
 \cos^{2}\theta + \sin^{2}\theta &\equiv 1 \\
 \cos\theta &\equiv \sqrt{1 - \sin^{2}\theta}
 \end{align}
 
-We can now remove the final unknown $\theta_T$ by substituting $\cos\theta_T$ with the trigonometric identity, replacing $\sin^{2}\theta_T$ with Snell's law. We'll also replace $\sin^{2}\theta_I$ with $(1 - \cos^{2}\theta_I)$ using the same identity in order to not use any slow trignometry functions in code
+Using that identity we can remove the final unknown $\theta_T$ by substituting $\cos\theta_T$ with the trigonometric identity, replacing $\sin^{2}\theta_T$ with Snell's law. We'll also replace $\sin^{2}\theta_I$ with $(1 - \cos^{2}\theta_I)$ using the same identity in order to not use any slow trignometry functions in code
 
 \begin{align}
 \sin{\theta_T} &= \frac{\eta_I}{\eta_T}\sin\theta_I \\
@@ -1345,9 +1345,11 @@ Then we can replace our prototype transmission with our new refraction function.
 
 ![This still looks wrong as it's missing reflection, but the hard part is done](./images/vistracing-in-one-weekend/delta-refraction.png)
 
-We have a problem though, we need to trace both a reflection and refraction ray however our iterative algorithm only allows exploring a single path (although it's most likely possible, it would be difficult compared to a recursive algorithm).
+We have a problem though, we need to trace both a reflection and refraction ray but our iterative algorithm only allows exploring a single path (although it's most likely possible, it would be difficult compared to a recursive algorithm).
 
-Tracing both a reflection and refraction path has an additional flaw though, in a scene with many refractive objects close together, each ray will split in half again and again creating an exponentially increasing number of paths. Additionally, when the Fresnel coefficient is either high or low, we'd be performing the same amount of sampling on diffuse surfaces visible in both reflection and refraction paths.
+Tracing both a reflection and refraction path has an additional flaw though, in a scene with many refractive objects close together, each ray will split in half again and again creating an exponentially increasing number of paths.
+
+Additionally, when the Fresnel coefficient is either high or low, we'd be performing the same amount of sampling on diffuse surfaces visible in both reflection and refraction paths despite one having a far lower impact on the final image.
 
 The solution to all of these problems is to stochastically sample either a reflection or refraction path using the Fresnel coefficient. Recall when we implemented conductors that Fresnel describes the amount of light reflected, meaning we can use it as the probability a ray is reflected.
 
@@ -1534,7 +1536,7 @@ Now we can stochastically sample reflection and refraction in our transmissive m
 
 Now while we could use the nice and simple Schlick's approximation here too, the effect of Fresnel on dielectrics is far more apparent, so we'll implement the full dielectric Fresnel.
 
-The equations for each polarity are taken from a [blog post](https://seblagarde.wordpress.com/2013/04/29/memo-on-fresnel-equations/) by Sebastien Lagarde. We're entirely ignoring the polarisation of light so the final coefficient is just the average of the two
+The equations for each polarity are taken from [this blog post](https://seblagarde.wordpress.com/2013/04/29/memo-on-fresnel-equations/) by Sebastien Lagarde. We're entirely ignoring the polarisation of light so the final coefficient is just the average of the two
 
 \begin{align}
 r_\bot &= \frac{\cos\theta_I - \eta\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)}}{\cos\theta_I + \eta\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)}} \\
