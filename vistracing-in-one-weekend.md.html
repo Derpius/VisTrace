@@ -344,22 +344,22 @@ If you want a more detailed explanation of these or the FoV equivalents then tak
 Now lets change our old orthographic projection code to the pinhole camera model using our vertical and horizontal scale values. Before we can scale our values though we need to centre our pixel coordinate to the camera's origin, as well as converting it to a unit square coordinate.
 
 To start with we'll offset our pixel by 0.5 so that our coordinate represents the centre of the pixel and not the corner, and then normalise it by dividing by the width and height of the image respectively
-\begin{equation}
-cam_x = \frac{pixel_x + 0.5}{res_x} \\
-cam_y = \frac{pixel_y + 0.5}{res_y}
-\end{equation}
+\begin{align}
+cam_x &= \frac{pixel_x + 0.5}{res_x} \\
+cam_y &= \frac{pixel_y + 0.5}{res_y}
+\end{align}
 
 Then we'll convert this 0-1 coordinate to the unit square coordinates of -1 to 1. Note that whether you subtract the normalised pixel from 1, or 1 from the pixel, depends on the handedness of your coordinate system
-\begin{equation}
-cam_x = 1 - 2 * \frac{pixel_x + 0.5}{res_x} \\
-cam_y = 1 - 2 * \frac{pixel_y + 0.5}{res_y}
-\end{equation}
+\begin{align}
+cam_x &= 1 - 2 * \frac{pixel_x + 0.5}{res_x} \\
+cam_y &= 1 - 2 * \frac{pixel_y + 0.5}{res_y}
+\end{align}
 
 Finally we'll apply our horizontal and vertical scale values
-\begin{equation}
-cam_x = (1 - 2 * \frac{pixel_x + 0.5}{res_x}) * scale_h \\
-cam_y = (1 - 2 * \frac{pixel_y + 0.5}{res_y}) * scale_v
-\end{equation}
+\begin{align}
+cam_x &= (1 - 2 * \frac{pixel_x + 0.5}{res_x}) * scale_h \\
+cam_y &= (1 - 2 * \frac{pixel_y + 0.5}{res_y}) * scale_v
+\end{align}
 
 This gives us a position in camera space, which we'll then normalise and rotate to give us a direction in world space.
 
@@ -869,10 +869,10 @@ Additionally, we can express the incident and reflected vectors using $A$ and $B
 
 The equations for the incident vector $I$ and reflected vector $R$ are therefore
 
-\begin{equation}
-I = A + B \\
-R = A - B
-\end{equation}
+\begin{align}
+I &= A + B \\
+R &= A - B
+\end{align}
 
 Where $B$ is equal to
 
@@ -882,10 +882,10 @@ B = \cos\theta * N
 
 Substituting $B$ in the equations for $I$ and $R$ then gives us
 
-\begin{equation}
-I = A + \cos\theta * N \\
-R = A - \cos\theta * N
-\end{equation}
+\begin{align}
+I &= A + \cos\theta * N \\
+R &= A - \cos\theta * N
+\end{align}
 
 We then rearrange the equation for $I$ to solve for $A$
 
@@ -895,10 +895,10 @@ A = I - \cos\theta * N
 
 And finally we can substitute $A$ in the equation for $R$ and simplify, giving us the vector reflection equation
 
-\begin{equation}
-R = I - \cos\theta * N - \cos\theta * N \\
-R = I - 2\cos\theta * N
-\end{equation}
+\begin{align}
+R &= I - \cos\theta * N - \cos\theta * N \\
+R &= I - 2\cos\theta * N
+\end{align}
 
 Now lets implement the above as a function in our tracer. Add a new function above `TracePixel` called `Reflect` which will take the surface normal and our incident vector
 ~~~ lua
@@ -1078,6 +1078,225 @@ We can't use `result:Albedo()` to get the entity's colour as the debug cubemap m
 Refraction
 ----------
 
+Refraction, or specular transmission, is quite a different beast than specular reflection. In fact you need to both reflect and refract to produce a realistic refractive material with effects like total internal reflection.
+
+We'll need to handle two separate ray paths, front and back surface interactions, a more complex Fresnel, and indices of refraction.
+
+Lets start out the same way we started with reflection by adding a new clause to `TracePixel` for refractive objects. We'll classify all objects marked as specular with the cubemap that have an alpha value below 255 as refractive.
+~~~ lua
+			else
+				~~~ lua highlight
+				local entColour = result:Entity():GetColor()
+
+				if entColour.a == 255 then
+					~~~ lua
+					direction = Reflect(direction, result:Normal())
+					~~~ lua delete
+					local f0 = result:Entity():GetColor()
+					~~~ lua
+					throughput = throughput * FresnelSchlicks(
+						direction, result:Normal(),
+						~~~ lua delete
+						Vector(f0.r / 255, f0.g / 255, f0.b / 255)
+						~~~ lua highlight
+						Vector(entColour.r / 255, entColour.g / 255, entColour.b / 255)
+						~~~ lua
+					)
+					result = accel:Traverse(origin, direction)
+				~~~ lua highlight
+				else
+					colour = Vector(1, 0, 0)
+					break
+				end
+				~~~ lua
+
+				if not result then
+					colour = hdri:GetPixel(direction) * throughput
+					break
+				end
+			end
+~~~
+
+We then need to compute a new origin based on whether we're entering or exiting the surface, and whether it's a front or back hit. We also need to flip the normal if we hit the back of the surface. Additionally lets "refract" by setting the direction to the negative of that upwards facing normal like we did for reflection
+~~~ lua
+			else
+				local entColour = result:Entity():GetColor()
+
+				if entColour.a == 255 then
+					direction = Reflect(direction, result:Normal())
+					throughput = throughput * FresnelSchlicks(
+						direction, result:Normal(),
+						Vector(entColour.r / 255, entColour.g / 255, entColour.b / 255)
+					)
+					result = accel:Traverse(origin, direction)
+				else
+					~~~ lua highlight
+					local upNormal = -result:Normal()
+					if result:FrontFacing() then
+						upNormal = -upNormal
+						origin = vistrace.CalcRayOrigin(
+							result:Pos(),
+							-result:GeometricNormal()
+						)
+					end
+
+					direction = -upNormal
+					result = accel:Traverse(origin, direction)
+					~~~ lua delete
+					colour = Vector(1, 0, 0)
+					break
+					~~~ lua
+				end
+
+				if not result then
+					colour = hdri:GetPixel(direction) * throughput
+					break
+				end
+			end
+~~~
+
+Note that we're assuming we hit the back of a surface by default, this is because the initial `CalcRayOrigin` pushes the origin *out* of the surface, which is what we want when transmitting through from the back.
+
+![Equally strange looking transmission to the prototype reflection earlier](./images/vistracing-in-one-weekend/proto-refraction.png)
+
+Unfortunately the vector refraction function isn't quite as simple as reflection, however the method is the same. We'll construct our transmitted vector using $A$ and $B$ vectors in the plane of incidence as with reflection, except this time the angle between the incident vector and transmitted vector is defined by Snell's law
+
+\begin{equation}
+\frac{\sin\theta_I}{\sin{\theta_T}} = \frac{\eta_T}{\eta_I}
+\end{equation}
+
+Where $\theta_I$ and $\theta_T$ are the angles between each vector and the normal (inverse of the normal in the case of the transmitted vector), and $\eta_I$ and $\eta_T$ are the indices of refraction for the mediums that the incident and transmitted vectors reside in.
+
+![Illustration of the plane of incidence with reflection and transmission](https://www.scratchapixel.com/images/upload/shading-intro/shad-refraction6.png)
+
+We can then express the transmitted vector $T$ as the sum of vectors $A$ and $B$
+
+\begin{align}
+T &= A + B \\
+A &= M\sin\theta_T \\
+B &= -N\cos\theta_T
+\end{align}
+
+![The basis vectors illustrated on a unit circle](https://www.scratchapixel.com/images/upload/shading-intro/shad-refraction7.png)
+
+$N$ is simply the surface normal pointing in the incident direction, and $M$ can be calculated by normalising the vector produced by adding the incident vector $I$ and the height of the indicent vector in the normal direction $C$
+
+\begin{align}
+M &= \frac{I + C}{\sin\theta_I} \\
+C &= N\cos\theta_I
+\end{align}
+
+Then substituting everything in the final equation gives us
+
+\begin{align}
+T &= A + B \\
+T &= M\sin\theta_T - N\cos\theta_T \\
+T &= \frac{(I + C) \sin\theta_T}{\sin\theta_I} - N\cos\theta_T \\
+T &= \frac{(I + N\cos\theta_I) \sin\theta_T}{\sin\theta_I} - N\cos\theta_T
+\end{align}
+
+Using Snell's law we can remove the unkown $\theta_T$ in the first half of the equation
+\begin{align}
+\frac{\sin\theta_I}{\sin{\theta_T}} &= \frac{\eta_T}{\eta_I} \\
+T &= \frac{\eta_I}{\eta_T}(I + N\cos\theta_I) - N\cos\theta_T
+\end{align}
+
+For the second half of the equation, we can use a trigonometric identity like so
+
+\begin{align}
+\cos^{2}\theta + \sin^{2}\theta &\equiv 1 \\
+\cos\theta &\equiv \sqrt{1 - \sin^{2}\theta}
+\end{align}
+
+We can now remove the final unknown $\theta_T$ by substituting $\cos\theta_T$ with the trigonometric identity, replacing $\sin^{2}\theta_T$ with Snell's law. We'll also replace $\sin^{2}\theta_I$ with $(1 - \cos^{2}\theta_I)$ using the same identity in order to not use any slow trignometry functions in code
+
+\begin{align}
+\sin{\theta_T} &= \frac{\eta_I}{\eta_T}\sin\theta_I \\
+T &= \frac{\eta_I}{\eta_T}(I + N\cos\theta_I) - N\cos\theta_T \\
+T &= \frac{\eta_I}{\eta_T}(I + N\cos\theta_I) - N\sqrt{1 - \sin^{2}\theta_T} \\
+T &= \frac{\eta_I}{\eta_T}(I + N\cos\theta_I) - N\sqrt{1 - \left( \frac{\eta_I}{\eta_T} \right)^{2}\sin^{2}\theta_I} \\
+T &= \frac{\eta_I}{\eta_T}(I + N\cos\theta_I) - N\sqrt{1 - \left( \frac{\eta_I}{\eta_T} \right)^{2}(1 - \cos^{2}\theta_I)}
+\end{align}
+
+Finally, we can simplify this equation further, first by defining some coefficients
+
+\begin{align}
+\eta &= \frac{\eta_I}{\eta_T} \\
+c_1 &= \cos\theta_I = -(N \cdot I) \\
+c_2 &= \sqrt{1 - \left( \frac{\eta_I}{\eta_T} \right)^{2}(1 - \cos^{2}\theta_I)} = \sqrt{1 - \eta^{2}(1 - c_1^{2})}
+\end{align}
+
+And then substituting in the equation for $T$
+
+\begin{align}
+T &= \frac{\eta_I}{\eta_T}(I + N\cos\theta_I) - N\sqrt{1 - \left( \frac{\eta_I}{\eta_T} \right)^{2}(1 - \cos^{2}\theta_I)} \\
+T &= \eta(I + c_1N) - c_2N \\
+T &= \eta I + \eta c_1N - c_2N \\
+T &= \eta I + (\eta c_1 - c_2)N
+\end{align}
+
+Now to implement in code. We'll need to add a special case for when the term in the square root is below 0. This is total internal reflection
+~~~ lua
+...
+
+local function Reflect(i, n)
+	return i - 2 * i:Dot(n) * n
+end
+
+
+~~~ lua highlight
+local function Refract(i, n, eta)
+	local c1 = -i:Dot(n)
+	local c2sqr = 1 - eta * eta * (1 - c1 * c1)
+
+	if c2sqr < 0 then -- Total internal reflection
+		return Vector(0, 0, 0)
+	end
+
+	return eta * i + (eta * c1 - math.sqrt(c2sqr)) * n
+end
+~~~ lua
+
+local function FresnelSchlicks(i, n, f0)
+	return f0 + (Vector(1, 1, 1) - f0) * math.pow(1 - math.abs(i:Dot(n)), 5)
+end
+
+...
+~~~
+
+Then we can replace our prototype transmission with our new refraction function. I'm using the approximate IoR of air and glass here
+~~~ lua
+				else
+					local upNormal = -result:Normal()
+					~~~ lua highlight
+					local eta = 1.5 / 1
+					~~~ lua
+					if result:FrontFacing() then
+						upNormal = -upNormal
+						~~~ lua highlight
+						eta = 1 / 1.5
+						~~~ lua
+						origin = vistrace.CalcRayOrigin(
+							result:Pos(),
+							-result:GeometricNormal()
+						)
+					end
+
+					~~~ lua delete
+					direction = -upNormal
+					~~~ lua highlight
+					direction = Refract(direction, upNormal, eta)
+					if direction == Vector(0, 0, 0) then
+						colour = Vector(1, 0, 0)
+						break
+					end
+					~~~ lua
+					result = accel:Traverse(origin, direction)
+				end
+~~~
+
+![This still looks wrong as it's missing reflection, but the hard part is done](./images/vistracing-in-one-weekend/delta-refraction.png)
+
 Post Processing
 ---------------
 
@@ -1115,7 +1334,7 @@ Shading
 What is a BSDF?
 ---------------
 
-Using the VisTrace BSDF
+The VisTrace BSDF
 -----------------------
 
 Writing Your Own
