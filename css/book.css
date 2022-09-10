@@ -9,6 +9,12 @@
 
 body {
     font-family: sans-serif;
+	width: 80%;
+	max-width: 1000px;
+}
+
+div.longTOC {
+	max-width: 490px;
 }
 
 .md a {
