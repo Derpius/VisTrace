@@ -31,7 +31,7 @@ Open the file in your text editor of choice (I recommend vscode with sumneko's L
 print("VisTracing in One Weekend!")
 ~~~
 
-![Console Output](./images/vistracing-in-one-weekend/console-print.png)
+![Console Output](./images/console-print.png)
 
 Launch GMod and start singleplayer (or join a multiplayer server with clientside Lua enabled), open console with the grave/backtick key, and enter `lua_openscript_cl vistracer.lua`. You should see `VisTracing in One Weekend!` appear in your console! If not then check that `sv_allowcslua` is set to `1`, and that GMod has been restarted since you created `vistracer.lua` (it only hotloads existing files).  
 
@@ -54,7 +54,7 @@ hook.Add("HUDPaint", "VisTracer", function()
 end)
 ~~~
 
-![`surface.DrawRect`](./images/vistracing-in-one-weekend/surface-draw.png)
+![`surface.DrawRect`](./images/surface-draw.png)
 
 You may be thinking that this is how we'll render an entire image, however if you were to add a print to this hook you'd see that it's called every frame. You can imagine how laggy our game would get if we were ray tracing a scene every frame in Lua.
 
@@ -189,7 +189,7 @@ Et voila! You should now have a significantly slower to draw red rectangle! Not 
 
 Running our script now should produce a nice gradient from black to red on the x axis, and black to green on the y axis. You may also notice that the pixels are black in the *top left* of the rectangle, and not the bottom left as you might expect.
 
-![Red on the X axis and green on the Y axis](./images/vistracing-in-one-weekend/xy-square.png)
+![Red on the X axis and green on the Y axis](./images/xy-square.png)
 
 Tracing a Ray
 -------------
@@ -303,7 +303,7 @@ local function TracePixel(x, y)
 end
 ~~~
 
-![Kleiner sitting on a crate](./images/vistracing-in-one-weekend/orthographic.png)
+![Kleiner sitting on a crate](./images/orthographic.png)
 
 Because we're just adding onto the player camera's position the rays aren't centred, so you'll need to look down and to the left, but we're now tracing a scene!
 
@@ -424,7 +424,7 @@ This should work just fine but lets replace our boring black and white view with
 	end
 ~~~
 
-![The fruits of our labour](./images/vistracing-in-one-weekend/pinhole-camera.png)
+![The fruits of our labour](./images/pinhole-camera.png)
 
 The Rendering Equation
 ----------------------
@@ -658,7 +658,7 @@ Shadow acne is an issue caused by floating point precision where the shadow ray 
 	end
 ~~~
 
-![Woah that makes a difference!](./images/vistracing-in-one-weekend/shadow-acne.png)
+![Woah that makes a difference!](./images/shadow-acne.png)
 
 The second source of noise, the random sampling, can't be solved with a single function call...
 
@@ -745,7 +745,7 @@ One last improvement we can make is discarding invalid samples. The HDRI sampler
 		colour = colour / validSamples
 ~~~
 
-![With as few as 32 samples the lighting converges almost completely](./images/vistracing-in-one-weekend/hdri-sampling.png)
+![With as few as 32 samples the lighting converges almost completely](./images/hdri-sampling.png)
 
 Reflection
 ----------
@@ -888,7 +888,7 @@ The next step is to actually bounce off the surface to achieve reflection. Befor
 			end
 ~~~
 
-![This generates a strange effect that almost looks like specular reflection, but is entirely view independent](./images/vistracing-in-one-weekend/proto-reflection.png)
+![This generates a strange effect that almost looks like specular reflection, but is entirely view independent](./images/proto-reflection.png)
 
 We only have a couple things to add now to have conductive reflection, the first of which is an actual vector reflection function.  
 
@@ -1011,7 +1011,7 @@ Then call this function to calculate a new direction to bounce in `TracePixel`. 
 
 Note that we've left `camDir` as a separate variable, this is redundant at the moment but will be useful when we start path tracing.
 
-![Real specular reflection](./images/vistracing-in-one-weekend/delta-reflection.png)
+![Real specular reflection](./images/delta-reflection.png)
 
 We have one last step to complete in order to simulate conductors fully though, Fresnel.
 
@@ -1111,7 +1111,7 @@ Then simply multiply throughput by the Fresnel coefficient when we reflect, and 
 
 We can't use `result:Albedo()` to get the entity's colour as the debug cubemap material has no base texture, meaning VisTrace would fall back to the missing texture.
 
-![I love gold!](./images/vistracing-in-one-weekend/conductor.png)
+![I love gold!](./images/conductor.png)
 
 Refraction
 ----------
@@ -1199,7 +1199,7 @@ We then need to compute a new origin based on whether we're entering or exiting 
 			end
 ~~~
 
-![Equally strange looking transmission to the prototype reflection earlier](./images/vistracing-in-one-weekend/proto-refraction.png)
+![Equally strange looking transmission to the prototype reflection earlier](./images/proto-refraction.png)
 
 Unfortunately the vector refraction function isn't quite as simple as reflection, however the method is the same. We'll construct our transmitted vector using $A$ and $B$ vectors in the plane of incidence as with reflection, except this time the angle between the surface normal and transmitted vector is defined by Snell's law
 
@@ -1344,7 +1344,7 @@ Then we can replace our prototype transmission with our new refraction function.
 				end
 ~~~
 
-![This still looks wrong as it's missing reflection, but the hard part is done](./images/vistracing-in-one-weekend/delta-refraction.png)
+![This still looks wrong as it's missing reflection, but the hard part is done](./images/delta-refraction.png)
 
 We have a problem though, we need to trace both a reflection and refraction ray but our iterative algorithm only allows exploring a single path (although it's most likely possible, it would be difficult compared to a recursive algorithm).
 
@@ -1533,7 +1533,7 @@ Now we can stochastically sample reflection and refraction in our transmissive m
 					end
 ~~~
 
-![That definitely looks a lot more like a real world material than before](./images/vistracing-in-one-weekend/proto-reflection-transmission.png)
+![That definitely looks a lot more like a real world material than before](./images/proto-reflection-transmission.png)
 
 Now while we could use the nice and simple Schlick's approximation here too, the effect of Fresnel on dielectrics is far more apparent, so we'll implement the full dielectric Fresnel.
 
@@ -1607,7 +1607,7 @@ As the probability is the same as the contribution of each path in this instance
 
 This may not make intuitive sense if you're not already familiar with statistics, however I will explain it in more detail when we start path tracing. For now, admire your work.
 
-![A display of all facets of a specular transmissive material](./images/vistracing-in-one-weekend/fresnel.png)
+![A display of all facets of a specular transmissive material](./images/fresnel.png)
 
 Post Processing
 ---------------
@@ -1743,7 +1743,7 @@ Now we can drop in both tonemapping and gamma correction with ease
 		end
 ~~~
 
-![From oversaturated and blown out highlights to Blender render in a few lines of code](./images/vistracing-in-one-weekend/post-processing.png)
+![From oversaturated and blown out highlights to Blender render in a few lines of code](./images/post-processing.png)
 
 Conclusion
 ----------
@@ -1758,7 +1758,7 @@ You can also share any renders you make on the [VisTrace discussions show and te
 
 If you submit renders to the showcase then please use the [provided watermark](https://github.com/Derpius/VisTrace/blob/branding/watermark.svg), or I can add one using your GitHub username if not present.
 
-![Obligatory Cornell box render](./images/vistracing-in-one-weekend/ray-tracer.png)
+![Obligatory Cornell box render](./images/ray-tracer.png)
 
 Path Tracing
 ============
@@ -1809,4 +1809,4 @@ Putting it All Together
 Further Reading
 ===============
 
-<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><link rel="stylesheet" href="./css/book.css?v=2"><script src="markdeep.min.js" charset="utf-8"></script><script src="https://morgan3d.github.io/markdeep/latest/markdeep.min.js" charset="utf-8"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>
+<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><link rel="stylesheet" href="./style.css?v=1"><script src="markdeep.min.js" charset="utf-8"></script><script src="https://morgan3d.github.io/markdeep/latest/markdeep.min.js" charset="utf-8"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>
