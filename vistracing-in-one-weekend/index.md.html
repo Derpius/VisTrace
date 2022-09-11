@@ -590,13 +590,13 @@ To solve this and *unbias* our renderer, we can divide `envCol` by `envPdf` in o
 			end
 ~~~
 
-That's $L_i$ done, next is $(\omega_i \cdot \mathbf{n})$ which is just the dot product between our sampled $\omega_i$ and surface normal $\mathbf{n}$
+That's $L_i$ done, next is $(\omega_i \cdot \mathbf{n})$ which is just the dot product between our sampled $\omega_i$ and surface normal $\mathbf{n}$. We need to use max here as the integral is over the positive hemisphere, but the light direction may be in the negative one
 
 ~~~ lua
 			if not shadowRay then
 				local Li = envCol / envPdf
 				~~~ lua highlight
-				colour = Li * envDir:Dot(result:Normal())
+				colour = Li * math.max(envDir:Dot(result:Normal()), 0)
 				~~~ lua
 			end
 ~~~
@@ -617,7 +617,7 @@ Turning that into code is extremely simple
 				local Li = envCol / envPdf
 				~~~ lua highlight
 				local bsdf = result:Albedo() / math.pi
-				colour = bsdf * li * envDir:Dot(result:Normal())
+				colour = bsdf * li * math.max(envDir:Dot(result:Normal()), 0)
 				~~~ lua
 			end
 ~~~
@@ -648,7 +648,7 @@ Shadow acne is an issue caused by floating point precision where the shadow ray 
 			if not shadowRay then
 				local Li = envCol / envPdf
 				local bsdf = result:Albedo() / math.pi
-				colour = bsdf * Li * envDir:Dot(result:Normal())
+				colour = bsdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 			end
 		end
 
@@ -702,9 +702,9 @@ Then wrap our hdri sampling in a for loop and divide the final colour by the num
 					local brdf = result:Albedo() / math.pi
 					local Li = envCol / envPdf
 					~~~ lua delete
-					colour = brdf * Li * envDir:Dot(result:Normal())
+					colour = brdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 					~~~ lua highlight
-					colour = colour + brdf * Li * envDir:Dot(result:Normal())
+					colour = colour + brdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 					~~~ lua
 				end
 			end
@@ -731,7 +731,7 @@ One last improvement we can make is discarding invalid samples. The HDRI sampler
 				if not shadowRay then
 					local brdf = result:Albedo() / math.pi
 					local Li = envCol / envPdf
-					colour = colour + brdf * Li * envDir:Dot(result:Normal())
+					colour = colour + brdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 				end
 			~~~ lua highlight
 			else
@@ -801,7 +801,7 @@ Then we'll wrap our shading code in a loop and our diffuse shading code in an if
 						if not shadowRay then
 							local brdf = result:Albedo() / math.pi
 							local Li = envCol / envPdf
-							colour = colour + brdf * Li * envDir:Dot(result:Normal())
+							colour = colour + brdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 						end
 					else
 						validSamples = validSamples - 1
@@ -849,7 +849,7 @@ We'll do this using a very rudementry method of checking if the material on an e
 						if not shadowRay then
 							local brdf = result:Albedo() / math.pi
 							local Li = envCol / envPdf
-							colour = colour + brdf * Li * envDir:Dot(result:Normal())
+							colour = colour + brdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 						end
 					else
 						validSamples = validSamples - 1
@@ -979,7 +979,7 @@ Then call this function to calculate a new direction to bounce in `TracePixel`. 
 						if not shadowRay then
 							local brdf = result:Albedo() / math.pi
 							local Li = envCol / envPdf
-							colour = colour + brdf * Li * envDir:Dot(result:Normal())
+							colour = colour + brdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 						end
 					else
 						validSamples = validSamples - 1
@@ -1074,7 +1074,7 @@ Then simply multiply throughput by the Fresnel coefficient when we reflect, and 
 						if not shadowRay then
 							local brdf = result:Albedo() / math.pi
 							local Li = envCol / envPdf
-							colour = colour + brdf * Li * envDir:Dot(result:Normal())
+							colour = colour + brdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 						end
 					else
 						validSamples = validSamples - 1
@@ -1407,9 +1407,9 @@ local function TracePixel(x, y)
 							local brdf = result:Albedo() / math.pi
 							local Li = envCol / envPdf
 							~~~ lua delete
-							colour = colour + brdf * Li * envDir:Dot(result:Normal())
+							colour = colour + brdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 							~~~ lua highlight
-							local integral = brdf * Li * envDir:Dot(result:Normal())
+							local integral = brdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 							colour = colour + integral * throughput
 							~~~ lua
 						end
