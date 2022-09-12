@@ -106,7 +106,8 @@ a, .btn-link {
 	transform: rotate(45deg) translate(30%, 40%);
 	background: #ffaf71;
 	box-shadow: 32px -34px 0 5px #ff8000;
-	animation: slide 2s infinite ease-in-out alternate;
+	-webkit-animation: slide 2s infinite ease-in-out alternate;
+	        animation: slide 2s infinite ease-in-out alternate;
 }
 .loader:after {
 	content: "";
@@ -119,13 +120,25 @@ a, .btn-link {
 	background: #ff8000;
 	transform: rotate(0deg);
 	transform-origin: 35px 145px;
-	animation: rotate 2s infinite ease-in-out;
+	-webkit-animation: rotate 2s infinite ease-in-out;
+	        animation: rotate 2s infinite ease-in-out;
+}
+
+@-webkit-keyframes slide {
+	0% , 100%{ bottom: -35px}
+	25% , 75%{ bottom: -2px}
+	20% , 80%{ bottom: 2px}
 }
 
 @keyframes slide {
 	0% , 100%{ bottom: -35px}
 	25% , 75%{ bottom: -2px}
 	20% , 80%{ bottom: 2px}
+}
+@-webkit-keyframes rotate {
+	0% { transform: rotate(-15deg)}
+	25% , 75%{ transform: rotate(0deg)}
+	100% {  transform: rotate(25deg)}
 }
 @keyframes rotate {
 	0% { transform: rotate(-15deg)}
