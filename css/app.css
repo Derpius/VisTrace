@@ -71,7 +71,7 @@ a, .btn-link {
 
 #loading-overlay {
 	width: 100vw;
-	height: 100vh;
+	height: calc(100vh - env(safe-area-inset-bottom));
 	
 	position: absolute;
 	top: 0;
