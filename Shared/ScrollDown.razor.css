@@ -1,0 +1,52 @@
+div {
+	width: 60px;
+	height: 60px;
+
+	border-radius: 100%;
+
+	position: absolute;
+	bottom: 60px;
+	left: 50%;
+	transform: translate(-50%, 50%);
+
+	cursor: pointer;
+}
+
+div::after {
+	content: "";
+
+	position: absolute;
+	top: 40%;
+	left: 50%;
+	transform: translate(-50%, 0) scale(150%, 100%) rotate(-45deg);
+
+	width: 40%;
+	height: 40%;
+
+	border: 3px solid gainsboro;
+	border-top: transparent;
+	border-right: transparent;
+}
+
+@media (max-height: 600px) {
+	div {
+		width: 40px;
+		height: 40px;
+
+		bottom: 40px;
+	}
+
+	div::after {
+		border-width: 2px;
+	}
+}
+
+@media (max-height: 350px) {
+	div {
+		display: none;
+	}
+	
+	div::after {
+		display: none;
+	}
+}
