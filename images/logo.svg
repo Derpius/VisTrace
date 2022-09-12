@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg viewBox="0 0 100 20" xmlns="http://www.w3.org/2000/svg">
 	<defs>
@@ -41,7 +40,8 @@
 	<g filter="url(#shadow)"><g filter="url(#bevel)">
 	<text
 		xml:space="preserve"
-		style="font-size: 20;font-family:'Libre Franklin';"
+		font-size="20"
+		font-family="Libre Franklin"
 		x="50%"
 		y="50%"
 		text-anchor="middle"
