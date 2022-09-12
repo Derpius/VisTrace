@@ -26,6 +26,33 @@ div::after {
 	border: 3px solid gainsboro;
 	border-top: transparent;
 	border-right: transparent;
+
+	-webkit-animation: scroll-down 1s ease-in-out infinite;
+	        animation: scroll-down 1s ease-in-out infinite;
+}
+
+@-webkit-keyframes scroll-down {
+	0% {
+		top: 22%;
+	}
+	50% {
+		top: 48%;
+	}
+	100% {
+		top: 22%;
+	}
+}
+
+@keyframes scroll-down {
+	0% {
+		top: 22%;
+	}
+	50% {
+		top: 48%;
+	}
+	100% {
+		top: 22%;
+	}
 }
 
 @media (max-height: 600px) {
@@ -45,7 +72,7 @@ div::after {
 	div {
 		display: none;
 	}
-	
+
 	div::after {
 		display: none;
 	}

@@ -1,7 +1,6 @@
 .subpage {
-	width: 100vw;
-	height: 100vh;
-	height: var(--app-height);
+	width: 100%;
+	height: 100%;
 
 	scroll-snap-align: start;
 	position: relative;
@@ -29,6 +28,12 @@
 	position: absolute;
 	top: 0;
 	left: 0;
+
+	width: 100vw;
+	height: 100vh;
+	height: var(--app-height);
+
+	overflow-y: scroll;
 
 	-ms-scroll-snap-type: y mandatory;
 	    scroll-snap-type: y mandatory;

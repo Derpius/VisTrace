@@ -32,6 +32,8 @@
 
 		function CheckPageLoaded() {
 			if (preloaders == 0) {
+				document.body.style.overflow = "initial";
+				document.documentElement.style.overflow = "initial";
 				document.getElementById("loading-overlay").remove();
 			}
 		}
