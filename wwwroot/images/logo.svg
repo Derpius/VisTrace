@@ -18,18 +18,28 @@
 			<feBlend in="SourceGraphic" in2="funcOut" mode="normal" />
 		</filter>
 
-		<filter id="bevel">
-			<feGaussianBlur in="SourceAlpha" stdDeviation="0.4" result="blur"/>
-			<feSpecularLighting
-				in="blur"
-				surfaceScale="3"
-				specularConstant="3" specularExponent="3"
-				result="specOut" lighting-color="#8d4c02"
-			>
-			<fePointLight x="5000" y="-5000" z="-1000"/>
-			</feSpecularLighting>
-			<feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut2"/>
-			<feComposite in="SourceGraphic" in2="specOut2" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litPaint" />
+		<filter id="bevel-light">
+			<feOffset result="offOut" in="SourceGraphic" dx="0.08" dy="-0.08" />
+			<feComponentTransfer in="offOut" result="funcOut">
+				<feFuncR type="linear" slope="1.5" />
+				<feFuncG type="linear" slope="1.5" />
+				<feFuncB type="linear" slope="1.5" />
+			</feComponentTransfer>
+			<feBlend in="SourceGraphic" in2="funcOut" mode="normal" />
+		</filter>
+
+		<filter id="bevel-dark">
+			<feOffset result="offOut" in="SourceGraphic" dx="-0.08" dy="0.08" />
+			<feComponentTransfer in="offOut" result="funcOut">
+				<feFuncR type="linear" slope="0.5" />
+				<feFuncG type="linear" slope="0.5" />
+				<feFuncB type="linear" slope="0.5" />
+			</feComponentTransfer>
+			<feBlend in="SourceGraphic" in2="funcOut" mode="normal" />
+		</filter>
+
+		<filter id="blend">
+			<feGaussianBlur in="SourceGraphic" stdDeviation="0.04" />
 		</filter>
 
 		<mask id="ray" maskUnits="userSpaceOnUse">
@@ -37,7 +47,7 @@
 			<rect width="100%" height="0.7" y="11.3" fill="black"/>
 		</mask>
 	</defs>
-	<g filter="url(#shadow)"><g filter="url(#bevel)">
+	<g filter="url(#shadow)"><g filter="url(#blend)"><g filter="url(#bevel-dark)"><g filter="url(#bevel-light)">
 	<text
 		xml:space="preserve"
 		font-size="20"
@@ -46,11 +56,11 @@
 		y="50%"
 		text-anchor="middle"
 		dominant-baseline="central"
-		fill="#d36600"
+		fill="#ee7b0f"
 		filter=""
 		mask="url(#ray)"
 	>VisTrace</text>
-	<circle fill="#d36600" cx="8.7" cy="11.65" r="0.8" />
-	<circle fill="#d36600" cx="94.4" cy="11.65" r="0.8" />
-	</g></g>
+	<circle fill="#ee7b0f" cx="8.7" cy="11.65" r="0.8" />
+	<circle fill="#ee7b0f" cx="94.4" cy="11.65" r="0.8" />
+	</g></g></g></g>
 </svg>
