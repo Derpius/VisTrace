@@ -20,13 +20,15 @@
 	align-items: center;
 	justify-content: center;
 
-	backdrop-filter: blur(0.5vw) grayscale(30%);
+	-webkit-backdrop-filter: blur(0.5vw) grayscale(30%);
+	        backdrop-filter: blur(0.5vw) grayscale(30%);
 }
 
 .page-container[b-iceat66jhc] {
 	overflow-y: scroll;
 	height: 100vh;
-	scroll-snap-type: y mandatory;
+	-ms-scroll-snap-type: y mandatory;
+	    scroll-snap-type: y mandatory;
 	scroll-behavior: smooth;
 	background-color: #343638;
 }
@@ -60,7 +62,20 @@
 	border-top: transparent;
 	border-right: transparent;
 
-	animation: scroll-down-b-iceat66jhc 1s ease-in-out infinite;
+	-webkit-animation: scroll-down 1s ease-in-out infinite;
+	        animation: scroll-down-b-iceat66jhc 1s ease-in-out infinite;
+}
+
+@-webkit-keyframes scroll-down {
+	0% {
+		top: 22%;
+	}
+	50% {
+		top: 48%;
+	}
+	100% {
+		top: 22%;
+	}
 }
 
 @keyframes scroll-down-b-iceat66jhc {
