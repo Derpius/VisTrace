@@ -50,10 +50,14 @@
 
 		const AppHeight = () => {
 			const doc = document.documentElement
-			doc.style.setProperty('--app-height', `${window.innerHeight}px`)
+			doc.style.setProperty('--app-height', `${window.innerHeight}px`);
 		}
-		window.addEventListener('resize', AppHeight)
-		AppHeight()
+		window.addEventListener('resize', AppHeight);
+		AppHeight();
+
+		window.addEventListener("load", function () {
+			document.body.scrollTo(0);
+		})
 	</script>
 
 	<!-- Start Single Page Apps for GitHub Pages -->
