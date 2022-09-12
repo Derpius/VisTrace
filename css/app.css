@@ -69,13 +69,108 @@ a, .btn-link {
 	display: none;
 }
 
-.background-image {
+#loading-overlay {
+	width: 100vw;
+	height: 100vh;
+	
 	position: absolute;
-	left: 0;
 	top: 0;
-	min-width: 100%;
-	min-height: 100%;
+	left: 0;
 
-	background-position: center;
-	background-size: cover;
+	background-color: #343638;
+	z-index: 1;
+
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
+.lds-default {
+	display: inline-block;
+	position: relative;
+
+	width: 300px;
+	height: 300px;
+	max-width: 60vh;
+	max-height: 60vh;
+}
+.lds-default div {
+	position: absolute;
+	width: 7.5%;
+	height: 7.5%;
+	border-radius: 50%;
+	animation: lds-default 1.2s linear infinite;
+}
+.lds-default div:nth-child(1) {
+	animation-delay: 0s;
+	top: 46.25%;
+	left: 82.5%;
+}
+.lds-default div:nth-child(2) {
+	animation-delay: -0.1s;
+	top: 27.5%;
+	left: 77.5%;
+}
+.lds-default div:nth-child(3) {
+	animation-delay: -0.2s;
+	top: 13.75%;
+	left: 65%;
+}
+.lds-default div:nth-child(4) {
+	animation-delay: -0.3s;
+	top: 8.75%;
+	left: 46.25%;
+}
+.lds-default div:nth-child(5) {
+	animation-delay: -0.4s;
+	top: 13.75%;
+	left: 27.5%;
+}
+.lds-default div:nth-child(6) {
+	animation-delay: -0.5s;
+	top: 27.5%;
+	left: 13.75%;
+}
+.lds-default div:nth-child(7) {
+	animation-delay: -0.6s;
+	top: 46.25%;
+	left: 8.75%;
+}
+.lds-default div:nth-child(8) {
+	animation-delay: -0.7s;
+	top: 65%;
+	left: 13.75%;
+}
+.lds-default div:nth-child(9) {
+	animation-delay: -0.8s;
+	top: 77.5%;
+	left: 27.5%;
+}
+.lds-default div:nth-child(10) {
+	animation-delay: -0.9s;
+	top: 82.5%;
+	left: 46.25%;
+}
+.lds-default div:nth-child(11) {
+	animation-delay: -1s;
+	top: 77.5%;
+	left: 65%;
+}
+.lds-default div:nth-child(12) {
+	animation-delay: -1.1s;
+	top: 65%;
+	left: 77.5%;
+}
+@keyframes lds-default {
+	0%, 20%, 80%, 100% {
+		transform: scale(1);
+		background: #f48a21;
+		filter: drop-shadow(0 0 3px #f48a21) blur(1px);
+	}
+	50% {
+		transform: scale(1.5);
+		background: #f19539;
+		filter: drop-shadow(0 0 8px #f19539) blur(1px);
+	}
 }

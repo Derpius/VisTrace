@@ -31,10 +31,6 @@
 	background-color: #343638;
 }
 
-.background-image[b-iceat66jhc] {
-	opacity: 0.3;
-}
-
 .scroll-down[b-iceat66jhc] {
 	width: 60px;
 	height: 60px;
@@ -100,6 +96,19 @@
 	.scroll-down[b-iceat66jhc]::after {
 		display: none;
 	}
+}
+/* /Shared/BackgroundImage.razor.rz.scp.css */
+div[b-jd579xl96x] {
+	position: absolute;
+	left: 0;
+	top: 0;
+	min-width: 100%;
+	min-height: 100%;
+
+	background-position: center;
+	background-size: cover;
+
+	opacity: 0.3;
 }
 /* /Shared/MainLayout.razor.rz.scp.css */
 .page[b-ekin2501af] {
