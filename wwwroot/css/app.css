@@ -1,11 +1,16 @@
-﻿html, body {
+﻿:root {
+	--app-height: 100%;
+}
+
+html, body {
 	font-family: Verdana, 'Verdana Ref', sans-serif;
 
 	overflow: hidden;
 	-ms-overflow-style: none;  /* IE and Edge */
 	scrollbar-width: none;  /* Firefox */
 
-	height: -webkit-fill-available;
+	height: 100vh;
+	height: var(--app-height);
 }
 
 h1:focus {
@@ -74,7 +79,7 @@ a, .btn-link {
 #loading-overlay {
 	width: 100vw;
 	height: 100vh;
-	height: -webkit-fill-available;
+	height: var(--app-height);
 	
 	position: absolute;
 	top: 0;
