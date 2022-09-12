@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg viewBox="0 0 100 20" xmlns="http://www.w3.org/2000/svg">
+	<defs>
+		<filter id="shadow">
+			<feOffset result="offOut" in="SourceGraphic" dx="-0.2" dy="0.2" />
+			<feGaussianBlur result="blurOut" in="offOut" stdDeviation="1" />
+			<feComponentTransfer in="blurOut" result="funcOut">
+				<feFuncR type="linear" slope="0" />
+				<feFuncG type="linear" slope="0" />
+				<feFuncB type="linear" slope="0" />
+				<feFuncA type="linear" slope="0.3"/>
+			</feComponentTransfer>
+			<feBlend in="SourceGraphic" in2="funcOut" mode="normal" />
+		</filter>
+
+		<filter id="bevel">
+			<feGaussianBlur in="SourceAlpha" stdDeviation="0.4" result="blur"/>
+			<feSpecularLighting
+				in="blur"
+				surfaceScale="3"
+				specularConstant="3" specularExponent="3"
+				result="specOut" lighting-color="#8d4c02"
+			>
+			<fePointLight x="5000" y="-5000" z="-1000"/>
+			</feSpecularLighting>
+			<feComposite in="specOut" in2="SourceAlpha" operator="in" result="specOut2"/>
+			<feComposite in="SourceGraphic" in2="specOut2" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litPaint" />
+		</filter>
+
+		<mask id="ray" maskUnits="userSpaceOnUse">
+			<rect width="100%" height="100%" fill="white"/>
+			<rect width="100%" height="0.7" y="11.65" fill="black"/>
+		</mask>
+	</defs>
+	<g filter="url(#shadow)"><g filter="url(#bevel)">
+	<text
+		xml:space="preserve"
+		style="font-size: 22;font-style:italic;font-family:'Franklin Gothic Heavy', Arial, sans-serif;"
+		x="50%"
+		y="50%"
+		text-anchor="middle"
+		dominant-baseline="central"
+		fill="#d36600"
+		filter=""
+		mask="url(#ray)"
+	>VisTrace</text>
+	<circle fill="#d36600" cx="7.9" cy="calc(11.65 + 0.7/2)" r="0.8" />
+	<circle fill="#d36600" cx="94.4" cy="calc(11.65 + 0.7/2)" r="0.8" />
+	</g></g>
+</svg>
