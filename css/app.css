@@ -10,6 +10,8 @@ html, body {
 
 	height: 100vh;
 	height: var(--app-height);
+
+	overflow: hidden;
 }
 
 h1:focus {

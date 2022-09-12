@@ -1,8 +1,7 @@
 /* /Pages/Index.razor.rz.scp.css */
 .subpage[b-iceat66jhc] {
-	width: 100vw;
-	height: 100vh;
-	height: var(--app-height);
+	width: 100%;
+	height: 100%;
 
 	scroll-snap-align: start;
 	position: relative;
@@ -30,6 +29,12 @@
 	position: absolute;
 	top: 0;
 	left: 0;
+
+	width: 100vw;
+	height: 100vh;
+	height: var(--app-height);
+
+	overflow-y: scroll;
 
 	-ms-scroll-snap-type: y mandatory;
 	    scroll-snap-type: y mandatory;
@@ -99,6 +104,33 @@ div[b-l9e8us6zyr]::after {
 	border: 3px solid gainsboro;
 	border-top: transparent;
 	border-right: transparent;
+
+	-webkit-animation: scroll-down 1s ease-in-out infinite;
+	        animation: scroll-down-b-l9e8us6zyr 1s ease-in-out infinite;
+}
+
+@-webkit-keyframes scroll-down {
+	0% {
+		top: 22%;
+	}
+	50% {
+		top: 48%;
+	}
+	100% {
+		top: 22%;
+	}
+}
+
+@keyframes scroll-down-b-l9e8us6zyr {
+	0% {
+		top: 22%;
+	}
+	50% {
+		top: 48%;
+	}
+	100% {
+		top: 22%;
+	}
 }
 
 @media (max-height: 600px) {
@@ -118,7 +150,7 @@ div[b-l9e8us6zyr]::after {
 	div[b-l9e8us6zyr] {
 		display: none;
 	}
-	
+
 	div[b-l9e8us6zyr]::after {
 		display: none;
 	}
