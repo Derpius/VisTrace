@@ -1,0 +1,51 @@
+name: Deploy Blazor Site
+on:
+  push:
+    branches:
+      - blazor-site
+  pull_request:
+    branches:
+      - blazor-site
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: "6.0.x"
+
+      - name: Publish site
+        run: dotnet publish --configuration Release --output build
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: site
+          path: build
+  
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: site
+          path: build
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: build/wwwroot
+          branch: ghpages
+          commit-message: Deploy Site ${{ github.sha }}
