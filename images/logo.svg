@@ -3,6 +3,10 @@
 
 <svg viewBox="0 0 100 20" xmlns="http://www.w3.org/2000/svg">
 	<defs>
+		<style type="text/css">
+			@import url("https://fonts.googleapis.com/css?family=Libre+Franklin:900italic");
+		</style>
+
 		<filter id="shadow">
 			<feOffset result="offOut" in="SourceGraphic" dx="-0.2" dy="0.2" />
 			<feGaussianBlur result="blurOut" in="offOut" stdDeviation="1" />
@@ -31,13 +35,13 @@
 
 		<mask id="ray" maskUnits="userSpaceOnUse">
 			<rect width="100%" height="100%" fill="white"/>
-			<rect width="100%" height="0.7" y="11.65" fill="black"/>
+			<rect width="100%" height="0.7" y="11.3" fill="black"/>
 		</mask>
 	</defs>
 	<g filter="url(#shadow)"><g filter="url(#bevel)">
 	<text
 		xml:space="preserve"
-		style="font-size: 22;font-style:italic;font-family:'Franklin Gothic Heavy', Arial, sans-serif;"
+		style="font-size: 20;font-family:'Libre Franklin';"
 		x="50%"
 		y="50%"
 		text-anchor="middle"
@@ -46,7 +50,7 @@
 		filter=""
 		mask="url(#ray)"
 	>VisTrace</text>
-	<circle fill="#d36600" cx="7.9" cy="12" r="0.8" />
-	<circle fill="#d36600" cx="94.4" cy="12" r="0.8" />
+	<circle fill="#d36600" cx="8.7" cy="11.65" r="0.8" />
+	<circle fill="#d36600" cx="94.4" cy="11.65" r="0.8" />
 	</g></g>
 </svg>
