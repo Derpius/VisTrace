@@ -1,7 +1,8 @@
 /* /Pages/Index.razor.rz.scp.css */
 .subpage[b-iceat66jhc] {
 	width: 100vw;
-	height: calc(100vh - env(safe-area-inset-bottom));
+	height: 100vh;
+
 	scroll-snap-align: start;
 	position: relative;
 
@@ -25,11 +26,15 @@
 }
 
 .page-container[b-iceat66jhc] {
+	width: 100vw;
+	height: 100vh;
+
 	overflow-y: scroll;
-	height: calc(100vh - env(safe-area-inset-bottom));
+
 	-ms-scroll-snap-type: y mandatory;
 	    scroll-snap-type: y mandatory;
 	scroll-behavior: smooth;
+
 	background-color: #343638;
 }
 

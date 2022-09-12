@@ -4,6 +4,8 @@
 	overflow: hidden;
 	-ms-overflow-style: none;  /* IE and Edge */
 	scrollbar-width: none;  /* Firefox */
+
+	height: -webkit-fill-available;
 }
 
 h1:focus {
@@ -71,7 +73,8 @@ a, .btn-link {
 
 #loading-overlay {
 	width: 100vw;
-	height: calc(100vh - env(safe-area-inset-bottom));
+	height: 100vh;
+	height: -webkit-fill-available;
 	
 	position: absolute;
 	top: 0;
