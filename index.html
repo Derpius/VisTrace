@@ -32,6 +32,7 @@
 
 		function CheckPageLoaded() {
 			if (preloaders == 0) {
+				window.scroll(0, 0);
 				document.getElementById("loading-overlay").remove();
 			}
 		}
