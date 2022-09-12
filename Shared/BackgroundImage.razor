@@ -1,0 +1,15 @@
+@inject IJSRuntime JS
+
+<div
+	style="background-image: url(@src)"
+></div>
+
+@code {
+	[Parameter]  
+	public string src { get; set; }
+
+	protected override async Task OnInitializedAsync()
+	{
+		await JS.InvokeVoidAsync("PreloadImage", src);
+	}
+}

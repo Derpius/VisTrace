@@ -22,7 +22,32 @@
 </head>
 
 <body>
-	<div id="app">Loading...</div>
+	<div id="loading-overlay">
+		<div class="lds-default"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+	</div>
+	<div id="app"></div>
+
+	<script type="text/javascript">
+		let preloaders = 0;
+
+		function CheckPageLoaded() {
+			if (preloaders == 0) {
+				document.getElementById("loading-overlay").remove();
+			}
+		}
+
+		function PreloadImage(src) {
+			console.log("Preloading Image");
+			preloaders++;
+
+			img = new Image();
+			img.onload = function () {
+				preloaders--;
+				CheckPageLoaded();
+			}
+			img.src = src;
+		}
+	</script>
 
 	<!-- Start Single Page Apps for GitHub Pages -->
 	<script type="text/javascript">
