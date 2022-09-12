@@ -43,6 +43,9 @@ jobs:
           name: site
           path: build
 
+      - name: Change base tag
+        run: sed -i 's/<base href="\/" \/>/<base href="\/VisTrace\/" \/>/g' build/wwwroot/index.html
+
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
