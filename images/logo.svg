@@ -46,7 +46,7 @@
 		filter=""
 		mask="url(#ray)"
 	>VisTrace</text>
-	<circle fill="#d36600" cx="7.9" cy="calc(11.65 + 0.7/2)" r="0.8" />
-	<circle fill="#d36600" cx="94.4" cy="calc(11.65 + 0.7/2)" r="0.8" />
+	<circle fill="#d36600" cx="7.9" cy="12" r="0.8" />
+	<circle fill="#d36600" cx="94.4" cy="12" r="0.8" />
 	</g></g>
 </svg>
