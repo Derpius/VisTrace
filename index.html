@@ -47,6 +47,13 @@
 			}
 			img.src = src;
 		}
+
+		const AppHeight = () => {
+			const doc = document.documentElement
+			doc.style.setProperty('--app-height', `${window.innerHeight}px`)
+		}
+		window.addEventListener('resize', AppHeight)
+		AppHeight()
 	</script>
 
 	<!-- Start Single Page Apps for GitHub Pages -->

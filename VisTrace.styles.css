@@ -1,7 +1,7 @@
 /* /Pages/Index.razor.rz.scp.css */
 .subpage[b-iceat66jhc] {
-	width: 100vw;
-	height: 100vh;
+	width: 100%;
+	height: 100%;
 
 	scroll-snap-align: start;
 	position: relative;
@@ -26,8 +26,13 @@
 }
 
 .page-container[b-iceat66jhc] {
+	position: absolute;
+	top: 0;
+	left: 0;
+
 	width: 100vw;
 	height: 100vh;
+	height: var(--app-height);
 
 	overflow-y: scroll;
 
