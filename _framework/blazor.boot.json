@@ -35,7 +35,7 @@
       "System.Runtime.dll": "sha256-GPvDGADd5xzaYQJ3SrH2A3Nxquou\/a4EV2S5Qp23f4I=",
       "System.Text.Encodings.Web.dll": "sha256-YDdw97yEeGERivHPm7zTAX9p\/X\/guaJ8M7gADPmnXBw=",
       "System.Text.Json.dll": "sha256-q7c5U4+5VHfRrIyq46osmniVG1OlGL5i8ChbbZsnu6U=",
-      "VisTrace.dll": "sha256-j+Dk7xOGPC9EMxMqbQyGGTJR8yR6FSBahDLzoPzVEII="
+      "VisTrace.dll": "sha256-dxPRym5xLU3VSucJQ13L9cM3rR6KXy9MwKng6TMx1qA="
     },
     "extensions": null,
     "lazyAssembly": null,
