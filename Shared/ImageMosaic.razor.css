@@ -39,19 +39,39 @@
 	font-variant: small-caps;
 
 	opacity: 0;
-	backdrop-filter: brightness(100%);
+	-webkit-backdrop-filter: brightness(100%);
+	        backdrop-filter: brightness(100%);
+
+	transition:
+		opacity 0.3s ease-in-out,
+		-webkit-backdrop-filter 0.3s ease-in-out;
 
 	transition:
 		opacity 0.3s ease-in-out,
 		backdrop-filter 0.3s ease-in-out;
+
+	transition:
+		opacity 0.3s ease-in-out,
+		backdrop-filter 0.3s ease-in-out,
+		-webkit-backdrop-filter 0.3s ease-in-out;
 }
 .text-container:hover {
 	opacity: 0.8;
-	backdrop-filter: brightness(30%);
+	-webkit-backdrop-filter: brightness(30%);
+	        backdrop-filter: brightness(30%);
+
+	transition:
+		opacity 0.3s ease-in-out,
+		-webkit-backdrop-filter 0.3s ease-in-out;
 
 	transition:
 		opacity 0.3s ease-in-out,
 		backdrop-filter 0.3s ease-in-out;
+
+	transition:
+		opacity 0.3s ease-in-out,
+		backdrop-filter 0.3s ease-in-out,
+		-webkit-backdrop-filter 0.3s ease-in-out;
 }
 
 span {
