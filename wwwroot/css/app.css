@@ -154,3 +154,11 @@ a, .btn-link {
 	25% , 75%{ transform: rotate(0deg)}
 	100% {  transform: rotate(25deg)}
 }
+
+.flex-column {
+	flex-direction: column;
+}
+
+.flex-row {
+	flex-direction: column;
+}

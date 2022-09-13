@@ -5,8 +5,8 @@
 ></div>
 
 @code {
-	[Parameter]
-	public string src { get; set; }
+	[Parameter, EditorRequired]
+	public string src { get; set; } = null!;
 
 	protected override async Task OnInitializedAsync()
 	{

@@ -67,13 +67,3 @@ div::after {
 		border-width: 2px;
 	}
 }
-
-@media (max-height: 350px) {
-	div {
-		display: none;
-	}
-
-	div::after {
-		display: none;
-	}
-}

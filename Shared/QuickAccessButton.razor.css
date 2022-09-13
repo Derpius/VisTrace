@@ -1,0 +1,52 @@
+a {
+	flex-grow: 1;
+	flex-basis: 100%;
+	max-width: 800px;
+	aspect-ratio: 1/1; /* Experimental but supported by 90.11% of users according to https://caniuse.com/?search=aspect-ratio */
+
+	border-radius: 100%;
+	background-color: rgba(33, 33, 33, 0.5);
+
+	position: relative;
+
+	cursor: pointer;
+}
+
+i, span {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+
+	text-align: center;
+	text-anchor: middle;
+
+	-webkit-user-select: none; /* Safari */        
+	-moz-user-select: none; /* Firefox */
+	-ms-user-select: none; /* IE10+/Edge */
+	user-select: none; /* Standard */
+
+	color: gainsboro;
+}
+
+i {
+	font-size: 12vw;
+
+	opacity: 1;
+	transition: opacity 0.3s ease-in-out;
+}
+a:hover > i {
+	opacity: 0;
+}
+
+span {
+	font-size: 3.4vw;
+	font-weight: lighter;
+	letter-spacing: 0.8vw;
+
+	opacity: 0;
+	transition: opacity 0.3s ease-in-out;
+}
+a:hover > span {
+	opacity: 1;
+}

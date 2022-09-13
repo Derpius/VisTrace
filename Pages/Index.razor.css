@@ -16,7 +16,6 @@
 	min-height: 100%;
 
 	display: flex;
-	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 
@@ -40,4 +39,10 @@
 	scroll-behavior: smooth;
 
 	background-color: #343638;
+}
+
+.quick-accesss-content {
+	gap: 5vw;
+	padding-left: 5vw;
+	padding-right: 5vw;
 }
