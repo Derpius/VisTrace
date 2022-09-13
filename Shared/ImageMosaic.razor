@@ -1,0 +1,92 @@
+<div class="container">
+
+	<div class="image standard" style="background-image: url(@StandardImgsDisplay[0].URL)">
+		<div class="text-container">
+			<span class="author">@StandardImgsDisplay[0].Author</span>
+			<span>@StandardImgsDisplay[0].Description</span>
+		</div>
+	</div>
+	<div class="image square" style="background-image: url(@SquareImgsDisplay[0].URL)">
+		<div class="text-container">
+			<span class="author">@SquareImgsDisplay[0].Author</span>
+			<span>@SquareImgsDisplay[0].Description</span>
+		</div>
+	</div>
+
+	<div class="image square" style="background-image: url(@SquareImgsDisplay[1].URL)">
+		<div class="text-container">
+			<span class="author">@SquareImgsDisplay[1].Author</span>
+			<span>@SquareImgsDisplay[1].Description</span>
+		</div>
+	</div>
+	<div class="image standard" style="background-image: url(@StandardImgsDisplay[1].URL)">
+		<div class="text-container">
+			<span class="author">@StandardImgsDisplay[1].Author</span>
+			<span>@StandardImgsDisplay[1].Description</span>
+		</div>
+	</div>
+
+	<div class="image standard" style="background-image: url(@StandardImgsDisplay[2].URL)">
+		<div class="text-container">
+			<span class="author">@StandardImgsDisplay[2].Author</span>
+			<span>@StandardImgsDisplay[2].Description</span>
+		</div>
+	</div>
+	<div class="image square" style="background-image: url(@SquareImgsDisplay[2].URL)">
+		<div class="text-container">
+			<span class="author">@SquareImgsDisplay[2].Author</span>
+			<span>@SquareImgsDisplay[2].Description</span>
+		</div>
+	</div>
+</div>
+
+@code {
+	private Random random = new Random();
+	private ImageInfo[] StandardImgsDisplay = new ImageInfo[3];
+	private ImageInfo[] SquareImgsDisplay = new ImageInfo[3];
+
+	struct ImageInfo
+	{
+		public string Author;
+		public string Description;
+		public string URL { get; init; }
+
+		public ImageInfo(string author, string description)
+		{
+			Author = author;
+			Description = description;
+			URL = String.Format("images/showcase/{0},{1}.png", author, Uri.EscapeDataString(description));
+		}
+	}
+
+	private ImageInfo[] standardImages = {
+		new ImageInfo("Derpius", "VisTrace Background"),
+		new ImageInfo("Derpius", "Duel of the Fates"),
+		new ImageInfo("Derpius", "Fork Alpha Testing")
+	};
+	private ImageInfo[] squareImages = {
+		new ImageInfo("Derpius", "Tonemapping Showcase"),
+		new ImageInfo("PotatoOS", "Area Light Doll"),
+		new ImageInfo("PotatoOS", "Doll Photoshoot")
+	};
+
+	protected override void OnInitialized()
+	{
+		standardImages = standardImages.OrderBy(x => random.Next()).ToArray();
+		for (int i = 0; i < StandardImgsDisplay.Length; i++) {
+			StandardImgsDisplay[i] = standardImages[i % standardImages.Length];
+		}
+
+		squareImages = squareImages.OrderBy(x => random.Next()).ToArray();
+		for (int i = 0; i < SquareImgsDisplay.Length; i++) {
+			SquareImgsDisplay[i] = squareImages[i % squareImages.Length];
+		}
+	}
+
+#line default
+#line hidden
+#nullable disable
+	
+}
+
+
