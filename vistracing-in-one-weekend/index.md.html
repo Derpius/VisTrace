@@ -1,7 +1,6 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-	<base href="/VisTrace/" />
 
 	<title>VisTracing in One Weekend</title>
 	<meta name="description" content="Tutorial book on using VisTrace in the style of Ray Tracing in One Weekend">
@@ -14,16 +13,16 @@
 	<meta property="og:image" content="https://github.com/Derpius/VisTrace/blob/branding/banner.png?raw=true">
 
 	<!-- Generated with https://realfavicongenerator.net/ -->
-	<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
-	<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=2">
-	<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=2">
-	<link rel="manifest" href="site.webmanifest?v=2">
-	<link rel="mask-icon" href="safari-pinned-tab.svg?v=2" color="#ee7b0f">
-	<link rel="shortcut icon" href="favicon.ico?v=2">
+	<link rel="apple-touch-icon" sizes="180x180" href="/VisTrace/apple-touch-icon.png?v=2">
+	<link rel="icon" type="image/png" sizes="32x32" href="/VisTrace/favicon-32x32.png?v=2">
+	<link rel="icon" type="image/png" sizes="16x16" href="/VisTrace/favicon-16x16.png?v=2">
+	<link rel="manifest" href="/VisTrace/site.webmanifest?v=2">
+	<link rel="mask-icon" href="/VisTrace/safari-pinned-tab.svg?v=2" color="#ee7b0f">
+	<link rel="shortcut icon" href="/VisTrace/favicon.ico?v=2">
 	<meta name="msapplication-TileColor" content="#343638">
 	<meta name="theme-color" content="#343638">
 
-	<link rel="stylesheet" href="vistracing-in-one-weekend/style.css?v=1">
+	<link rel="stylesheet" href="style.css?v=1">
 </head>
 
 									**VisTracing in One Weekend**
@@ -59,7 +58,7 @@ Open the file in your text editor of choice (I recommend vscode with sumneko's L
 print("VisTracing in One Weekend!")
 ~~~
 
-![Console Output](vistracing-in-one-weekend/images/console-print.png)
+![Console Output](images/console-print.png)
 
 Launch GMod and start singleplayer (or join a multiplayer server with clientside Lua enabled), open console with the grave/backtick key, and enter `lua_openscript_cl vistracer.lua`. You should see `VisTracing in One Weekend!` appear in your console! If not then check that `sv_allowcslua` is set to `1`, and that GMod has been restarted since you created `vistracer.lua` (it only hotloads existing files).  
 
@@ -82,7 +81,7 @@ hook.Add("HUDPaint", "VisTracer", function()
 end)
 ~~~
 
-![`surface.DrawRect`](vistracing-in-one-weekend/images/surface-draw.png)
+![`surface.DrawRect`](images/surface-draw.png)
 
 You may be thinking that this is how we'll render an entire image, however if you were to add a print to this hook you'd see that it's called every frame. You can imagine how laggy our game would get if we were ray tracing a scene every frame in Lua.
 
@@ -217,7 +216,7 @@ Et voila! You should now have a significantly slower to draw red rectangle! Not 
 
 Running our script now should produce a nice gradient from black to red on the x axis, and black to green on the y axis. You may also notice that the pixels are black in the *top left* of the rectangle, and not the bottom left as you might expect.
 
-![Red on the X axis and green on the Y axis](vistracing-in-one-weekend/images/xy-square.png)
+![Red on the X axis and green on the Y axis](images/xy-square.png)
 
 Tracing a Ray
 -------------
@@ -331,7 +330,7 @@ local function TracePixel(x, y)
 end
 ~~~
 
-![Kleiner sitting on a crate](vistracing-in-one-weekend/images/orthographic.png)
+![Kleiner sitting on a crate](images/orthographic.png)
 
 Because we're just adding onto the player camera's position the rays aren't centred, so you'll need to look down and to the left, but we're now tracing a scene!
 
@@ -452,7 +451,7 @@ This should work just fine but lets replace our boring black and white view with
 	end
 ~~~
 
-![The fruits of our labour](vistracing-in-one-weekend/images/pinhole-camera.png)
+![The fruits of our labour](images/pinhole-camera.png)
 
 The Rendering Equation
 ----------------------
@@ -686,7 +685,7 @@ Shadow acne is an issue caused by floating point precision where the shadow ray 
 	end
 ~~~
 
-![Woah that makes a difference!](vistracing-in-one-weekend/images/shadow-acne.png)
+![Woah that makes a difference!](images/shadow-acne.png)
 
 The second source of noise, the random sampling, can't be solved with a single function call...
 
@@ -773,7 +772,7 @@ One last improvement we can make is discarding invalid samples. The HDRI sampler
 		colour = colour / validSamples
 ~~~
 
-![With as few as 32 samples the lighting converges almost completely](vistracing-in-one-weekend/images/hdri-sampling.png)
+![With as few as 32 samples the lighting converges almost completely](images/hdri-sampling.png)
 
 Reflection
 ----------
@@ -916,7 +915,7 @@ The next step is to actually bounce off the surface to achieve reflection. Befor
 			end
 ~~~
 
-![This generates a strange effect that almost looks like specular reflection, but is entirely view independent](vistracing-in-one-weekend/images/proto-reflection.png)
+![This generates a strange effect that almost looks like specular reflection, but is entirely view independent](images/proto-reflection.png)
 
 We only have a couple things to add now to have conductive reflection, the first of which is an actual vector reflection function.  
 
@@ -1039,7 +1038,7 @@ Then call this function to calculate a new direction to bounce in `TracePixel`. 
 
 Note that we've left `camDir` as a separate variable, this is redundant at the moment but will be useful when we start path tracing.
 
-![Real specular reflection](vistracing-in-one-weekend/images/delta-reflection.png)
+![Real specular reflection](images/delta-reflection.png)
 
 We have one last step to complete in order to simulate conductors fully though, Fresnel.
 
@@ -1139,7 +1138,7 @@ Then simply multiply throughput by the Fresnel coefficient when we reflect, and 
 
 We can't use `result:Albedo()` to get the entity's colour as the debug cubemap material has no base texture, meaning VisTrace would fall back to the missing texture.
 
-![I love gold!](vistracing-in-one-weekend/images/conductor.png)
+![I love gold!](images/conductor.png)
 
 Refraction
 ----------
@@ -1227,7 +1226,7 @@ We then need to compute a new origin based on whether we're entering or exiting 
 			end
 ~~~
 
-![Equally strange looking transmission to the prototype reflection earlier](vistracing-in-one-weekend/images/proto-refraction.png)
+![Equally strange looking transmission to the prototype reflection earlier](images/proto-refraction.png)
 
 Unfortunately the vector refraction function isn't quite as simple as reflection, however the method is the same. We'll construct our transmitted vector using $A$ and $B$ vectors in the plane of incidence as with reflection, except this time the angle between the surface normal and transmitted vector is defined by Snell's law
 
@@ -1372,7 +1371,7 @@ Then we can replace our prototype transmission with our new refraction function.
 				end
 ~~~
 
-![This still looks wrong as it's missing reflection, but the hard part is done](vistracing-in-one-weekend/images/delta-refraction.png)
+![This still looks wrong as it's missing reflection, but the hard part is done](images/delta-refraction.png)
 
 We have a problem though, we need to trace both a reflection and refraction ray but our iterative algorithm only allows exploring a single path (although it's most likely possible, it would be difficult compared to a recursive algorithm).
 
@@ -1561,7 +1560,7 @@ Now we can stochastically sample reflection and refraction in our transmissive m
 					end
 ~~~
 
-![That definitely looks a lot more like a real world material than before](vistracing-in-one-weekend/images/proto-reflection-transmission.png)
+![That definitely looks a lot more like a real world material than before](images/proto-reflection-transmission.png)
 
 Now while we could use the nice and simple Schlick's approximation here too, the effect of Fresnel on dielectrics is far more apparent, so we'll implement the full dielectric Fresnel.
 
@@ -1635,7 +1634,7 @@ As the probability is the same as the contribution of each path in this instance
 
 This may not make intuitive sense if you're not already familiar with statistics, however I will explain it in more detail when we start path tracing. For now, admire your work.
 
-![A display of all facets of a specular transmissive material](vistracing-in-one-weekend/images/fresnel.png)
+![A display of all facets of a specular transmissive material](images/fresnel.png)
 
 Post Processing
 ---------------
@@ -1771,7 +1770,7 @@ Now we can drop in both tonemapping and gamma correction with ease
 		end
 ~~~
 
-![From oversaturated and blown out highlights to Blender render in a few lines of code](vistracing-in-one-weekend/images/post-processing.png)
+![From oversaturated and blown out highlights to Blender render in a few lines of code](images/post-processing.png)
 
 Conclusion
 ----------
@@ -1786,7 +1785,7 @@ You can also share any renders you make on the [VisTrace discussions show and te
 
 If you submit renders to the showcase then please use the [provided watermark](https://github.com/Derpius/VisTrace/blob/branding/watermark.svg), or I can add one using your GitHub username if not present.
 
-![Obligatory Cornell box render](vistracing-in-one-weekend/images/ray-tracer.png)
+![Obligatory Cornell box render](images/ray-tracer.png)
 
 Path Tracing
 ============
