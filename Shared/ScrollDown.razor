@@ -1,6 +1,13 @@
-<div onclick="document.getElementById('@id').scrollIntoView({ behaviour: 'smooth' })"></div>
+@if (Animated) {
+	<div class="animated" onclick="document.getElementById('@id').scrollIntoView({ behaviour: 'smooth' })"></div>
+} else {
+	<div onclick="document.getElementById('@id').scrollIntoView({ behaviour: 'smooth' })"></div>
+}
 
 @code {
 	[Parameter, EditorRequired]
 	public string id { get; set; } = null!;
+
+	[Parameter]
+	public bool Animated { get; set; } = false;
 }

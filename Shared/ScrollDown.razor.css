@@ -26,7 +26,9 @@ div::after {
 	border: 3px solid gainsboro;
 	border-top: transparent;
 	border-right: transparent;
+}
 
+div.animated::after {
 	-webkit-animation: scroll-down 1s ease-in-out infinite;
 	        animation: scroll-down 1s ease-in-out infinite;
 }
