@@ -19,6 +19,7 @@
 	
 	background-position: center;
 	background-size: cover;
+	box-shadow: -0.6vh 0.6vh 0.8vh 0.1vh #272727;
 }
 
 .text-container {
