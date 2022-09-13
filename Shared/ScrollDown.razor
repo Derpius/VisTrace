@@ -1,13 +1,6 @@
-@if (Animated) {
-	<div class="animated" onclick="document.getElementById('@id').scrollIntoView({ behaviour: 'smooth' })"></div>
-} else {
-	<div onclick="document.getElementById('@id').scrollIntoView({ behaviour: 'smooth' })"></div>
-}
+<div class='@(Animated ? "animated" : "")' onclick="document.getElementsByClassName('page-container')[0].scrollBy({top: 1, left: 0, behavior: 'smooth'})"></div>
 
 @code {
-	[Parameter, EditorRequired]
-	public string id { get; set; } = null!;
-
 	[Parameter]
 	public bool Animated { get; set; } = false;
 }
