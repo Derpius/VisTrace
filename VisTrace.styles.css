@@ -17,7 +17,6 @@
 	min-height: 100%;
 
 	display: flex;
-	flex-direction: column;
 	align-items: center;
 	justify-content: center;
 
@@ -41,6 +40,12 @@
 	scroll-behavior: smooth;
 
 	background-color: #343638;
+}
+
+.quick-accesss-content[b-iceat66jhc] {
+	gap: 5vw;
+	padding-left: 5vw;
+	padding-right: 5vw;
 }
 /* /Shared/BackgroundImage.razor.rz.scp.css */
 div[b-jd579xl96x] {
@@ -75,6 +80,58 @@ main[b-ekin2501af] {
 	}
 }
 /* /Shared/QuickAccessButton.razor.rz.scp.css */
+a[b-itjfkasbdd] {
+	flex-grow: 1;
+	flex-basis: 100%;
+	max-width: 800px;
+	aspect-ratio: 1/1; /* Experimental but supported by 90.11% of users according to https://caniuse.com/?search=aspect-ratio */
+
+	border-radius: 100%;
+	background-color: rgba(33, 33, 33, 0.5);
+
+	position: relative;
+
+	cursor: pointer;
+}
+
+i[b-itjfkasbdd], span[b-itjfkasbdd] {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+
+	text-align: center;
+	text-anchor: middle;
+
+	-webkit-user-select: none; /* Safari */        
+	-moz-user-select: none; /* Firefox */
+	-ms-user-select: none; /* IE10+/Edge */
+	user-select: none; /* Standard */
+
+	color: gainsboro;
+}
+
+i[b-itjfkasbdd] {
+	font-size: 12vw;
+
+	opacity: 1;
+	transition: opacity 0.3s ease-in-out;
+}
+a:hover > i[b-itjfkasbdd] {
+	opacity: 0;
+}
+
+span[b-itjfkasbdd] {
+	font-size: 3.4vw;
+	font-weight: lighter;
+	letter-spacing: 0.8vw;
+
+	opacity: 0;
+	transition: opacity 0.3s ease-in-out;
+}
+a:hover > span[b-itjfkasbdd] {
+	opacity: 1;
+}
 /* /Shared/ScrollDown.razor.rz.scp.css */
 div[b-l9e8us6zyr] {
 	width: 60px;
@@ -143,15 +200,5 @@ div[b-l9e8us6zyr]::after {
 
 	div[b-l9e8us6zyr]::after {
 		border-width: 2px;
-	}
-}
-
-@media (max-height: 350px) {
-	div[b-l9e8us6zyr] {
-		display: none;
-	}
-
-	div[b-l9e8us6zyr]::after {
-		display: none;
 	}
 }
