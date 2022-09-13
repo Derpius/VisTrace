@@ -82,6 +82,7 @@ div[b-jd579xl96x] {
 	
 	background-position: center;
 	background-size: cover;
+	box-shadow: -0.6vh 0.6vh 0.8vh 0.1vh #272727;
 }
 
 .text-container[b-5ncr4frsnk] {
@@ -170,6 +171,7 @@ a[b-itjfkasbdd] {
 
 	border-radius: 100%;
 	background-color: rgba(33, 33, 33, 0.5);
+	filter: drop-shadow(0 0 0.4vw #212121);
 
 	position: relative;
 
