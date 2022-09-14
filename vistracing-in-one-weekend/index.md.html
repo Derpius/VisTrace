@@ -2274,6 +2274,85 @@ They both converge to the same solution as they're both unbiased, however import
 Next Event Estimation
 ---------------------
 
+While importance sampling only makes a big improvement to specular surfaces, next event estimation is the opposite.
+
+Despite the seemingly complicated name, next event estimation is just an application of the direct light sampling we did when ray tracing to path tracing.
+
+We'll first rename our `SampleHemisphere` function to the more accurate `SampleLambert`, as well as adding two new functions: `EvalLambert` and `EvalLambertPDF` (which we wont be using just yet)
+
+~~~ lua delete
+local function SampleHemisphere(result, r1, r2)
+~~~ lua highlight
+local function SampleLambert(result, r1, r2)
+~~~ lua
+	local z = math.sqrt(r1)
+	local sinTheta = math.sqrt(1 - r1)
+	local phi = 2 * math.pi * r2
+
+	return {
+		scattered = (
+			sinTheta * math.cos(phi) * result:Tangent() +
+			sinTheta * math.sin(phi) * result:Binormal() +
+			z                        * result:Normal()
+		),
+		weight    = result:Albedo(),
+		pdf       = z / math.pi
+	}
+end
+
+
+~~~ lua highlight
+local function EvalLambert(result, scattered)
+	local cosTheta = scattered:Dot(result:Normal())
+	if cosTheta <= 0 then return Vector(0, 0, 0) end
+
+	return result:Albedo() / math.pi * cosTheta
+end
+
+local function EvalLambertPDF(result, scattered)
+	local cosTheta = scattered:Dot(result:Normal())
+	if cosTheta <= 0 then return 0 end
+
+	return cosTheta / math.pi
+end
+~~~
+
+Then we'll add a slight modification of our diffuse lighting from the ray tracer
+
+~~~ lua
+			for depth = 1, MAX_DEPTH do
+				~~~ lua delete
+				local sample = SampleHemisphere(result, sampler:GetFloat2D())
+				throughput = throughput * sample.weight
+				~~~ lua highlight
+				local sample = SampleLambert(result, sampler:GetFloat2D())
+				~~~ lua
+
+				local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+
+
+				~~~ lua highlight
+				local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+				if envValid then
+					local shadowRay = accel:Traverse(origin, envDir)
+					if not shadowRay then
+						colour = colour + throughput * EvalLambert(result, envDir) * envCol / envPdf
+					end
+				end
+
+				throughput = throughput * sample.weight
+				~~~ lua
+
+				result = accel:Traverse(origin, sample.scattered)
+				if not result then
+					colour = colour + hdri:GetPixel(sample.scattered) * throughput
+					break
+				end
+			end
+~~~
+
+![Left: importance sampling, right: importance sampling + next event estimation](images/next-event-estimation.png)
+
 Multiple Importance Sampling
 ----------------------------
 
