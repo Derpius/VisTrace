@@ -1863,8 +1863,323 @@ L(\mathbf{x}_d, \omega_o) = L_e(\mathbf{x}_d, \omega_o) + \lim_{N \to +\infty} \
 
 I've renamed some terms to make the recursive nature of the rendering equation more obvious, as well as showing incrementing the path vertex $\mathbf{x}$ as we traverse the scene. Also $PDF$ (probability distribution function) is just the technical name for the $p$ function in the Monte Carlo example.
 
-Brute Force Path Tracing
+Naive Path Tracing
 ------------------------
+
+Now that we've got the theory out of the way it's time to implement.
+
+Before we start writing code we need to remove all of the existing lighting calculations from our `TracePixel` function. You should save a copy of your finished ray tracer in case you want to revisit it later
+
+~~~ lua
+...
+
+local camPos, camAng = LocalPlayer():EyePos(), LocalPlayer():EyeAngles()
+local function TracePixel(x, y)
+	local camX = (1 - 2 * (x + 0.5) / RESX) * camScaleHorizontal
+	local camY = (1 - 2 * (y + 0.5) / RESY) * camScaleVertical
+
+	local camDir = Vector(1, camX, camY)
+	camDir:Rotate(camAng)
+	camDir:Normalize()
+
+	local camRay = accel:Traverse(camPos, camDir)
+	if camRay then
+		local colour = Vector()
+
+		local validSamples = SAMPLES
+		for sample = 1, SAMPLES do
+			local result = camRay
+			~~~ lua delete
+			local direction = camDir
+			~~~ lua
+			local throughput = Vector(1, 1, 1)
+
+			for depth = 1, MAX_DEPTH do
+				local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+				~~~ lua delete
+				local diffuse = true
+				if result:Entity():IsValid() then
+					diffuse = result:Entity():GetMaterial() ~= "debug/env_cubemap_model"
+				end
+
+				if diffuse then
+					local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+					if envValid then
+						local shadowRay = accel:Traverse(origin, envDir)
+						if not shadowRay then
+							local brdf = result:Albedo() / math.pi
+							local Li = envCol / envPdf
+							local integral = brdf * Li * math.max(envDir:Dot(result:Normal()), 0)
+							colour = colour + integral * throughput
+						end
+					else
+						validSamples = validSamples - 1
+					end
+
+					break
+				else
+					local entColour = result:Entity():GetColor()
+
+					if entColour.a == 255 then
+						direction = Reflect(direction, result:Normal())
+						throughput = throughput * FresnelSchlicks(
+							direction, result:Normal(),
+							Vector(entColour.r / 255, entColour.g / 255, entColour.b / 255)
+						)
+						result = accel:Traverse(origin, direction)
+					else
+						local upNormal = result:Normal()
+						local eta = 1.5 / 1
+
+						if not result:FrontFacing() then
+							upNormal = -upNormal
+							eta = 1 / eta
+						end
+
+						local reflection = sampler:GetFloat() < FresnelDielectric(direction, upNormal, eta)
+						origin = reflection == result:FrontFacing() and
+							origin or
+							vistrace.CalcRayOrigin(
+								result:Pos(),
+								-result:GeometricNormal()
+							)
+
+						direction = reflection and
+							Reflect(direction, upNormal) or
+							Refract(direction, upNormal, 1 / eta)
+
+						if direction == Vector(0, 0, 0) then
+							colour = colour + Vector(1, 0, 0)
+							break
+						end
+						result = accel:Traverse(origin, direction)
+					end
+
+					if not result then
+						colour = colour + hdri:GetPixel(direction) * throughput
+						break
+					end
+				end
+				~~~ lua
+			end
+		end
+
+		return colour / validSamples
+	else
+		return hdri:GetPixel(camDir)
+	end
+end
+
+...
+~~~
+
+As you can see, the way we implemented sampling into the ray tracer allowed us to easily reuse the core logic.
+
+We also need to remove our shading functions as this will all be handled by the VisTrace BSDF later on
+
+~~~ lua
+...
+
+
+~~~ lua delete
+local function Reflect(i, n)
+	return i - 2 * i:Dot(n) * n
+end
+
+local function Refract(i, n, invEta)
+	local c1 = -i:Dot(n)
+	local c2sqr = 1 - invEta * invEta * (1 - c1 * c1)
+
+	if c2sqr < 0 then -- Total internal reflection
+		return Vector(0, 0, 0)
+	end
+
+	return invEta * i + (invEta * c1 - math.sqrt(c2sqr)) * n
+end
+
+local function FresnelSchlicks(i, n, f0)
+	return f0 + (Vector(1, 1, 1) - f0) * math.pow(1 - math.abs(i:Dot(n)), 5)
+end
+
+local function FresnelDielectric(i, n, eta)
+	local c1 = -i:Dot(n)
+	local c2sqr = 1 - (1 - c1 * c1) / (eta * eta)
+
+	if c2sqr < 0 then -- Total internal reflection
+		return 1
+	end
+
+	local c2 = math.sqrt(c2sqr)
+	local c3 = eta * c2
+	local c4 = eta * c1
+
+	local rs = (c1 - c3) / (c1 + c3)
+	local rp = (c2 - c4) / (c2 + c4)
+
+	return 0.5 * (rs * rs + rp * rp)
+end
+~~~ lua
+
+...
+~~~
+
+Now we already know how to compute a reflected colour iteratively using the throughput value, and we know how to weight the throughput as the ray propagates the scene. All we have to do is figure out how to pick a sample from the integral.
+
+The simplest way to do this is to uniformly sample a point on the hemisphere, but how exactly?
+
+I have seen many people attempt to sample the hemisphere by picking a random value for $x$ and $y$ in the range $[-1,1]$ and $z$ in the range $[0,1]$, then normalising. This generates severe biasing towards the corners of the sampled range as can be seen in the image below.
+
+![A heatmap of this sampling strategy's PDF I made with matplotlib](images/randvec-sampling.png)
+
+The correct method is to sample a height $z$ in the range $[0,1]$ and an azimuthal angle $\phi$ in the range $[0, 2\pi)$. We can then calculate a Cartesian coordinate using spherical coordinates, where the azimuth is the value we sampled, and the polar angle $\theta$ is calculated from the height.
+
+A Cartesian coordinate can be calculated from spherical coordinates like so (where $z$ is the polar axis and the radius is $1$)
+
+\begin{align}
+x &= \sin\theta \cos\phi \\
+y &= \sin\theta \sin\phi \\
+z &= \cos\theta
+\end{align}
+
+We can use the trigonometric identity from earlier once again to calculate $\sin\theta$
+
+\begin{align}
+\sin\theta &\equiv \sqrt{1 - \cos^{2}\theta} \\
+\sin\theta &\equiv \sqrt{1 - z^{2}}
+\end{align}
+
+This gives us
+
+\begin{align}
+z &= \xi_1 \\
+\phi &= 2 \pi \xi_2 \\
+x &= \sqrt{1 - z^{2}} \cos\phi \\
+y &= \sqrt{1 - z^{2}} \sin\phi
+\end{align}
+
+Where $\xi_1$ and $\xi_2$ are uniform random variables in the range $[0,1)$. This doesn't match the range we want for $z$, however I have yet to see an implementation handle this subtle difference.
+
+We can implement this in code like so
+
+~~~ lua
+...
+
+local rtMat = CreateMaterial("VisTracer", "UnlitGeneric", {
+	["$basetexture"] = rt:GetName(),
+	["$translucent"] = "1" -- Enables transparency on the material
+})
+
+
+~~~ lua highlight
+local function SampleHemisphereUniform(r1, r2)
+	local sinTheta = math.sqrt(1 - r1 * r1)
+	local phi = 2 * math.pi * r2
+
+	return Vector(
+		sinTheta * math.cos(phi),
+		sinTheta * math.sin(phi),
+		r1
+	)
+end
+~~~ lua
+
+local camPos, camAng = LocalPlayer():EyePos(), LocalPlayer():EyeAngles()
+local function TracePixel(x, y)
+	...
+end
+~~~
+
+Before we can trace however, we need to transform the local z-up hemisphere direction to world space, which is easy to do using the normal, tangent, and binormal vectors stored in trace results.
+
+We can use vector construction as we did with reflection and refraction in order to produce a world space value
+
+\begin{align}
+x_{\text{world}} &= T x_{\text{local}} \\
+y_{\text{world}} &= B y_{\text{local}} \\
+z_{\text{world}} &= N z_{\text{local}}
+\end{align}
+
+~~~ lua delete
+local function SampleHemisphereUniform(r1, r2)
+~~~ lua highlight
+local function SampleHemisphereUniform(result, r1, r2)
+~~~ lua
+	local sinTheta = math.sqrt(1 - r1 * r1)
+	local phi = 2 * math.pi * r2
+
+
+	~~~ lua delete
+	return Vector(
+		sinTheta * math.cos(phi),
+		sinTheta * math.sin(phi),
+		r1
+	~~~ lua highlight
+	return (
+		sinTheta * math.cos(phi) * result:Tangent() +
+		sinTheta * math.sin(phi) * result:Binormal() +
+		r1                       * result:Normal()
+	~~~ lua
+	)
+end
+~~~
+
+Then we can add a call to this function in `TracePixel`, as well as some demo code to see if it works
+
+~~~ lua
+			...
+
+			for depth = 1, MAX_DEPTH do
+				~~~ lua highlight
+				local sample = SampleHemisphereUniform(result, sampler:GetFloat2D())
+				~~~ lua
+
+				local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+
+
+				~~~ lua highlight
+				result = accel:Traverse(origin, sample)
+				if not result then
+					colour = colour + hdri:GetPixel(sample) * throughput
+					break
+				end
+				~~~ lua
+			end
+~~~
+
+![Notice how the HDRI is lighting the sphere without us explicitly sampling it](images/uniform-sampling.png)
+
+Now we can add in evaluation of the integral. This is the exact same equation that we evaluated when sampling diffuse lighting before, except the $L_i$ term is removed as this is added when we do `colour = colour + throughput * ...`
+
+\begin{equation}
+\frac{f_s(\mathbf{x}_d, \omega_i, \omega_o)(\omega_i \cdot \mathbf{n})}{PDF(\omega_i)}
+\end{equation}
+
+We will once again use the Lambert BRDF $\frac{\text{albedo}}{\pi}$, and the $PDF$ of our uniform sampling function is simply $1$ divided by the surface area of a unit hemisphere, $2 \pi$
+
+\begin{equation}
+\frac{\frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n})}{\frac{1}{2 \pi}} = \frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n}) * 2 \pi = \pi \text{albedo} (\omega_i \cdot \mathbf{n})
+\end{equation}
+
+~~~ lua
+			for depth = 1, MAX_DEPTH do
+				local sample = SampleHemisphereUniform(result, sampler:GetFloat2D())
+				~~~ lua highlight
+				throughput = throughput * math.pi * result:Albedo() * sample:Dot(result:Normal())
+				~~~ lua
+
+				local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+
+				result = accel:Traverse(origin, sample)
+				if not result then
+					colour = colour + hdri:GetPixel(sample) * throughput
+					break
+				end
+			end
+~~~
+
+Note that unlike when directly sampling the HDRI, we don't need to `math.max` the weakening term as the sample is guaranteed to be in the positive hemisphere. Also this cancelling of terms between the BSDF and PDF is something you'll encounter very frequently.
+
+![Naive path tracing](images/uniform-path-tracing.png)
 
 Importance Sampling
 -------------------
