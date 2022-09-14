@@ -2071,7 +2071,7 @@ local rtMat = CreateMaterial("VisTracer", "UnlitGeneric", {
 
 
 ~~~ lua highlight
-local function SampleHemisphereUniform(r1, r2)
+local function SampleHemisphere(r1, r2)
 	local sinTheta = math.sqrt(1 - r1 * r1)
 	local phi = 2 * math.pi * r2
 
@@ -2100,9 +2100,9 @@ z_{\text{world}} &= N z_{\text{local}}
 \end{align}
 
 ~~~ lua delete
-local function SampleHemisphereUniform(r1, r2)
+local function SampleHemisphere(r1, r2)
 ~~~ lua highlight
-local function SampleHemisphereUniform(result, r1, r2)
+local function SampleHemisphere(result, r1, r2)
 ~~~ lua
 	local sinTheta = math.sqrt(1 - r1 * r1)
 	local phi = 2 * math.pi * r2
@@ -2130,7 +2130,7 @@ Then we can add a call to this function in `TracePixel`, as well as some demo co
 
 			for depth = 1, MAX_DEPTH do
 				~~~ lua highlight
-				local sample = SampleHemisphereUniform(result, sampler:GetFloat2D())
+				local sample = SampleHemisphere(result, sampler:GetFloat2D())
 				~~~ lua
 
 				local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
@@ -2157,14 +2157,14 @@ Now we can add in evaluation of the integral. This is the exact same equation th
 We will once again use the Lambert BRDF $\frac{\text{albedo}}{\pi}$, and the $PDF$ of our uniform sampling function is simply $1$ divided by the surface area of a unit hemisphere, $2 \pi$
 
 \begin{equation}
-\frac{\frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n})}{\frac{1}{2 \pi}} = \frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n}) * 2 \pi = \pi \text{albedo} (\omega_i \cdot \mathbf{n})
+\frac{\frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n})}{\frac{1}{2 \pi}} = \frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n}) * 2 \pi = 2 \text{albedo} (\omega_i \cdot \mathbf{n})
 \end{equation}
 
 ~~~ lua
 			for depth = 1, MAX_DEPTH do
-				local sample = SampleHemisphereUniform(result, sampler:GetFloat2D())
+				local sample = SampleHemisphere(result, sampler:GetFloat2D())
 				~~~ lua highlight
-				throughput = throughput * math.pi * result:Albedo() * sample:Dot(result:Normal())
+				throughput = throughput * 2 * result:Albedo() * sample:Dot(result:Normal())
 				~~~ lua
 
 				local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
@@ -2181,8 +2181,95 @@ Note that unlike when directly sampling the HDRI, we don't need to `math.max` th
 
 ![Naive path tracing](images/uniform-path-tracing.png)
 
+Well that was surprisingly easy, other than the more in depth theory, but it doesn't stop there...
+
 Importance Sampling
 -------------------
+
+At the moment we're uniformly selecting a point on the hemisphere, however if we look at our evaluation, the throughput is higher when the dot product between the sampled vector and surface normal is higher.
+
+Importance sampling is taking this inherent difference in the importance of samples and choosing them accordingly. In simple terms, we want to choose rays that are closer to the normal more often than rays on the equator.
+
+This sampling strategy is called cosine weighted hemisphere sampling and is very easy to implement, requiring only a minor adjustment to the sampling function and evaluation
+
+\begin{align}
+z &= \sqrt{\xi_1} \\
+\phi &= 2 \pi \xi_2 \\
+x &= \sqrt{1 - z^{2}} \cos\phi \\
+y &= \sqrt{1 - z^{2}} \sin\phi \\
+PDF(z) &= \frac{z}{\pi} \\
+\frac{\frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n})}{\frac{\omega_i \cdot \mathbf{n}}{\pi}} &= \frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n}) * \frac{\pi}{\omega_i \cdot \mathbf{n}} = \text{albedo}
+\end{align}
+
+The derivation for the PDF and the square root in $z$ are outside of the scope of this book, but you can find them [here](https://alexanderameye.github.io/notes/sampling-the-hemisphere).
+
+In addition to implementing the above, we're also going to calculate the PDF and weight of the sample in our sample function, as we already know the dot product term
+
+~~~ lua
+local function SampleHemisphere(result, r1, r2)
+	~~~ lua delete
+	local sinTheta = math.sqrt(1 - r1 * r1)
+	~~~ lua highlight
+	local z = math.sqrt(r1)
+	local sinTheta = math.sqrt(1 - r1)
+	~~~ lua
+	local phi = 2 * math.pi * r2
+
+	
+	~~~ lua delete
+	return (
+		sinTheta * math.cos(phi) * result:Tangent() +
+		sinTheta * math.sin(phi) * result:Binormal() +
+		r1                       * result:Normal()
+	)
+	~~~ lua highlight
+	return {
+		scattered = (
+			sinTheta * math.cos(phi) * result:Tangent() +
+			sinTheta * math.sin(phi) * result:Binormal() +
+			z                        * result:Normal()
+		),
+		weight    = result:Albedo(),
+		pdf       = z / math.pi
+	}
+	~~~ lua
+end
+~~~
+
+And then in `TracePixel`
+
+~~~ lua
+			...
+
+			for depth = 1, MAX_DEPTH do
+				local sample = SampleHemisphere(result, sampler:GetFloat2D())
+				~~~ lua delete
+				throughput = throughput * 2 * result:Albedo() * sample:Dot(result:Normal())
+				~~~ lua highlight
+				throughput = throughput * sample.weight
+				~~~ lua
+
+				local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+
+				~~~ lua delete
+				result = accel:Traverse(origin, sample)
+				~~~ lua highlight
+				result = accel:Traverse(origin, sample.scattered)
+				~~~ lua
+				if not result then
+					~~~ lua delete
+					colour = colour + hdri:GetPixel(sample) * throughput
+					~~~ lua highlight
+					colour = colour + hdri:GetPixel(sample.scattered) * throughput
+					~~~ lua
+					break
+				end
+			end
+~~~
+
+![From top left to bottom right: 1spp uniform, 1spp importance, 512spp uniform, 512spp importance](images/importance-sampling.png)
+
+They both converge to the same solution as they're both unbiased, however importance sampling converges faster.
 
 Next Event Estimation
 ---------------------
