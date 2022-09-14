@@ -2260,7 +2260,7 @@ And then in `TracePixel`
 					~~~ lua delete
 					colour = colour + hdri:GetPixel(sample) * throughput
 					~~~ lua highlight
-					colour = colour + hdri:GetPixel(sample.scattered) * throughput
+					colour = colour + throughput * hdri:GetPixel(sample.scattered)
 					~~~ lua
 					break
 				end
@@ -2345,7 +2345,7 @@ Then we'll add a slight modification of our diffuse lighting from the ray tracer
 
 				result = accel:Traverse(origin, sample.scattered)
 				if not result then
-					colour = colour + hdri:GetPixel(sample.scattered) * throughput
+					colour = colour + throughput * hdri:GetPixel(sample.scattered)
 					break
 				end
 			end
@@ -2355,6 +2355,89 @@ Then we'll add a slight modification of our diffuse lighting from the ray tracer
 
 Multiple Importance Sampling
 ----------------------------
+
+So importance sampling is good for smooth specular surfaces, and next event estimation is good for rough diffuse, surely there's a way to combine both strategies into one universally low variance integrator?
+
+There is indeed, multiple importance sampling is a technique to combine any number of importance sampling strategies (hence the name) into a single low variance integrator, by weighting the contribution of each strategy by its probability relative to the other strategies. It's basically importance sampling importance samplers.
+
+![Credit: https://graphics.stanford.edu/courses/cs348b-02/lectures/multipleimportance/walk002.html](https://graphics.stanford.edu/courses/cs348b-02/lectures/multipleimportance/slide002.png)
+
+While this may look like another complex maths heavy section, the hardest part about MIS is calculating the PDFs of each importance sampling strategy, which is already done.
+
+A detailed explanation of multiple importance sampling as well as many other heuristics can be found in [this Stanford research paper](https://graphics.stanford.edu/courses/cs348b-03/papers/veach-chapter9.pdf). For the sake of simplicity we will ignore the proof and instead assume that Veach knows what he's doing.
+
+We're using the power heuristic here with $\beta = 2$ as it performs about the best across all common use cases
+
+\begin{align}
+w_i &= \frac{p_i^\beta}{\sum_k p_k^\beta} \\
+w_i &= \frac{p_i^{2}}{\sum_k p_k^{2}} \\
+w_i &= \frac{p_i^{2}}{p_{\text{bsdf}}^{2} + p_{\text{direct}}^{2}}
+\end{align}
+
+~~~ lua
+local function EvalLambertPDF(result, scattered)
+	local cosTheta = scattered:Dot(result:Normal())
+	if cosTheta <= 0 then return 0 end
+
+	return cosTheta / math.pi
+end
+
+
+~~~ lua highlight
+local function Power2Heuristic(p0, p1)
+	local p02 = p0 * p0
+	return p02 / (p02 + p1 * p1)
+end
+~~~ lua
+
+...
+~~~
+
+We can then weight both our direct lighting and indirect lighting by the heuristic, swapping the probabilities for each
+
+~~~ lua
+		local validSamples = SAMPLES
+		for sample = 1, SAMPLES do
+			local result = camRay
+			local throughput = Vector(1, 1, 1)
+
+			for depth = 1, MAX_DEPTH do
+				local sample = SampleLambert(result, sampler:GetFloat2D())
+
+				local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+
+				local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+				if envValid then
+					local shadowRay = accel:Traverse(origin, envDir)
+					if not shadowRay then
+						~~~ lua delete
+						colour = colour + throughput * EvalLambert(result, envDir) * envCol / envPdf
+						~~~ lua highlight
+						local misWeight = Power2Heuristic(envPdf, EvalLambertPDF(result, envDir))
+						colour = colour + throughput * EvalLambert(result, envDir) * envCol / envPdf * misWeight
+						~~~ lua
+					end
+				end
+
+				throughput = throughput * sample.weight
+
+				result = accel:Traverse(origin, sample.scattered)
+				if not result or result:HitSky() then
+					~~~ lua delete
+					colour = colour + throughput * hdri:GetPixel(sample.scattered)
+					~~~ lua highlight
+					local misWeight = Power2Heuristic(sample.pdf, hdri:EvalPDF(sample.scattered))
+					colour = colour + throughput * hdri:GetPixel(sample.scattered) * misWeight
+					~~~ lua
+					break
+				end
+			end
+		end
+~~~
+
+![From top left to bottom right: 1spp next event estimation, 1spp multiple importance sampling, 512spp next event estimation, 512spp multiple importance sampling](images/multiple-importance-sampling.png)
+
+You may notice that the next event estimation only renders are slightly brighter, this is because we're double counting light by just adding together. You could of course solve this by dividing each contribution by $2$, however this would technically make it multiple importance sampling.
 
 Russian Roulette
 ----------------
