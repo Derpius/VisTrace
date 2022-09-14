@@ -2422,7 +2422,7 @@ We can then weight both our direct lighting and indirect lighting by the heurist
 				throughput = throughput * sample.weight
 
 				result = accel:Traverse(origin, sample.scattered)
-				if not result or result:HitSky() then
+				if not result then
 					~~~ lua delete
 					colour = colour + throughput * hdri:GetPixel(sample.scattered)
 					~~~ lua highlight
@@ -2439,8 +2439,82 @@ We can then weight both our direct lighting and indirect lighting by the heurist
 
 You may notice that the next event estimation only renders are slightly brighter, this is because we're double counting light by just adding together. You could of course solve this by dividing each contribution by $2$, however this would technically make it multiple importance sampling.
 
-Russian Roulette
-----------------
+Russian Roulette and Texture Filtering
+--------------------------------------
+
+One last subtle improvement to render times we can make is randomly terminating paths when their contribution is too low, a technique called russian roulette. This allows us to set our depth high to avoid biasing, while not increasing render times as much
+
+~~~ lua
+			for depth = 1, MAX_DEPTH do
+				local sample = SampleLambert(result, sampler:GetFloat2D())
+
+				local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+
+				local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+				if envValid then
+					local shadowRay = accel:Traverse(origin, envDir)
+					if not shadowRay then
+						local misWeight = Power2Heuristic(envPdf, EvalLambertPDF(result, envDir))
+						colour = colour + throughput * EvalLambert(result, envDir) * envCol / envPdf * misWeight
+					end
+				end
+
+				throughput = throughput * sample.weight
+
+
+				~~~ lua highlight
+				local rrProb = math.max(throughput[1], throughput[2], throughput[3])
+				if sampler:GetFloat() >= rrProb then break end
+				throughput = throughput / rrProb
+				~~~ lua
+
+				result = accel:Traverse(origin, sample.scattered)
+				if not result then
+					local misWeight = Power2Heuristic(sample.pdf, hdri:EvalPDF(sample.scattered))
+					colour = colour + throughput * hdri:GetPixel(sample.scattered) * misWeight
+					break
+				end
+			end
+~~~
+
+We can also reduce aliasing from textures viewed from afar with texture filtering.
+
+VisTrace provides a mechanism for texture filtering via ray cones. Propagating a ray cone throughout each bounce is quite complex, however adding it to the camera rays is easy. I wont go over the formula for calculating the initial ray cone angle as it's not directly related to ray tracing
+
+~~~ lua
+...
+
+local camScaleVertical = 0.5 * SENSOR_HEIGHT / FOCAL_LENGTH
+local camScaleHorizontal = RESX / RESY * camScaleVertical
+~~~ lua highlight
+local camConeAngle = math.atan(2 * camScaleVertical / RESY)
+~~~ lua
+
+...
+~~~
+
+We then pass our cone angle into `accel:Traverse(...)`, and use an initial cone width of 0
+
+~~~ lua
+	...
+
+	local camDir = Vector(1, camX, camY)
+	camDir:Rotate(camAng)
+	camDir:Normalize()
+
+	~~~ lua delete
+	local camRay = accel:Traverse(camPos, camDir)
+	~~~ lua highlight
+	local camRay = accel:Traverse(camPos, camDir, nil, nil, 0, camConeAngle)
+	~~~ lua
+	if camRay and not camRay:HitSky() then
+		...
+~~~
+
+You may find that the filtering blurs too much at grazing angles. This is because VTFParser currently only performs isotropic trilinear filtering and can be artificially improved by multiplying the cone angle.
+
+VisTrace BSDF
+-------------
 
 Conclusion
 ----------
