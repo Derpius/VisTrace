@@ -628,7 +628,7 @@ That's $L_i$ done, next is $(\omega_i \cdot \mathbf{n})$ which is just the dot p
 			end
 ~~~
 
-If we run this now we should get some extremely noisy lighitng which we'll handle in a second, but we still need to add $f_s$.
+If we run this now we should get some extremely noisy lighting which we'll handle in a second, but we still need to add $f_s$.
 
 In our case this will just be a bidirectional reflectance distribution function, specifically the Lambert BRDF which is about as simple as it gets.
 \begin{equation}
@@ -1783,12 +1783,22 @@ You could continue to build on this base with various additional features, or yo
 
 You can also share any renders you make on the [VisTrace discussions show and tell page](https://github.com/Derpius/VisTrace/discussions/categories/show-and-tell), and if you want any to be featured on the VisTrace workshop or future branding then you can submit them via the [showcase issue template](https://github.com/Derpius/VisTrace/issues/new/choose) or as pull request to the branding branch.
 
-If you submit renders to the showcase then please use the [provided watermark](https://github.com/Derpius/VisTrace/blob/branding/watermark.svg), or I can add one using your GitHub username if not present.
+If you submit renders to the showcase then please name them `{author},{description}.png`, this allows propper attribution to be generated automatically.  
+
+You can find the full source code for this chapter [here](source-code/ray-tracer.lua)
 
 ![Obligatory Cornell box render](images/ray-tracer.png)
 
 Path Tracing
 ============
+
+Path tracing is an extension of the ray tracing algorithm that explores all interactions of light with a surface. It does this by using Monte Carlo integration to approximate the rendering equation's integral over the hemisphere.
+
+By exploring all light paths fully (as opposed to only specular reflection and transmission in our ray tracer) path tracing can produce images indistinguishable from reality when given a physically accurate scene, at the cost of significantly higher variance.
+
+While path tracing requires us to correctly implement more complex maths to prevent severe artefacts, the generalisation of light means we no longer need to handle various materials separately as any changes in our BSDF will adjust the light paths accordingly.
+
+At the end of this chapter you should have a much deeper understanding of the rendering equation and Monte Carlo integration, along with an unbiased path tracer using the VisTrace BSDF.
 
 Revisiting the Rendering Equation
 ----------------------
@@ -1796,6 +1806,62 @@ Revisiting the Rendering Equation
 \begin{equation}
 L_o(\mathbf{x}, \omega_o, \lambda, t) = L_e(\mathbf{x}, \omega_o, \lambda, t) + \int_{\Omega} f_s(\mathbf{x}, \omega_i, \omega_o, \lambda, t)L_i(\mathbf{x}, \omega_i, \lambda, t)(\omega_i \cdot \mathbf{n}) \,d\omega_i
 \end{equation}
+
+Back to the rendering equation, and this time we can't strip everything out.
+
+\begin{equation}
+L_o(\mathbf{x}, \omega_o) = L_e(\mathbf{x}, \omega_o) + \int_{\Omega} f_s(\mathbf{x}, \omega_i, \omega_o)L_i(\mathbf{x}, \omega_i)(\omega_i \cdot \mathbf{n}) \,d\omega_i
+\end{equation}
+
+All we can do is remove the unused time value and implicit light wavelength. I've left emission in as although we wont be implementing it in this chapter due to VisTrace not currently having a direct light sampler for emissives, you are able to easily add naive emissive lighting.
+
+The path tracing algorithm works by performing Monte Carlo integration on the integral, which describes the continuous sum of irradiance from all points on the hemisphere at the surface interaction $\mathbf{x}$.
+
+Monte Carlo integration itself works by approximating the integral using the mean of random samples taken from said integral, weighted by their probability
+
+\begin{equation}
+\lim_{N \to +\infty} \frac{1}{N} \sum_{i = 1}^{N} \frac{f(\mathbf{x}_i)}{p(\mathbf{x}_i)} = \int_{\Omega} f(\mathbf{x}) \,d\mathbf{x}
+\end{equation}
+
+To understand the division by the probability of the sample, imagine we have coin that has a number written on each side, and we want to calculate the total obtained from adding both sides together. We could of course look at both sides of the coin, but for the purpose of this exercise that is impossible to do.
+
+The only way we can determine the sum of both sides of the coin is by flipping it, so we need to approximate it given the random sides we'll see.
+
+Our first thought might be to just take a few samples and average them together
+
+\begin{equation}
+\lim_{N \to +\infty} \frac{1}{N} \sum_{i = 1}^{N} \mathbf{x}_i = \mathbf{x}_a + \mathbf{x}_b
+\end{equation}
+
+However if we take an example where we draw two samples that happen to be one of each side, you can see that this is incorrect
+
+\begin{equation}
+\frac{1}{2} (\mathbf{x}_a + \mathbf{x}_b) = \mathbf{x}_a + \mathbf{x}_b
+\end{equation}
+
+The solution is to divide each sample we take by the probability of the sample, so that when we average them together we're adding back in an approximation of the information we're missing by only looking at a single side.
+
+\begin{align}
+p(\mathbf{x}) &= 0.5 \\
+\lim_{N \to +\infty} \frac{1}{N} \sum_{i = 1}^{N} \frac{\mathbf{x}_i}{p(\mathbf{x}_i)} &= \mathbf{x}_a + \mathbf{x}_b
+\end{align}
+
+Again with an example of sampling one of each side, the mean and weights cancel out. Of course these wont cancel perfectly unless you draw an infinite number of samples (in this case we can use a finite number as the sum itself is finite)
+
+\begin{align}
+\frac{1}{2} (\frac{\mathbf{x}_a}{0.5} + \frac{\mathbf{x}_b}{0.5}) &= \mathbf{x}_a + \mathbf{x}_b \\
+\frac{\mathbf{x}_a}{2 * 0.5} + \frac{\mathbf{x}_b}{2 * 0.5} &= \mathbf{x}_a + \mathbf{x}_b
+\end{align}
+
+We actually already used Monte Carlo integration in the ray tracer for both diffuse direct lighting (which was sampling a region of the rendering equation's integral), and for Fresnel where we implemented what is basically the above example except the probability of $\mathbf{x}_a$ and $\mathbf{x}_b$ was determined by the coefficient.
+
+Finally, we can replace the rendering equation's integral with Monte Carlo
+
+\begin{equation}
+L(\mathbf{x}_d, \omega_o) = L_e(\mathbf{x}_d, \omega_o) + \lim_{N \to +\infty} \sum_{i = 1}^{N} \frac{f_s(\mathbf{x}_d, \omega_i, \omega_o)L(\mathbf{x}_{d + 1}, \omega_i)(\omega_i \cdot \mathbf{n})}{PDF(\omega_i)}
+\end{equation}
+
+I've renamed some terms to make the recursive nature of the rendering equation more obvious, as well as showing incrementing the path vertex $\mathbf{x}$ as we traverse the scene. Also $PDF$ (probability distribution function) is just the technical name for the $p$ function in the Monte Carlo example.
 
 Brute Force Path Tracing
 ------------------------
@@ -1808,6 +1874,9 @@ Next Event Estimation
 
 Multiple Importance Sampling
 ----------------------------
+
+Russian Roulette
+----------------
 
 Conclusion
 ----------
