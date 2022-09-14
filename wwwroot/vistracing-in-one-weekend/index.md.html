@@ -2516,6 +2516,143 @@ You may find that the filtering blurs too much at grazing angles. This is becaus
 VisTrace BSDF
 -------------
 
+Finally, lets swap out our simple Lambert BRDF with the VisTrace BSDF.
+
+First of all we add a new default material parameter
+
+~~~ lua
+----------------
+-- Parameters --
+----------------
+local RESX, RESY = 512, 512
+local SAMPLES = 16
+local MAX_DEPTH = 16
+
+local FOCAL_LENGTH = 20
+local SENSOR_HEIGHT = 35
+
+
+~~~ lua highlight
+local DEFAULT_MATERIAL = vistrace.CreateMaterial()
+-- Configure the default material here
+~~~ lua
+
+...
+~~~
+
+Then replace the calls to our BRDF with the VisTrace BSDF (you can delete those functions now). We're also calling `GetBSDFMaterial` on valid entities, which is set using the BSDF Material toolgun
+
+~~~ lua
+			for depth = 1, MAX_DEPTH do
+				~~~ lua highlight
+				local mat = result:Entity():IsValid() and result:Entity():GetBSDFMaterial() or DEFAULT_MATERIAL
+
+
+				~~~ lua delete
+				local sample = SampleLambert(result, sampler:GetFloat2D())
+				~~~ lua highlight
+				local sample = result:SampleBSDF(sampler, mat)
+				if not sample then
+					if depth == 1 then validSamples = validSamples - 1 end
+					break
+				end
+				~~~ lua
+
+				local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+
+				local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+				if envValid then
+					local shadowRay = accel:Traverse(origin, envDir)
+					if not shadowRay then
+						~~~ lua delete
+						local misWeight = Power2Heuristic(envPdf, EvalLambertPDF(result, envDir))
+						colour = colour + throughput * EvalLambert(result, envDir) * envCol / envPdf * misWeight
+						~~~ lua highlight
+						local misWeight = Power2Heuristic(envPdf, result:EvalPDF(mat, envDir))
+						colour = colour + throughput * result:EvalBSDF(mat, envDir) * envCol / envPdf * misWeight
+						~~~ lua
+					end
+				end
+
+				throughput = throughput * sample.weight
+
+				local rrProb = math.max(throughput[1], throughput[2], throughput[3])
+				if sampler:GetFloat() >= rrProb then break end
+				throughput = throughput / rrProb
+
+				result = accel:Traverse(origin, sample.scattered)
+				if not result then
+					local misWeight = Power2Heuristic(sample.pdf, hdri:EvalPDF(sample.scattered))
+					colour = colour + throughput * hdri:GetPixel(sample.scattered) * misWeight
+					break
+				end
+			end
+~~~
+
+![From left to right: rough dielectric, smooth dielectric, rough conductor](images/vistrace-bsdf.png)
+
+You can see the effect of one of the bundled PBR materials on the hunder plate.
+
+We have to do two more things to support all the lobes of the BSDF though: disable NEE/MIS on delta (single reflection/transmission direction) lobes and invert the normal passed to `CalcRayOrigin` on transmission as we did when ray tracing
+
+~~~ lua
+			for depth = 1, MAX_DEPTH do
+				local mat = result:Entity():IsValid() and result:Entity():GetBSDFMaterial() or DEFAULT_MATERIAL
+
+				local sample = result:SampleBSDF(sampler, mat)
+				if not sample then
+					if depth == 1 then validSamples = validSamples - 1 end
+					break
+				end
+
+				~~~ lua delete
+				local origin = vistrace.CalcRayOrigin(result:Pos(), result:GeometricNormal())
+				~~~ lua highlight
+				local delta = bit.band(LobeType.Delta, sample.lobe) ~= 0
+				local viewside = bit.band(LobeType.Transmission, sample.lobe) == 0
+				local origin = vistrace.CalcRayOrigin(
+					result:Pos(),
+					(result:FrontFacing() == viewside) and result:GeometricNormal() or -result:GeometricNormal()
+				)
+				~~~ lua
+
+
+				~~~ lua highlight
+				if not delta then
+				~~~ lua
+					local envValid, envDir, envCol, envPdf = hdri:Sample(sampler)
+					if envValid then
+						local shadowRay = accel:Traverse(origin, envDir)
+						if not shadowRay or shadowRay:HitSky() then
+							local misWeight = Power2Heuristic(envPdf, result:EvalPDF(mat, envDir))
+							colour = colour + throughput * result:EvalBSDF(mat, envDir) * envCol / envPdf * misWeight
+						end
+					end
+				~~~ lua highlight
+				end
+				~~~ lua
+
+				throughput = throughput * sample.weight
+
+				local rrProb = math.max(throughput[1], throughput[2], throughput[3])
+				if sampler:GetFloat() >= rrProb then break end
+				throughput = throughput / rrProb
+
+				result = accel:Traverse(origin, sample.scattered)
+				if not result or result:HitSky() then
+					~~~ lua delete
+					local misWeight = Power2Heuristic(sample.pdf, hdri:EvalPDF(sample.scattered))
+					~~~ lua highlight
+					local misWeight = delta and 1 or Power2Heuristic(sample.pdf, hdri:EvalPDF(sample.scattered))
+					~~~ lua
+					colour = colour + throughput * hdri:GetPixel(sample.scattered) * misWeight
+					break
+				end
+			end
+~~~
+
+`![From left to right: delta conductor, rough glass, delta thin](images/vistrace-bsdf-transmission-delta.png)` *(coming soon)*
+
 Conclusion
 ----------
 
