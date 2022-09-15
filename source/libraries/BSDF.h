@@ -9,25 +9,25 @@ enum class LobeType : uint8_t
 {
 	None = 0,
 
-	DiffuseReflection           = 0b00000001,
-	DiffuseTransmission         = 0b00000010,
-	DielectricReflection        = 0b00000100,
-	DielectricTransmission      = 0b00001000,
-	ConductiveReflection        = 0b00010000,
-	DeltaDielectricReflection   = 0b00100000,
-	DeltaDielectricTransmission = 0b01000000,
-	DeltaConductiveReflection   = 0b10000000,
+	DiffuseReflection         = 0b00000001,
+	DiffuseTransmission       = 0b00000010,
+	SpecularReflection        = 0b00000100,
+	SpecularTransmission      = 0b00001000,
+	ConductiveReflection      = 0b00010000,
+	DeltaSpecularReflection   = 0b00100000,
+	DeltaSpecularTransmission = 0b01000000,
+	DeltaConductiveReflection = 0b10000000,
 
-	Reflection                  = 0b10110101,
-	Transmission                = 0b01001010,
+	Reflection   = 0b10110101,
+	Transmission = 0b01001010,
 
-	Delta                       = 0b11100000,
-	NonDelta                    = 0b00011111,
+	Delta        = 0b11100000,
+	NonDelta     = 0b00011111,
 
-	Diffuse                     = 0b00000011,
-	Specular                    = 0b11111100,
-	SpecularDielectric          = 0b01101100,
-	SpecularConductive          = 0b10010000,
+	Diffuse      = 0b00000011,
+	Specular     = 0b11111100,
+	Dielectric   = 0b01101111,
+	Conductive   = 0b10010000,
 
 	All = 0b11111111
 };
