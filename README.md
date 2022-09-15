@@ -49,8 +49,9 @@ Additionally, an svg badge is provided to include in your readmes to show that y
 
 ## Showcase
 If you'd like to submit any images/videos showcasing your use of VisTrace, please submit a PR/Issue on the [branding branch](https://github.com/Derpius/VisTrace/tree/branding).  
-Please note that any content submitted may be used on VisTrace's GitHub and Workshop pages, and any potential future website or marketing.  
-Also, please credit yourself in the image with the watermark found on the branding branch (you can pass `?username=YourUsername` to the SVG URL locally, however GitHub prevents SVGs from executing JS which is how the query param is retrieved).  
+
+Please note that any content submitted may be used on VisTrace's GitHub, and Workshop pages, as well as the website.  
+See the readme on the branding branch for the naming convention.  
 
 ## Usage
 MOVING TO WIKI
