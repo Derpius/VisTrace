@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         os-prefix: [windows]
-        arch: [x86, x64]
+        arch: [x64] #[x86, x64]
         target: [release, relwithsymbols]
         include:
           - os-prefix: windows
@@ -38,9 +38,9 @@ jobs:
           #  os: ubuntu-latest
           #  dll-platform: linux
 
-          - arch: x86
-            msvc-arch: amd64_x86
-            dll-arch: 32
+          #- arch: x86
+          #  msvc-arch: amd64_x86
+          #  dll-arch: 32
           - arch: x64
             msvc-arch: amd64
             dll-arch: 64
