@@ -18,8 +18,8 @@ void BSDFMaterial::PrepShadingData(const vec3& hitColour, float hitMetalness, fl
 		roughness = linearRoughness * linearRoughness;
 	}
 
-	dielectric = clamp(dielectric * hitColour, 0.f, 1.f);
-	conductor = clamp(conductor * hitColour, 0.f, 1.f);
+	dielectric = clamp(dielectricInput * hitColour, 0.f, 1.f);
+	conductor = clamp(conductorInput * hitColour, 0.f, 1.f);
 }
 
 inline void CalculateLobePDFs(

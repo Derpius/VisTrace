@@ -739,8 +739,9 @@ LUA_FUNCTION(Material_Colour)
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
 	Vector v = LUA->GetVector(2);
-	pMat->dielectric = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
-	pMat->conductor = pMat->dielectric;
+	pMat->dielectricInput = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
+	pMat->conductorInput = pMat->conductor = pMat->dielectric = pMat->dielectricInput;
+
 	return 0;
 }
 
@@ -751,7 +752,7 @@ LUA_FUNCTION(Material_DielectricColour)
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
 	Vector v = LUA->GetVector(2);
-	pMat->dielectric = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
+	pMat->dielectricInput = pMat->dielectric = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
 	return 0;
 }
 
@@ -762,7 +763,7 @@ LUA_FUNCTION(Material_ConductorColour)
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
 	Vector v = LUA->GetVector(2);
-	pMat->conductor = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
+	pMat->conductorInput = pMat->conductor = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
 	return 0;
 }
 

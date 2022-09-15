@@ -58,8 +58,12 @@ struct BSDFMaterial
 {
 	static int id;
 
+	glm::vec3 dielectricInput{ 1.f, 1.f, 1.f };
+	glm::vec3 conductorInput{ 1.f, 1.f, 1.f };
+
 	glm::vec3 dielectric{ 1.f, 1.f, 1.f };
 	glm::vec3 conductor{ 1.f, 1.f, 1.f };
+
 	float ior = 1.5;
 
 	bool roughnessOverridden = false;
