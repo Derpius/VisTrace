@@ -18,8 +18,8 @@
 			},
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
-				"CMAKE_C_COMPILER": "clang-cl",
-				"CMAKE_CXX_COMPILER": "clang-cl"
+				"CMAKE_C_COMPILER": "clang",
+				"CMAKE_CXX_COMPILER": "clang"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -43,8 +43,8 @@
 			},
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
-				"CMAKE_C_COMPILER": "clang-cl",
-				"CMAKE_CXX_COMPILER": "clang-cl"
+				"CMAKE_C_COMPILER": "clang",
+				"CMAKE_CXX_COMPILER": "clang"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -68,10 +68,10 @@
 			},
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
-				"CMAKE_C_COMPILER": "clang-cl",
-				"CMAKE_CXX_COMPILER": "clang-cl",
-				"CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS /EHsc -m32",
-				"CMAKE_CXX_FLAGS": "/DWIN32 /D_WINDOWS /EHsc -m32"
+				"CMAKE_C_COMPILER": "clang",
+				"CMAKE_CXX_COMPILER": "clang",
+				"CMAKE_C_FLAGS": "-m32",
+				"CMAKE_CXX_FLAGS": "-m32"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -95,10 +95,10 @@
 			},
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
-				"CMAKE_C_COMPILER": "clang-cl",
-				"CMAKE_CXX_COMPILER": "clang-cl",
-				"CMAKE_C_FLAGS": "/DWIN32 /D_WINDOWS /EHsc -m32",
-				"CMAKE_CXX_FLAGS": "/DWIN32 /D_WINDOWS /EHsc -m32"
+				"CMAKE_C_COMPILER": "clang",
+				"CMAKE_CXX_COMPILER": "clang",
+				"CMAKE_C_FLAGS": "-m32",
+				"CMAKE_CXX_FLAGS": "-m32"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
