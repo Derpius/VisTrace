@@ -2546,6 +2546,7 @@ Then replace the calls to our BRDF with the VisTrace BSDF (you can delete those 
 			for depth = 1, MAX_DEPTH do
 				~~~ lua highlight
 				local mat = result:Entity():IsValid() and result:Entity():GetBSDFMaterial() or DEFAULT_MATERIAL
+				~~~ lua
 
 
 				~~~ lua delete
