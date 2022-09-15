@@ -30,8 +30,7 @@ While it's recommended to just download the latest release binary, if you want t
 ### Prerequesits
 * CMake 3.20 or newer
 * Ninja
-* clang-cl - MSVC version of Clang to use OpenMP while being ABI compatible with source
-* MSVC standard library available to the linker
+* clang - Clang with MSVC backend to use OpenMP while being ABI compatible with source
 
 ### First time setup
 1. Clone the repository with the `--recursive` flag to init all submodules
