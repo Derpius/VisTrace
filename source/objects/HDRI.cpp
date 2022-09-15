@@ -18,7 +18,7 @@ constexpr float M_1_4PI = 1.0 / (4.0 * M_PI);
 static glm::vec2 invAtan{ .1591f, .3183f };
 glm::uvec2 EquirectangularDirToTexel(glm::vec3 direction, int resX, int resY)
 {
-	glm::vec2 uv = glm::vec2(glm::atan(direction.y, direction.x), glm::asin(-direction.z));
+	glm::vec2 uv = glm::vec2(glm::atan(-direction.y, direction.x), glm::asin(-direction.z));
 	uv *= invAtan;
 	uv += .5f;
 
@@ -44,7 +44,7 @@ glm::vec3 OctahedralTexelToDir(glm::vec2 texel)
 		);
 	}
 
-	return normalize(position);
+	return normalize(position) * vec3(1, -1, 1);
 }
 
 // https://gamedev.stackexchange.com/questions/169508/octahedral-impostors-octahedral-mapping
@@ -52,7 +52,7 @@ glm::vec2 OctahedralDirToTexel(glm::vec3 direction)
 {
 	using namespace glm;
 
-	vec3 octant = sign(direction);
+	vec3 octant = sign(direction * vec3(1, -1, 1));
 
 	float sum = dot(direction, octant);
 	vec3 octahedron = direction / sum;
