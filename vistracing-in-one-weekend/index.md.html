@@ -1567,9 +1567,9 @@ Now while we could use the nice and simple Schlick's approximation here too, the
 The equations for each polarity are taken from [this blog post](https://seblagarde.wordpress.com/2013/04/29/memo-on-fresnel-equations/) by Sebastien Lagarde. We're entirely ignoring the polarisation of light so the final coefficient is just the average of the two
 
 \begin{align}
-r_\bot &= \frac{\cos\theta_I - \eta\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)}}{\cos\theta_I + \eta\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)}} \\
-r_\| &= \frac{\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)} - \eta\cos\theta_I}{\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)} + \eta\cos\theta_I} \\
-R &= \frac{r_\bot + r_\|}{2}
+r_\bot &= \frac{\cos\theta - \eta\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)}}{\cos\theta + \eta\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)}} \\
+r_\| &= \frac{\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)} - \eta\cos\theta}{\sqrt{1 - \eta^{-2}(1 - \cos^{2}\theta)} + \eta\cos\theta} \\
+R &= \frac{r_\bot^{2} + r_\|^{2}}{2}
 \end{align}
 
 You may notice that a few of these terms are repeated so we'll save them to some temporary variables. We'll also use the same trigonometric identity trick we used in the refraction function in order to avoid calling `math.sin`
