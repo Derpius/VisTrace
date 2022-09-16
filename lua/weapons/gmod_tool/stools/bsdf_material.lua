@@ -229,7 +229,7 @@ if CLIENT then
 		end
 
 		if self:GetNWBool("BSDFMaterial.MetalnessOverride") then
-			mat:Metalness("BSDFMaterial.Metalness")
+			mat:Metalness(self:GetNWFloat("BSDFMaterial.Metalness"))
 		end
 
 		mat:Anisotropy(self:GetNWFloat("BSDFMaterial.Anisotropy"))
