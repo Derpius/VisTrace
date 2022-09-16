@@ -118,6 +118,9 @@ struct Material
 
 	MaterialFlags flags = MaterialFlags::NONE;
 	BSPEnums::SURF surfFlags = BSPEnums::SURF::NONE;
+
+	float alphatestreference = 0.5f;
+
 	bool water = false;
 };
 
@@ -258,10 +261,14 @@ struct TriangleBackfaceCull
 					// Calculate texture UVs - Should these be cached in the primitive to avoid recalculation later, or left out to save memory?
 					glm::vec2 texUV = (1.f - u - v) * data.uvs[0] + u * data.uvs[1] + v * data.uvs[2];
 					texUV = TransformTexcoord(texUV, mat.baseTexMat, mat.texScale);
-
+					
 					// Was mipmapping here but with trilinear it looked like shit
 					float alpha = mat.baseTexture->Sample(texUV.x, texUV.y, 0.f).a;
-					if (alpha == 0.f) return std::nullopt;
+
+					// See: https://developer.valvesoftware.com/wiki/$alphatest#Comparison
+					if (alpha < mat.alphatestreference) {
+						return std::nullopt;
+					}
 				}
 
 				return std::make_optional(Intersection{ t, u, v });
