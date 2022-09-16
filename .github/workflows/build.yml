@@ -23,7 +23,7 @@ on:
       - "libs/**"
       - ".github/workflows/build.yml"
 env:
-  API_VERSION: "0.11"
+  API_VERSION: "0.12"
 
 jobs:
   build:
