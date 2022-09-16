@@ -766,6 +766,23 @@ return function(instance)
 		uwrapMat(self):ConductorColour(uwrapVec(colour))
 	end
 
+	--- Set the colour of conductors at grazing angles (useful for anodized materials)
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param Vector colour Colour to set as a 0-1 normalised vector
+	function bsdfmaterial_methods:edgeTint(colour)
+		canRun()
+		uwrapMat(self):EdgeTint(uwrapVec(colour))
+	end
+
+	--- Set the falloff of the conductor's edge tint
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number falloff Falloff value (0.2 is equivalent to Fresnel)
+	function bsdfmaterial_methods:edgeTintFalloff(falloff)
+		canRun()
+		checkLuaType(falloff, TYPE_NUMBER)
+		uwrapMat(self):EdgeTintFalloff(falloff)
+	end
+
 	--- Set the metalness of the material (overrides PBR textures)
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number metalness Metalness to set
@@ -781,6 +798,23 @@ return function(instance)
 		canRun()
 		checkLuaType(roughness, TYPE_NUMBER)
 		uwrapMat(self):Roughness(roughness)
+	end
+
+	--- Set how anisotropic the specular reflection is in the tangent direction
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number anisotropy 0 - isotropic, 1 - anisotropic in the tangent direction
+	function bsdfmaterial_methods:anisotropy(anisotropy)
+		canRun()
+		checkLuaType(anisotropy, TYPE_NUMBER)
+		uwrapMat(self):Anisotropy(anisotropy)
+	end
+	--- Set the amount to rotate the tangent frame by before localising (for anisotropic materials)
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number rotation Rotation of the tangent and binormal about the normal where 0 is no rotation and 1 is a full circle
+	function bsdfmaterial_methods:anisotropicRotation(rotation)
+		canRun()
+		checkLuaType(rotation, TYPE_NUMBER)
+		uwrapMat(self):AnisotropicRotation(rotation)
 	end
 
 	--- Set the index of refraction of the material
@@ -845,11 +879,11 @@ return function(instance)
 	-- @field None
 	-- @field DiffuseReflection
 	-- @field DiffuseTransmission
-	-- @field DielectricReflection
-	-- @field DielectricTransmission
+	-- @field SpecularReflection
+	-- @field SpecularTransmission
 	-- @field ConductiveReflection
-	-- @field DeltaDielectricReflection
-	-- @field DeltaDielectricTransmission
+	-- @field DeltaSpecularReflection
+	-- @field DeltaSpecularTransmission
 	-- @field DeltaConductiveReflection
 	-- @field Reflection
 	-- @field Transmission
@@ -857,8 +891,8 @@ return function(instance)
 	-- @field NonDelta
 	-- @field Diffuse
 	-- @field Specular
-	-- @field SpecularDielectric
-	-- @field SpecularConductive
+	-- @field Dielectric
+	-- @field Conductive
 	-- @field All
 	instance.env.LobeType = LobeType
 
@@ -921,9 +955,11 @@ return function(instance)
 	-- @param Sampler sampler Sampler object
 	-- @param BSDFMaterial material Material parameters
 	-- @param Vector normal Normal of the surface
+	-- @param Vector tangent Tangent of the surface
+	-- @param Vector binormal Binormal of the surface
 	-- @param Vector incident Incident vector (negative direction of the ray that hit the surface)
 	-- @return table? sample Sample generated (if valid)
-	function vistrace_library.sampleBSDF(sampler, material, normal, incident)
+	function vistrace_library.sampleBSDF(sampler, material, normal, tangent, binormal, incident)
 		canRun()
 
 		if debug_getmetatable(sampler) ~= sampler_meta then SF.ThrowTypeError("Sampler", SF.GetType(sampler), 2) end
@@ -931,11 +967,19 @@ return function(instance)
 
 		checkVector(normal)
 		validateVector(normal)
+		checkVector(tangent)
+		validateVector(tangent)
+		checkVector(binormal)
+		validateVector(binormal)
 
 		checkVector(incident)
 		validateVector(incident)
-	
-		local sample = vistrace.SampleBSDF(uwrapSampler(sampler), uwrapMat(material), uwrapVec(normal), uwrapVec(incident))
+
+		local sample = vistrace.SampleBSDF(
+			uwrapSampler(sampler), uwrapMat(material),
+			uwrapVec(normal), uwrapVec(tangent), uwrapVec(binormal),
+			uwrapVec(incident)
+		)
 		if sample then
 			return {
 				scattered = wrapVec(sample.scattered),
@@ -950,16 +994,22 @@ return function(instance)
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param BSDFMaterial material Material parameters
 	-- @param Vector normal Normal of the surface
+	-- @param Vector tangent Tangent of the surface
+	-- @param Vector binormal Binormal of the surface
 	-- @param Vector incident Incident vector (negative direction of the ray that hit the surface)
 	-- @param Vector scattered Scattered light direction
 	-- @return Vector Evaluated surface colour
-	function vistrace_library.evalBSDF(material, normal, incident, scattered)
+	function vistrace_library.evalBSDF(material, normal, tangent, binormal, incident, scattered)
 		canRun()
 
 		if debug_getmetatable(material) ~= bsdfmaterial_meta then SF.ThrowTypeError("BSDFMaterial", SF.GetType(material), 2) end
 
 		checkVector(normal)
 		validateVector(normal)
+		checkVector(tangent)
+		validateVector(tangent)
+		checkVector(binormal)
+		validateVector(binormal)
 
 		checkVector(incident)
 		validateVector(incident)
@@ -967,23 +1017,33 @@ return function(instance)
 		checkVector(scattered)
 		validateVector(scattered)
 
-		return wrapVec(vistrace.EvalBSDF(uwrapMat(material), uwrapVec(normal), uwrapVec(incident), uwrapVec(scattered)))
+		return wrapVec(vistrace.EvalBSDF(
+			uwrapMat(material),
+			uwrapVec(normal), uwrapVec(tangent), uwrapVec(binormal),
+			uwrapVec(incident), uwrapVec(scattered)
+		))
 	end
 
 	--- Evaluates the VisTrace BSDF's PDF
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param BSDFMaterial material Material parameters
 	-- @param Vector normal Normal of the surface
+	-- @param Vector tangent Tangent of the surface
+	-- @param Vector binormal Binormal of the surface
 	-- @param Vector incident Incident vector (negative direction of the ray that hit the surface)
 	-- @param Vector scattered Scattered light direction
 	-- @return number Evaluated PDF
-	function vistrace_library.evalPDF(material, normal, incident, scattered)
+	function vistrace_library.evalPDF(material, normal, tangent, binormal, incident, scattered)
 		canRun()
 
 		if debug_getmetatable(material) ~= bsdfmaterial_meta then SF.ThrowTypeError("BSDFMaterial", SF.GetType(material), 2) end
 
 		checkVector(normal)
 		validateVector(normal)
+		checkVector(tangent)
+		validateVector(tangent)
+		checkVector(binormal)
+		validateVector(binormal)
 
 		checkVector(incident)
 		validateVector(incident)
@@ -991,7 +1051,11 @@ return function(instance)
 		checkVector(scattered)
 		validateVector(scattered)
 
-		return vistrace.EvalPDF(uwrapMat(material), uwrapVec(normal), uwrapVec(incident), uwrapVec(scattered))
+		return vistrace.EvalPDF(
+			uwrapMat(material),
+			uwrapVec(normal), uwrapVec(tangent), uwrapVec(binormal),
+			uwrapVec(incident), uwrapVec(scattered)
+		)
 	end
 
 --#endregion
