@@ -20,6 +20,3 @@
 [submodule "libs/GMFS"]
 	path = libs/GMFS
 	url = https://github.com/Derpius/GMFS.git
-[submodule "libs/yocto-gl"]
-	path = libs/yocto-gl
-	url = https://github.com/xelatihy/yocto-gl.git
