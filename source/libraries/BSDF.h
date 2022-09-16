@@ -64,6 +64,9 @@ struct BSDFMaterial
 	glm::vec3 dielectric{ 1.f, 1.f, 1.f };
 	glm::vec3 conductor{ 1.f, 1.f, 1.f };
 
+	glm::vec3 edgetint{ 1.f, 1.f, 1.f };
+	float     falloff = 0.2;
+
 	float ior = 1.5;
 
 	bool roughnessOverridden = false;

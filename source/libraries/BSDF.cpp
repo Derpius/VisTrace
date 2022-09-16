@@ -57,20 +57,77 @@ inline void CalculateLobePDFs(
 	}
 }
 
-float SpecularTransmissionCompensation(
-	const vec3f& colour, const BSDFMaterial& data,
-	const vec3f& normal,
-	const float fresnel, const vec3f& reflected, const vec3f& transmitted
-)
+// Appendix b https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
+inline float microfacet_energy_fit(const float cosTheta, const float roughness)
 {
-	const float EssR = microfacet_cosintegral(data.linearRoughness, normal, reflected);
-	const float EssT = microfacet_cosintegral(data.linearRoughness, normal, transmitted);
+	const float S[5] = { -0.170718f, 4.07985f, -11.5295f, 18.4961f, -9.23618f };
+	const float T[5] = { 0.0632331f, 3.1434f, -7.47567f, 13.0482f, -7.0401f };
+
+	const float r2 = roughness * roughness;
+	const float r3 = r2 * roughness;
+	const float r4 = r3 * roughness;
+
+	const float s = S[0] * sqrtf(cosTheta) + S[1] * roughness + S[2] * r2 + S[3] * r3 + S[4] * r4;
+	const float t = T[0] * cosTheta + T[1] * roughness + T[2] * r2 + T[3] * r3 + T[4] * r4;
+
+	return 1 - powf(s, 6.f) * powf(cosTheta, 0.75f) / (powf(t, 6.f) + cosTheta * cosTheta);
+}
+
+// Appendix b https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
+inline float microfacet_energy_avg_fit(const float roughness)
+{
+	const float A[3] = { 0.592665f, -1.47034f, 1.47196f };
+
+	const float r2 = roughness * roughness;
+	const float r3 = r2 * roughness;
+
+	return A[0] * r3 / (1 + A[1] * roughness + A[2] * r2);
+}
+
+inline float spectrans_compensation(const float cosThetaR, const float cosThetaT, const float roughness, const float fresnel)
+{
+	const float EssR = microfacet_energy_fit(cosThetaR, roughness);
+	const float EssT = microfacet_energy_fit(cosThetaT, roughness);
 	return 1.f / (fresnel * EssR + (1 - fresnel) * EssT);
 }
 
 inline float schlick_dielectric(const float f0, const float cosTheta, const float f90 = 1.f)
 {
 	return f0 + (f90 - f0) * powf(1.f - cosTheta, 5.f);
+}
+
+// Slide 22 https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
+inline vec3 schlicks_conductor_edgetint(
+	const vec3& reflectance, const vec3& edgetint, const float falloff,
+	const float cosTheta
+)
+{
+	return reflectance + (edgetint - reflectance) * powf(1.f - cosTheta, 1.f / falloff);
+}
+
+// Slide 22 https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
+inline vec3 schlicks_conductor_edgetint_avg(const vec3& reflectance, const vec3& edgetint, const float falloff)
+{
+	const float pSqr2 = 2.f * falloff * falloff;
+	const float p3 = 3.f * falloff;
+	return (edgetint * pSqr2 + reflectance + reflectance * p3) / (1 + p3 + pSqr2);
+}
+
+// Equations 8, 10, and 12  https://blog.selfshadow.com/publications/turquin/ms_comp_final.pdf
+// Appendix a               https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
+inline vec3 schlicks_conductor_compensation(
+	const vec3& reflectance, const vec3& edgetint, const float falloff,
+	const float linearRoughness,
+	const float cosTheta
+)
+{
+	const vec3 Fss  = schlicks_conductor_edgetint_avg(reflectance, edgetint, falloff);
+	const float Ess  = microfacet_energy_fit(cosTheta, linearRoughness);
+	const float Eavg = microfacet_energy_avg_fit(linearRoughness);
+
+	const vec3 Fms  = Eavg / (1.f - Fss * (1.f - Eavg));
+
+	return 1.f + Fms * (1.f - Ess) / Ess;
 }
 
 #pragma region Diffuse BRDF
@@ -250,27 +307,29 @@ bool SampleSpecularReflection(
 #pragma endregion
 
 #pragma region Conductor BSDF
-vec3f EvalConductor(
-	const vec3f& colour, const BSDFMaterial& data,
+vec3 EvalConductor(
+	const BSDFMaterial& data,
 	const vec3f& normal, const vec3f& incident, const vec3f& scattered
 )
 {
 	const vec3f upNormal = dot(normal, incident) <= 0 ? -normal : normal;
 
 	if (data.roughness < kMinGGXAlpha)
-		return (reflect(incident, upNormal) == scattered ? fresnel_schlick(colour, upNormal, incident) : vec3f{ 0.f, 0.f, 0.f });
+		return (reflect(incident, upNormal) == scattered ?
+			schlicks_conductor_edgetint(data.conductor, data.edgetint, data.falloff, dot(incident, upNormal)) :
+			vec3(0.f, 0.f, 0.f));
 
 	const vec3f halfway = normalize(incident + scattered);
+	const float iDotH = dot(incident, halfway);
+	const float sDotN = dot(scattered, upNormal);
 
-	const vec3f F = fresnel_schlick(colour, halfway, incident);
+	const vec3 F = schlicks_conductor_edgetint(data.conductor, data.edgetint, data.falloff, iDotH);
 	const float D = microfacet_distribution(data.roughness, upNormal, halfway);
 	const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
 	const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
 
-	float sDotN = dot(scattered, upNormal);
-
-	vec3f bsdf = F * G1incident * G1scattered * D / (4 * dot(incident, upNormal) * sDotN) * yocto::abs(sDotN);
-	bsdf *= microfacet_compensation(colour, data.roughness, normal, incident);
+	vec3 bsdf = F * G1incident * G1scattered * D / (4 * dot(incident, upNormal) * sDotN) * yocto::abs(sDotN);
+	bsdf *= schlicks_conductor_compensation(data.conductor, data.edgetint, data.falloff, data.linearRoughness, iDotH);
 
 	return bsdf;
 }
@@ -300,17 +359,17 @@ float EvalConductorPDF(
 }
 
 bool SampleConductor(
-	const vec3f& colour, const BSDFMaterial& data,
+	const BSDFMaterial& data,
 	const vec3f& normal, const vec3f& incident,
 	ISampler* sg,
-	LobeType& lobe, vec3f& scattered, vec3f& weight, float& pdf
+	LobeType& lobe, vec3f& scattered, vec3& weight, float& pdf
 )
 {
 	const vec3f upNormal = dot(normal, incident) <= 0 ? -normal : normal;
 
 	if (data.roughness < kMinGGXAlpha) {
 		lobe = LobeType::DeltaConductiveReflection;
-		weight = fresnel_schlick(colour, upNormal, incident);
+		weight = schlicks_conductor_edgetint(data.conductor, data.edgetint, data.falloff, dot(incident, upNormal));
 		pdf = 1.f;
 		scattered = reflect(incident, upNormal);
 		return true;
@@ -332,7 +391,7 @@ bool SampleConductor(
 	float sDotN = dot(scattered, upNormal);
 	float sDotH = dot(scattered, halfway);
 
-	const vec3f F = fresnel_schlick(colour, halfway, incident);
+	const vec3 F = schlicks_conductor_edgetint(data.conductor, data.edgetint, data.falloff, iDotH);
 	const float D = microfacet_distribution(data.roughness, upNormal, halfway);
 	const float G1incident = microfacet_shadowing1(data.roughness, upNormal, halfway, incident, true);
 	const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
@@ -362,7 +421,7 @@ bool SampleConductor(
 	if (pdf <= 0.f || !std::isfinite(pdf)) return false;
 
 	weight = F * G1scattered * sDotH / (sDotN * iDotH) * yocto::abs(sDotN);
-	weight *= microfacet_compensation(colour, data.roughness, normal, incident); // Add in single scattering compensation
+	weight *= schlicks_conductor_compensation(data.conductor, data.edgetint, data.falloff, data.linearRoughness, iDotH);
 
 	return true;
 }
@@ -427,7 +486,8 @@ vec3f EvalSpecularTransmission(
 	const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
 
 	if (isReflection) {
-		const float compensation = SpecularTransmissionCompensation(colour, data, halfway, F, scattered, refract(incident, halfway, invEta));
+		//spectrans_compensation(colour, data, halfway, F, scattered, refract(incident, halfway, invEta))
+		const float compensation = spectrans_compensation(sDotH, sqrtf(1.f - invEta * invEta * (1.f - iDotH * iDotH)), data.linearRoughness, F);
 		return vec3f{ F, F, F } * G1incident * G1scattered * D / (4 * iDotN * sDotN) * yocto::abs(sDotN) * compensation;
 	}
 
@@ -437,7 +497,7 @@ vec3f EvalSpecularTransmission(
 	denom *= denom;
 	const float rhs = iorS * iorS * (1.f - F) * G1incident * G1scattered * D / denom;
 
-	const float compensation = SpecularTransmissionCompensation(colour, data, halfway, F, reflect(incident, halfway), scattered);
+	const float compensation = spectrans_compensation(iDotH, sDotH, data.linearRoughness, F);
 	return vec3f{ 1.f, 1.f, 1.f } * (lhs * rhs * yocto::abs(sDotN)) * compensation;
 }
 
@@ -604,7 +664,7 @@ bool SampleSpecularTransmission(
 		const float G1scattered = microfacet_shadowing1(data.roughness, upNormal, halfway, scattered, true);
 
 		weight = vec3f{ F, F, F } * G1scattered * sDotH / (sDotN * iDotH) * yocto::abs(sDotN) / pReflect;
-		weight *= SpecularTransmissionCompensation(colour, data, halfway, F, scattered, refract(incident, halfway, invEta));
+		weight *= spectrans_compensation(sDotH, sqrtf(1.f - invEta * invEta * (1.f - iDotH * iDotH)), data.linearRoughness, F);
 		pdf = D * G1incident * iDotH / (4 * iDotN * sDotH) * pReflect;
 		
 		return true;
@@ -649,7 +709,7 @@ bool SampleSpecularTransmission(
 		// (1.f - F) * G1scattered
 
 		weight = vec3f{ 1.f, 1.f, 1.f } * ((1.f - F) * G1scattered) / (1.f - pReflect);
-		weight *= SpecularTransmissionCompensation(colour, data, halfway, F, reflect(incident, halfway), scattered);
+		weight *= spectrans_compensation(iDotH, sDotH, data.linearRoughness, F);
 		pdf = jacobian * G1incident * iDotH * D / iDotN * (1.f - pReflect);
 
 		return true;
@@ -707,11 +767,11 @@ bool SampleBSDF(
 		if (pSpecularReflection > 0.f) result.pdf += pSpecularReflection * EvalSpecularReflectionPDF(dielectric, data, n, wo, wi);
 		if (pConductor > 0.f) result.pdf += pConductor * EvalConductorPDF(conductor, data, n, wo, wi);
 	} else if (pConductor > 0.f) {
-		vec3f wi, weight;
-		if (!SampleConductor(conductor, data, n, wo, sg, result.lobe, wi, weight, result.pdf)) return false;
+		vec3f wi;
+		if (!SampleConductor(data, n, wo, sg, result.lobe, wi, result.weight, result.pdf)) return false;
 
 		result.scattered = vec3(wi.x, wi.y, wi.z);
-		result.weight = vec3(weight.x, weight.y, weight.z) * data.metallic / pConductor;
+		result.weight *= data.metallic / pConductor;
 
 		result.pdf *= pConductor;
 		if (pDiffuse > 0.f) result.pdf += pDiffuse * EvalDiffusePDF(dielectric, data, n, wo, wi);
@@ -741,8 +801,10 @@ vec3 EvalBSDF(
 		result += (1.f - data.metallic) * (1.f - data.specularTransmission) * EvalDiffuse(dielectric, data, n, wo, wi);
 	if (pSpecularReflection > 0.f)
 		result += (1.f - data.metallic) * (1.f - data.specularTransmission) * EvalSpecularReflection(dielectric, data, n, wo, wi);
-	if (pConductor > 0.f)
-		result += data.metallic * EvalConductor(conductor, data, n, wo, wi);
+	if (pConductor > 0.f) {
+		vec3 tmp = data.metallic * EvalConductor(data, n, wo, wi);
+		result += vec3f{ tmp.x, tmp.y, tmp.z };
+	}
 	if (pSpecTrans > 0.f)
 		result += (1.f - data.metallic) * data.specularTransmission * EvalSpecularTransmission(dielectric, data, n, wo, wi);
 

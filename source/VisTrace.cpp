@@ -767,6 +767,27 @@ LUA_FUNCTION(Material_ConductorColour)
 	return 0;
 }
 
+LUA_FUNCTION(Material_EdgeTint)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Vector);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	Vector v = LUA->GetVector(2);
+	pMat->edgetint = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
+	return 0;
+}
+
+LUA_FUNCTION(Material_EdgeTintFalloff)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Number);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	pMat->falloff = glm::clamp(LUA->GetNumber(2), 0.001, 1.);
+	return 0;
+}
+
 LUA_FUNCTION(Material_Metalness)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
@@ -1465,6 +1486,9 @@ GMOD_MODULE_OPEN()
 		PUSH_C_FUNC(Material, Colour);
 		PUSH_C_FUNC(Material, DielectricColour);
 		PUSH_C_FUNC(Material, ConductorColour);
+
+		PUSH_C_FUNC(Material, EdgeTint);
+		PUSH_C_FUNC(Material, EdgeTintFalloff);
 
 		PUSH_C_FUNC(Material, Metalness);
 		PUSH_C_FUNC(Material, Roughness);
