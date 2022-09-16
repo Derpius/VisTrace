@@ -810,6 +810,30 @@ LUA_FUNCTION(Material_Roughness)
 	return 0;
 }
 
+LUA_FUNCTION(Material_Anisotropy)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Number);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	// While anisotropy can be mapped -1 to 1
+	// with rotation it makes more sense to have it 0-1 (easily stored in a texture) and use rotation to change the direction
+	// This is also how blender's principled BSDF node does it
+	pMat->anisotropy = glm::clamp(LUA->GetNumber(2), 0., 1. - kMinGGXAlpha);
+	pMat->anisotropyOverriden = true;
+	return 0;
+}
+LUA_FUNCTION(Material_AnisotropicRotation)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	LUA->CheckType(2, Type::Number);
+
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	pMat->anisotropicRotation = glm::clamp(LUA->GetNumber(2), 0., 1.) * 2. * glm::pi<double>();
+	pMat->anisotropicRotationOverriden = true;
+	return 0;
+}
+
 LUA_FUNCTION(Material_IoR)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
@@ -1516,6 +1540,8 @@ GMOD_MODULE_OPEN()
 
 		PUSH_C_FUNC(Material, Metalness);
 		PUSH_C_FUNC(Material, Roughness);
+		PUSH_C_FUNC(Material, Anisotropy);
+		PUSH_C_FUNC(Material, AnisotropicRotation);
 
 		PUSH_C_FUNC(Material, IoR);
 

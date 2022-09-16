@@ -4,6 +4,8 @@
 
 #include "vistrace/ISampler.h"
 
+constexpr float kMinGGXAlpha = 0.0064f;
+
 // Most significant bit of each nibble reserved 
 enum class LobeType : uint8_t
 {
@@ -78,6 +80,8 @@ struct BSDFMaterial
 
 	bool anisotropyOverriden = false;
 	float anisotropy = 0.f;
+	bool anisotropicRotationOverriden = false;
+	float anisotropicRotation = 0.f;
 
 	float diffuseTransmission = 0.f;
 	float specularTransmission = 0.f;

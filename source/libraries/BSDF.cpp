@@ -1,11 +1,10 @@
 #include "BSDF.h"
 
 #include "glm/ext/scalar_constants.hpp"
+#include "glm/gtx/rotate_vector.hpp"
 
 using namespace glm;
 using namespace VisTrace;
-
-static const float kMinGGXAlpha = 0.0064f;
 
 int BSDFMaterial::id = -1;
 
@@ -801,13 +800,13 @@ bool SampleSpecularTransmission(
 }
 #pragma endregion
 
-inline vec3 to_local(const vec3& T, const vec3& B, const vec3& N, const vec3& v)
+inline vec3 to_local(const BSDFMaterial& data, const vec3& T, const vec3& B, const vec3& N, const vec3& v)
 {
-	return vec3(dot(v, T), dot(v, B), dot(v, N));
+	return vec3(dot(v, rotate(T, data.anisotropicRotation, N)), dot(v, rotate(B, data.anisotropicRotation, N)), dot(v, N));
 }
-inline vec3 from_local(const vec3& T, const vec3& B, const vec3& N, const vec3& v)
+inline vec3 from_local(const BSDFMaterial& data, const vec3& T, const vec3& B, const vec3& N, const vec3& v)
 {
-	return T * v.x + B * v.y + N * v.z;
+	return rotate(T, data.anisotropicRotation, N) * v.x + rotate(B, data.anisotropicRotation, N) * v.y + N * v.z;
 }
 
 bool SampleBSDF(
@@ -823,7 +822,7 @@ bool SampleBSDF(
 	float lobeSelect = sg->GetFloat();
 
 	const bool entering = dot(incidentWorld, normal) >= 0.f;
-	const vec3 incident = entering ? to_local(tangent, binormal, normal, incidentWorld) : to_local(-tangent, -binormal, -normal, incidentWorld);
+	const vec3 incident = entering ? to_local(data, tangent, binormal, normal, incidentWorld) : to_local(data, -tangent, -binormal, -normal, incidentWorld);
 
 	if (lobeSelect < pDiffuse) {
 		if (!SampleDiffuse(data, incident, sg, result.lobe, result.scattered, result.weight, result.pdf)) return false;
@@ -863,7 +862,7 @@ bool SampleBSDF(
 		if (pSpecTrans > 0.f) result.pdf += pSpecTrans * EvalSpecularTransmissionPDF(data, incident, result.scattered, entering);
 	}
 
-	result.scattered = entering ? from_local(tangent, binormal, normal, result.scattered) : from_local(-tangent, -binormal, -normal, result.scattered);
+	result.scattered = entering ? from_local(data, tangent, binormal, normal, result.scattered) : from_local(data, -tangent, -binormal, -normal, result.scattered);
 	return true;
 }
 
@@ -878,11 +877,11 @@ vec3 EvalBSDF(
 
 	const bool entering = dot(incidentWorld, normal) >= 0.f;
 	const vec3 incident = entering ?
-		to_local(tangent, binormal, normal, incidentWorld) :
-		to_local(-tangent, -binormal, -normal, incidentWorld);
+		to_local(data, tangent, binormal, normal, incidentWorld) :
+		to_local(data, -tangent, -binormal, -normal, incidentWorld);
 	const vec3 scattered = entering ?
-		to_local(tangent, binormal, normal, scatteredWorld) :
-		to_local(-tangent, -binormal, -normal, scatteredWorld);
+		to_local(data, tangent, binormal, normal, scatteredWorld) :
+		to_local(data, -tangent, -binormal, -normal, scatteredWorld);
 
 	vec3 result{ 0, 0, 0 };
 	if (pDiffuse > 0.f)
@@ -909,11 +908,11 @@ float EvalPDF(
 
 	const bool entering = dot(incidentWorld, normal) >= 0.f;
 	const vec3 incident = entering ?
-		to_local(tangent, binormal, normal, incidentWorld) :
-		to_local(-tangent, -binormal, -normal, incidentWorld);
+		to_local(data, tangent, binormal, normal, incidentWorld) :
+		to_local(data, -tangent, -binormal, -normal, incidentWorld);
 	const vec3 scattered = entering ?
-		to_local(tangent, binormal, normal, scatteredWorld) :
-		to_local(-tangent, -binormal, -normal, scatteredWorld);
+		to_local(data, tangent, binormal, normal, scatteredWorld) :
+		to_local(data, -tangent, -binormal, -normal, scatteredWorld);
 
 	float pdf = 0.f;
 	if (pDiffuse > 0.f)
