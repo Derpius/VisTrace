@@ -590,6 +590,13 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				if (LUA->IsType(-1, Type::Number)) mat.detailBlendMode = static_cast<DetailBlendMode>(LUA->GetNumber());
 				LUA->Pop();
 
+				LUA->GetField(-1, "GetFloat");
+				LUA->Push(-2);
+				LUA->PushString("$alphatestreference");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Number)) mat.alphatestreference = LUA->GetNumber();
+				LUA->Pop();
+
 				LUA->GetField(-1, "GetVector");
 				LUA->Push(-2);
 				LUA->PushString("$detailtint");
@@ -1043,6 +1050,13 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				LUA->PushString("$flags");
 				LUA->Call(2, 1);
 				if (LUA->IsType(-1, Type::Number)) mat.flags = static_cast<MaterialFlags>(LUA->GetNumber());
+				LUA->Pop();
+
+				LUA->GetField(-1, "GetFloat");
+				LUA->Push(-2);
+				LUA->PushString("$alphatestreference");
+				LUA->Call(2, 1);
+				if (LUA->IsType(-1, Type::Number)) mat.alphatestreference = LUA->GetNumber();
 				LUA->Pop();
 
 				LUA->Pop();
