@@ -895,7 +895,7 @@ LUA_FUNCTION(TraceResult_SampleBSDF)
 	BSDFSample sample;
 	bool valid = SampleBSDF(
 		*pMat, pSampler,
-		pResult->GetNormal(),
+		pResult->GetNormal(), pResult->GetTangent(), pResult->GetBinormal(),
 		pResult->wo,
 		sample
 	);
@@ -949,7 +949,7 @@ LUA_FUNCTION(TraceResult_EvalBSDF)
 
 	glm::vec3 colour = EvalBSDF(
 		*pMat,
-		pResult->GetNormal(),
+		pResult->GetNormal(), pResult->GetTangent(), pResult->GetBinormal(),
 		pResult->wo, scattered
 	);
 
@@ -989,7 +989,7 @@ LUA_FUNCTION(TraceResult_EvalPDF)
 
 	float pdf = EvalPDF(
 		*pMat,
-		pResult->GetNormal(),
+		pResult->GetNormal(), pResult->GetTangent(), pResult->GetBinormal(),
 		pResult->wo, scattered
 	);
 
@@ -1001,6 +1001,8 @@ LUA_FUNCTION(TraceResult_EvalPDF)
 	Sampler      sampler
 	BSDFMaterial material
 	Vector       normal
+	Vector       tangent
+	Vector       binormal
 	Vector       incident
 
 	returns:
@@ -1012,6 +1014,8 @@ LUA_FUNCTION(vistrace_SampleBSDF)
 	LUA->CheckType(2, BSDFMaterial::id);
 	LUA->CheckType(3, Type::Vector);
 	LUA->CheckType(4, Type::Vector);
+	LUA->CheckType(5, Type::Vector);
+	LUA->CheckType(6, Type::Vector);
 
 	ISampler* pSampler = *LUA->GetUserType<ISampler*>(1, Sampler::id);
 
@@ -1020,6 +1024,10 @@ LUA_FUNCTION(vistrace_SampleBSDF)
 	Vector v = LUA->GetVector(3);
 	glm::vec3 normal(v.x, v.y, v.z);
 	v = LUA->GetVector(4);
+	glm::vec3 tangent(v.x, v.y, v.z);
+	v = LUA->GetVector(5);
+	glm::vec3 binormal(v.x, v.y, v.z);
+	v = LUA->GetVector(6);
 	glm::vec3 incident(v.x, v.y, v.z);
 
 	LUA->Pop(LUA->Top());
@@ -1027,7 +1035,7 @@ LUA_FUNCTION(vistrace_SampleBSDF)
 	BSDFSample sample;
 	bool valid = SampleBSDF(
 		*pMat, pSampler,
-		normal,
+		normal, tangent, binormal,
 		incident,
 		sample
 	);
@@ -1052,6 +1060,8 @@ LUA_FUNCTION(vistrace_SampleBSDF)
 /*
 	BSDFMaterial material
 	Vector       normal
+	Vector       tangent
+	Vector       binormal
 	Vector       incident
 	Vector       scattered
 
@@ -1064,19 +1074,25 @@ LUA_FUNCTION(vistrace_EvalBSDF)
 	LUA->CheckType(2, Type::Vector);
 	LUA->CheckType(3, Type::Vector);
 	LUA->CheckType(4, Type::Vector);
+	LUA->CheckType(5, Type::Vector);
+	LUA->CheckType(6, Type::Vector);
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
 
 	Vector v = LUA->GetVector(2);
 	glm::vec3 normal(v.x, v.y, v.z);
 	v = LUA->GetVector(3);
-	glm::vec3 incident(v.x, v.y, v.z);
+	glm::vec3 tangent(v.x, v.y, v.z);
 	v = LUA->GetVector(4);
+	glm::vec3 binormal(v.x, v.y, v.z);
+	v = LUA->GetVector(5);
+	glm::vec3 incident(v.x, v.y, v.z);
+	v = LUA->GetVector(6);
 	glm::vec3 scattered(v.x, v.y, v.z);
 
 	LUA->Pop(LUA->Top());
 
-	glm::vec3 colour = EvalBSDF(*pMat, normal, incident, scattered);
+	glm::vec3 colour = EvalBSDF(*pMat, normal, tangent, binormal, incident, scattered);
 	LUA->PushVector(MakeVector(colour.x, colour.y, colour.z));
 	return 1;
 }
@@ -1084,6 +1100,8 @@ LUA_FUNCTION(vistrace_EvalBSDF)
 /*
 	BSDFMaterial material
 	Vector       normal
+	Vector       tangent
+	Vector       binormal
 	Vector       incident
 	Vector       scattered
 
@@ -1096,19 +1114,25 @@ LUA_FUNCTION(vistrace_EvalPDF)
 	LUA->CheckType(2, Type::Vector);
 	LUA->CheckType(3, Type::Vector);
 	LUA->CheckType(4, Type::Vector);
+	LUA->CheckType(5, Type::Vector);
+	LUA->CheckType(6, Type::Vector);
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
 
 	Vector v = LUA->GetVector(2);
 	glm::vec3 normal(v.x, v.y, v.z);
 	v = LUA->GetVector(3);
-	glm::vec3 incident(v.x, v.y, v.z);
+	glm::vec3 tangent(v.x, v.y, v.z);
 	v = LUA->GetVector(4);
+	glm::vec3 binormal(v.x, v.y, v.z);
+	v = LUA->GetVector(5);
+	glm::vec3 incident(v.x, v.y, v.z);
+	v = LUA->GetVector(6);
 	glm::vec3 scattered(v.x, v.y, v.z);
 
 	LUA->Pop(LUA->Top());
 
-	float pdf = EvalPDF(*pMat, normal, incident, scattered);
+	float pdf = EvalPDF(*pMat, normal, tangent, binormal, incident, scattered);
 	LUA->PushNumber(pdf);
 	return 1;
 }

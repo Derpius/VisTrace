@@ -72,8 +72,12 @@ struct BSDFMaterial
 	bool roughnessOverridden = false;
 	float roughness = 1.f;
 	float linearRoughness = 1.f;
+
 	bool metallicOverridden = false;
 	float metallic = 0.f;
+
+	bool anisotropyOverriden = false;
+	float anisotropy = 0.f;
 
 	float diffuseTransmission = 0.f;
 	float specularTransmission = 0.f;
@@ -93,43 +97,21 @@ struct BSDFSample
 	LobeType lobe = LobeType::None;
 };
 
-/// <summary>
-/// Samples the BSDF
-/// </summary>
-/// <param name="data">Material data</param>
-/// <param name="sg">Sample generator</param>
-/// <param name="result">Sample result</param>
-/// <param name="normal">Normal at hit point</param>
-/// <param name="incident">Vector towards camera or previous hit</param>
-/// <returns>Whether the sample is valid</returns>
 bool SampleBSDF(
 	const BSDFMaterial& data, VisTrace::ISampler* sg,
-	const glm::vec3& normal, const glm::vec3& incident,
+	const glm::vec3& normal, const glm::vec3& tangent, const glm::vec3& binormal,
+	const glm::vec3& incidentWorld,
 	BSDFSample& result
 );
 
-/// <summary>
-/// Evaluates the BSDF
-/// </summary>
-/// <param name="data">Material data</param>
-/// <param name="normal">Normal at hit point</param>
-/// <param name="incident">Vector towards camera or previous hit</param>
-/// <param name="scattered">Sampled vector at this hit</param>
-/// <returns>The value of the BSDF</returns>
 glm::vec3 EvalBSDF(
 	const BSDFMaterial& data,
-	const glm::vec3& normal, const glm::vec3& incident, const glm::vec3& scattered
+	const glm::vec3& normal, const glm::vec3& tangent, const glm::vec3& binormal,
+	const glm::vec3& incidentWorld, const glm::vec3& scatteredWorld
 );
 
-/// <summary>
-/// Evaluates the BSDF's PDF
-/// </summary>
-/// <param name="data">Material data</param>
-/// <param name="normal">Normal at hit point</param>
-/// <param name="incident">Vector towards camera or previous hit</param>
-/// <param name="scattered">Sampled vector at this hit</param>
-/// <returns>The value of the PDF</returns>
 float EvalPDF(
 	const BSDFMaterial& data,
-	const glm::vec3& normal, const glm::vec3& incident, const glm::vec3& scattered
+	const glm::vec3& normal, const glm::vec3& tangent, const glm::vec3& binormal,
+	const glm::vec3& incidentWorld, const glm::vec3& scatteredWorld
 );
