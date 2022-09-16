@@ -7,11 +7,29 @@ TOOL.Information = {
 	{name = "reload"}
 }
 
-TOOL.ClientConVar.r = 255
-TOOL.ClientConVar.g = 255
-TOOL.ClientConVar.b = 255
+TOOL.ClientConVar.separatecolours = 0
+
+TOOL.ClientConVar.dielectric_r = 255
+TOOL.ClientConVar.dielectric_g = 255
+TOOL.ClientConVar.dielectric_b = 255
+
+TOOL.ClientConVar.conductive_r = 255
+TOOL.ClientConVar.conductive_g = 255
+TOOL.ClientConVar.conductive_b = 255
+
+TOOL.ClientConVar.edgetint_r = 255
+TOOL.ClientConVar.edgetint_g = 255
+TOOL.ClientConVar.edgetint_b = 255
+TOOL.ClientConVar.falloff    = 0.2
+
+TOOL.ClientConVar.roughnessoverride = 0
 TOOL.ClientConVar.roughness = 1
+TOOL.ClientConVar.metalnessoverride = 0
 TOOL.ClientConVar.metalness = 0
+
+TOOL.ClientConVar.anisotropy = 0
+TOOL.ClientConVar.anisotropicrotation = 0
+
 TOOL.ClientConVar.ior = 1.5
 TOOL.ClientConVar.difftrans = 0
 TOOL.ClientConVar.spectrans = 0
@@ -25,9 +43,30 @@ local function SetMaterial(plr, ent, materialTbl)
 	if materialTbl then
 		duplicator.StoreEntityModifier(ent, "BSDFMaterial", materialTbl)
 		ent:SetNWBool("BSDFMaterial.Set", true)
-		ent:SetNWVector("BSDFMaterial.Colour", materialTbl.Colour)
-		ent:SetNWFloat("BSDFMaterial.Roughness", materialTbl.Roughness)
-		ent:SetNWFloat("BSDFMaterial.Metalness", materialTbl.Metalness)
+
+		ent:SetNWVector("BSDFMaterial.Dielectric", materialTbl.Dielectric)
+		ent:SetNWVector("BSDFMaterial.Conductive", materialTbl.Conductive)
+
+		ent:SetNWVector("BSDFMaterial.EdgeTint", materialTbl.EdgeTint)
+		ent:SetNWFloat("BSDFMaterial.Falloff", materialTbl.Falloff)
+
+		if materialTbl.Roughness then
+			ent:SetNWBool("BSDFMaterial.RoughnessOverride", true)
+			ent:SetNWFloat("BSDFMaterial.Roughness", materialTbl.Roughness)
+		else
+			ent:SetNWBool("BSDFMaterial.RoughnessOverride", false)
+		end
+
+		if materialTbl.Metalness then
+			ent:SetNWBool("BSDFMaterial.MetalnessOverride", true)
+			ent:SetNWFloat("BSDFMaterial.Metalness", materialTbl.Metalness)
+		else
+			ent:SetNWBool("BSDFMaterial.MetalnessOverride", false)
+		end
+
+		ent:SetNWFloat("BSDFMaterial.Anisotropy", materialTbl.Anisotropy)
+		ent:SetNWFloat("BSDFMaterial.AnisotropicRotation", materialTbl.AnisotropicRotation)
+
 		ent:SetNWFloat("BSDFMaterial.IoR", materialTbl.IoR)
 		ent:SetNWFloat("BSDFMaterial.DiffuseTransmission", materialTbl.DiffuseTransmission)
 		ent:SetNWFloat("BSDFMaterial.SpecularTransmission", materialTbl.SpecularTransmission)
@@ -50,20 +89,49 @@ function TOOL:LeftClick(trace)
 	if not IsValid(ent) then return false end
 	if CLIENT then return true end
 
-	local r = self:GetClientNumber("r", 255)
-	local g = self:GetClientNumber("g", 255)
-	local b = self:GetClientNumber("b", 255)
-	local roughness = self:GetClientNumber("roughness", 1)
-	local metalness = self:GetClientNumber("metalness", 0)
+	local dielectric_r = self:GetClientNumber("dielectric_r", 255)
+	local dielectric_g = self:GetClientNumber("dielectric_g", 255)
+	local dielectric_b = self:GetClientNumber("dielectric_b", 255)
+	local conductive_r = self:GetClientNumber("conductive_r", 255)
+	local conductive_g = self:GetClientNumber("conductive_g", 255)
+	local conductive_b = self:GetClientNumber("conductive_b", 255)
+
+	local edgetint_r = self:GetClientNumber("edgetint_r", 255)
+	local edgetint_g = self:GetClientNumber("edgetint_g", 255)
+	local edgetint_b = self:GetClientNumber("edgetint_b", 255)
+	local falloff = self:GetClientNumber("falloff", 0.2)
+
+	local roughness
+	if self:GetClientNumber("roughnessoverride", 0) ~= 0 then
+		roughness = self:GetClientNumber("roughness", -1)
+	end
+
+	local metalness
+	if self:GetClientNumber("metalnessoverride", 0) ~= 0 then
+		metalness = self:GetClientNumber("metalness", -1)
+	end
+
+	local anisotropy = self:GetClientNumber("anisotropy", 0)
+	local anisotropicrotation = self:GetClientNumber("anisotropicrotation", 0)
+
 	local ior = self:GetClientNumber("ior", 1.5)
 	local difftrans = self:GetClientNumber("difftrans", 0)
 	local spectrans = self:GetClientNumber("spectrans", 0)
 	local thin = self:GetClientNumber("thin", 0) ~= 0
 
 	SetMaterial(self:GetOwner(), ent, {
-		Colour = Vector(r, g, b) / 255,
+		Dielectric = Vector(dielectric_r, dielectric_g, dielectric_b) / 255,
+		Conductive = Vector(conductive_r, conductive_g, conductive_b) / 255,
+
+		EdgeTint = Vector(edgetint_r, edgetint_g, edgetint_b) / 255,
+		Falloff = falloff,
+
 		Roughness = roughness,
 		Metalness = metalness,
+
+		Anisotropy = anisotropy,
+		AnisotropicRotation = anisotropicrotation / 360,
+
 		IoR = ior,
 		DiffuseTransmission = difftrans,
 		SpecularTransmission = spectrans,
@@ -81,24 +149,43 @@ function TOOL:RightClick(trace)
 	if CLIENT then return true end
 
 	local mat = ent.BSDFMaterial or {
-		Colour = Vector(1, 1, 1),
-		Roughness = 1,
-		Metalness = 0,
+		Dielectric = Vector(1, 1, 1),
+		Conductive = Vector(1, 1, 1),
+
+		EdgeTint = Vector(1, 1, 1),
+		Falloff = 0.2,
+
+		Anisotropy = 0,
+		AnisotropicRotation = 0,
+
 		IoR = 1.5,
 		DiffuseTransmission = 0,
 		SpecularTransmission = 0,
 		Thin = false
 	}
 
-	self:GetOwner():ConCommand("bsdf_material_r "         .. mat.Colour[1] * 255)
-	self:GetOwner():ConCommand("bsdf_material_g "         .. mat.Colour[2] * 255)
-	self:GetOwner():ConCommand("bsdf_material_b "         .. mat.Colour[3] * 255)
-	self:GetOwner():ConCommand("bsdf_material_roughness " .. mat.Roughness)
-	self:GetOwner():ConCommand("bsdf_material_metalness " .. mat.Metalness)
-	self:GetOwner():ConCommand("bsdf_material_ior "       .. mat.IoR)
-	self:GetOwner():ConCommand("bsdf_material_difftrans " .. mat.DiffuseTransmission)
-	self:GetOwner():ConCommand("bsdf_material_spectrans " .. mat.SpecularTransmission)
-	self:GetOwner():ConCommand("bsdf_material_thin "      .. (mat.Thin and "1" or "0"))
+	self:GetOwner():ConCommand("bsdf_material_dielectric_r "        .. mat.Dielectric[1] * 255)
+	self:GetOwner():ConCommand("bsdf_material_dielectric_g "        .. mat.Dielectric[2] * 255)
+	self:GetOwner():ConCommand("bsdf_material_dielectric_b "        .. mat.Dielectric[3] * 255)
+	self:GetOwner():ConCommand("bsdf_material_conductive_r "        .. mat.Conductive[1] * 255)
+	self:GetOwner():ConCommand("bsdf_material_conductive_g "        .. mat.Conductive[2] * 255)
+	self:GetOwner():ConCommand("bsdf_material_conductive_b "        .. mat.Conductive[3] * 255)
+
+	self:GetOwner():ConCommand("bsdf_material_edgetint_r "          .. mat.EdgeTint[1] * 255)
+	self:GetOwner():ConCommand("bsdf_material_edgetint_g "          .. mat.EdgeTint[2] * 255)
+	self:GetOwner():ConCommand("bsdf_material_edgetint_b "          .. mat.EdgeTint[3] * 255)
+	self:GetOwner():ConCommand("bsdf_material_falloff "             .. mat.Falloff)
+
+	self:GetOwner():ConCommand("bsdf_material_roughnessoverride 0")
+	self:GetOwner():ConCommand("bsdf_material_metalnessoverride 0")
+
+	self:GetOwner():ConCommand("bsdf_material_anisotropy "          .. mat.Anisotropy)
+	self:GetOwner():ConCommand("bsdf_material_anisotropicrotation " .. mat.AnisotropicRotation * 360)
+
+	self:GetOwner():ConCommand("bsdf_material_ior "                 .. mat.IoR)
+	self:GetOwner():ConCommand("bsdf_material_difftrans "           .. mat.DiffuseTransmission)
+	self:GetOwner():ConCommand("bsdf_material_spectrans "           .. mat.SpecularTransmission)
+	self:GetOwner():ConCommand("bsdf_material_thin "                .. (mat.Thin and "1" or "0"))
 
 	return true
 end
@@ -131,9 +218,23 @@ if CLIENT then
 		local mat = vistrace.CreateMaterial()
 		if not self:GetNWBool("BSDFMaterial.Set") then return mat end
 
-		mat:Colour(self:GetNWVector("BSDFMaterial.Colour"))
-		mat:Roughness(self:GetNWFloat("BSDFMaterial.Roughness"))
-		mat:Metalness(self:GetNWFloat("BSDFMaterial.Metalness"))
+		mat:DielectricColour(self:GetNWVector("BSDFMaterial.Dielectric"))
+		mat:ConductorColour(self:GetNWVector("BSDFMaterial.Conductive"))
+
+		mat:EdgeTint(self:GetNWVector("BSDFMaterial.EdgeTint"))
+		mat:EdgeTintFalloff(self:GetNWFloat("BSDFMaterial.Falloff"))
+
+		if self:GetNWBool("BSDFMaterial.RoughnessOverride") then
+			mat:Roughness(self:GetNWFloat("BSDFMaterial.Roughness"))
+		end
+
+		if self:GetNWBool("BSDFMaterial.MetalnessOverride") then
+			mat:Metalness("BSDFMaterial.Metalness")
+		end
+
+		mat:Anisotropy(self:GetNWFloat("BSDFMaterial.Anisotropy"))
+		mat:AnisotropicRotation(self:GetNWFloat("BSDFMaterial.AnisotropicRotation"))
+
 		mat:IoR(self:GetNWFloat("BSDFMaterial.IoR"))
 		mat:DiffuseTransmission(self:GetNWFloat("BSDFMaterial.DiffuseTransmission"))
 		mat:SpecularTransmission(self:GetNWFloat("BSDFMaterial.SpecularTransmission"))
@@ -395,25 +496,99 @@ if CLIENT then
 
 		CPanel:ToolPresets("BSDFMaterial", CON_VARS_DEFAULT)
 
-		local width = CPanel:GetWide()
+		local useSeparateColours = CPanel:CheckBox("Separate dielectric and conductive colours", "bsdf_material_separatecolours")
 
-		local diffuseMixer = vgui.Create("DColorMixer")
-		diffuseMixer:SetLabel("Diffuse Colour")
-		diffuseMixer:Dock(FILL)
-		diffuseMixer:SetPalette(true)
-		diffuseMixer:SetAlphaBar(false)
-		diffuseMixer:SetWangs(true)
-		diffuseMixer:SetColor(Color(255, 255, 255))
-		diffuseMixer:SetConVarR("bsdf_material_r")
-		diffuseMixer:SetConVarG("bsdf_material_g")
-		diffuseMixer:SetConVarB("bsdf_material_b")
-		CPanel:AddItem(diffuseMixer)
+		local dielectricMixer = vgui.Create("DColorMixer")
+		local conductiveMixer = vgui.Create("DColorMixer")
 
-		CPanel:NumSlider("Metalness", "bsdf_material_metalness", 0, 1, 2)
-		CPanel:NumSlider("Roughness", "bsdf_material_roughness", 0, 1, 2)
+		dielectricMixer:SetPalette(false)
+		dielectricMixer:SetAlphaBar(false)
+		dielectricMixer:SetWangs(true)
+		dielectricMixer:SetColor(Color(255, 255, 255))
+		dielectricMixer:SetConVarR("bsdf_material_dielectric_r")
+		dielectricMixer:SetConVarG("bsdf_material_dielectric_g")
+		dielectricMixer:SetConVarB("bsdf_material_dielectric_b")
+
+		function dielectricMixer:ValueChanged(col)
+			if not useSeparateColours:GetChecked() then
+				conductiveMixer:SetColor(col)
+			end
+		end
+
+		conductiveMixer:SetLabel("Conductor Colour")
+		conductiveMixer:SetPalette(false)
+		conductiveMixer:SetAlphaBar(false)
+		conductiveMixer:SetWangs(true)
+		conductiveMixer:SetColor(Color(255, 255, 255))
+		conductiveMixer:SetConVarR("bsdf_material_conductive_r")
+		conductiveMixer:SetConVarG("bsdf_material_conductive_g")
+		conductiveMixer:SetConVarB("bsdf_material_conductive_b")
+
+		function useSeparateColours:OnChange(val)
+			if val then
+				conductiveMixer:SetVisible(true)
+				dielectricMixer:SetLabel("Dielectric Colour")
+				CPanel:InvalidateChildren(true)
+			else
+				conductiveMixer:SetVisible(false)
+				dielectricMixer:SetLabel("Colour")
+				CPanel:InvalidateChildren(true)
+
+				conductiveMixer:SetColor(dielectricMixer:GetColor())
+			end
+		end
+
+		CPanel:AddItem(useSeparateColours)
+		CPanel:AddItem(dielectricMixer)
+		CPanel:AddItem(conductiveMixer)
+
+		local edgetintMixer = vgui.Create("DColorMixer")
+		edgetintMixer:SetLabel("Edge Tint")
+		edgetintMixer:SetPalette(false)
+		edgetintMixer:SetAlphaBar(false)
+		edgetintMixer:SetWangs(true)
+		edgetintMixer:SetColor(Color(255, 255, 255))
+		edgetintMixer:SetConVarR("bsdf_material_edgetint_r")
+		edgetintMixer:SetConVarG("bsdf_material_edgetint_g")
+		edgetintMixer:SetConVarB("bsdf_material_edgetint_b")
+		CPanel:AddItem(edgetintMixer)
+
+		local plr = LocalPlayer()
+
+		local metalnessOverride = CPanel:CheckBox("Override metalness", "bsdf_material_metalnessoverride")
+		local metalness = CPanel:NumSlider("Metalness", "bsdf_material_metalness", 0, 1, 2)
+		function metalnessOverride:OnChange(val)
+			if val then
+				metalness:SetMouseInputEnabled(true)
+				metalness:SetAlpha(255)
+			else
+				metalness:SetMouseInputEnabled(false)
+				metalness:SetAlpha(75)
+			end
+		end
+
+		local roughnessOverride = CPanel:CheckBox("Override roughness", "bsdf_material_roughnessoverride")
+		local roughness = CPanel:NumSlider("Roughness", "bsdf_material_roughness", 0, 1, 2)
+		function roughnessOverride:OnChange(val)
+			if val then
+				roughness:SetMouseInputEnabled(true)
+				roughness:SetAlpha(255)
+			else
+				roughness:SetMouseInputEnabled(false)
+				roughness:SetAlpha(75)
+			end
+		end
+
+		CPanel:NumSlider("Edge Tint Falloff (Use 0.2 for Fresnel)", "bsdf_material_falloff", 0, 1, 2)
+
+		CPanel:NumSlider("Anisotropy", "bsdf_material_anisotropy", 0, 1, 2)
+		CPanel:NumSlider("Anisotropic Rotation", "bsdf_material_anisotropicrotation", 0, 360, 0)
+
 		CPanel:NumSlider("Index of Refraction", "bsdf_material_ior", 1, 5, 2)
 		CPanel:NumSlider("Specular Transmission", "bsdf_material_spectrans", 0, 1, 2)
 		CPanel:NumSlider("Diffuse Transmission", "bsdf_material_difftrans", 0, 1, 2)
+
+		CPanel:CheckBox("Use thin BTDF for specular transmission", "bsdf_material_thin")
 
 		local BUTTON_HEIGHT = 24
 		local previewContainer = vgui.Create("DPanel")
