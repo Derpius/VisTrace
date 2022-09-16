@@ -338,20 +338,50 @@ if CLIENT then
 		render.Clear(0, 0, 0, 255, true, true)
 
 		local plr = LocalPlayer()
-		local r         = plr:GetInfoNum("bsdf_material_r", 255) / 255
-		local g         = plr:GetInfoNum("bsdf_material_g", 255) / 255
-		local b         = plr:GetInfoNum("bsdf_material_b", 255) / 255
-		local roughness = plr:GetInfoNum("bsdf_material_roughness", 1)
-		local metalness = plr:GetInfoNum("bsdf_material_metalness", 0)
+
+		local dielectric = Vector(
+			plr:GetInfoNum("bsdf_material_dielectric_r", 255) / 255,
+			plr:GetInfoNum("bsdf_material_dielectric_g", 255) / 255,
+			plr:GetInfoNum("bsdf_material_dielectric_b", 255) / 255
+		)
+
+		local conductive = Vector(
+			plr:GetInfoNum("bsdf_material_conductive_r", 255) / 255,
+			plr:GetInfoNum("bsdf_material_conductive_g", 255) / 255,
+			plr:GetInfoNum("bsdf_material_conductive_b", 255) / 255
+		)
+
+		local edgetint = Vector(
+			plr:GetInfoNum("bsdf_material_edgetint_r", 255) / 255,
+			plr:GetInfoNum("bsdf_material_edgetint_g", 255) / 255,
+			plr:GetInfoNum("bsdf_material_edgetint_b", 255) / 255
+		)
+		local falloff  = plr:GetInfoNum("bsdf_material_falloff", 0.2)
+
+		local roughness = plr:GetInfoNum("bsdf_material_roughnessoverride", 0) ~= "0" and plr:GetInfoNum("bsdf_material_roughness", 1) or 1
+		local metalness = plr:GetInfoNum("bsdf_material_metalnessoverride", 0) ~= "0" and plr:GetInfoNum("bsdf_material_metalness", 0) or 0
+
+		local anisotropy          = plr:GetInfoNum("bsdf_material_anisotropy", 0)
+		local anisotropicrotation = plr:GetInfoNum("bsdf_material_anisotropicrotation", 0) / 360
+
 		local ior       = plr:GetInfoNum("bsdf_material_ior", 1.5)
 		local difftrans = plr:GetInfoNum("bsdf_material_difftrans", 0)
 		local spectrans = plr:GetInfoNum("bsdf_material_spectrans", 0)
 		local thin      = plr:GetInfoNum("bsdf_material_thin", 0) ~= 0
 
 		local mat = vistrace.CreateMaterial()
-		mat:Colour(Vector(r, g, b))
+		mat:DielectricColour(dielectric)
+		mat:ConductorColour(dielectric)
+
+		mat:EdgeTint(edgetint)
+		mat:EdgeTintFalloff(falloff)
+
 		mat:Roughness(roughness)
 		mat:Metalness(metalness)
+
+		mat:Anisotropy(anisotropy)
+		mat:AnisotropicRotation(anisotropicrotation)
+
 		mat:IoR(ior)
 		mat:DiffuseTransmission(difftrans)
 		mat:SpecularTransmission(spectrans)
@@ -368,13 +398,15 @@ if CLIENT then
 			-- Convert sampled dot product to an incident vector (assuming the normal is positive Z)
 			local incident = Vector(math.sin(math.acos(iDotN)), 0, iDotN)
 			local normal = Vector(0, 0, 1)
+			local tangent = Vector(1, 0, 0)
+			local binormal = Vector(0, 1, 0)
 
 			-- Sample diffuse reflection
 			mat:ActiveLobes(LobeType.DiffuseReflection)
 			local throughput = Vector(0, 0, 0)
 			local validSamples = PREVIEW_INDIRECT_SAMPLES
 			for j = 1, PREVIEW_INDIRECT_SAMPLES do
-				local sample = vistrace.SampleBSDF(sampler, mat, normal, incident)
+				local sample = vistrace.SampleBSDF(sampler, mat, normal, tangent, binormal, incident)
 				if sample then
 					throughput = throughput + sample.weight
 				else
@@ -388,7 +420,7 @@ if CLIENT then
 			throughput = Vector(0, 0, 0)
 			validSamples = PREVIEW_INDIRECT_SAMPLES * roughness + 1
 			for j = 0, PREVIEW_INDIRECT_SAMPLES * roughness do
-				local sample = vistrace.SampleBSDF(sampler, mat, normal, incident)
+				local sample = vistrace.SampleBSDF(sampler, mat, normal, tangent, binormal, incident)
 				if sample then
 					throughput = throughput + sample.weight
 				else
@@ -402,7 +434,7 @@ if CLIENT then
 			throughput = Vector(0, 0, 0)
 			validSamples = PREVIEW_INDIRECT_SAMPLES * roughness + 1
 			for j = 0, PREVIEW_INDIRECT_SAMPLES * roughness do
-				local sample = vistrace.SampleBSDF(sampler, mat, normal, incident)
+				local sample = vistrace.SampleBSDF(sampler, mat, normal, tangent, binormal, incident)
 				if sample then
 					throughput = throughput + sample.weight
 				else
@@ -424,9 +456,12 @@ if CLIENT then
 				u = u * 2 - 1
 				v = v * 2 - 1
 
-				local u2, v2 = u * u, v * v
-				if u2 + v2 < 1 then
-					local normal = Vector(-math.sqrt(1 - u2 - v2), u, -v)
+				local r2 = u * u + v * v
+				if r2 < 1 then
+					local normal = Vector(-math.sqrt(1 - r2), u, -v)
+					local tangent = Vector(0, 0, 1):Cross(normal):GetNormalized()
+					local binormal = normal:Cross(tangent):GetNormalized()
+
 					local incident = Vector(-1, 0, 0)
 					iDotN = normal:Dot(incident)
 					local deltaReflect = Reflect(incident, normal)
@@ -435,7 +470,7 @@ if CLIENT then
 					-- Direct contribution
 					local lDir = PREVIEW_SPOT_LIGHT - normal
 					lDir:Normalize()
-					local direct = vistrace.EvalBSDF(mat, normal, incident, lDir)
+					local direct = vistrace.EvalBSDF(mat, normal, tangent, binormal, incident, lDir)
 
 					-- Indirect contribution
 					local index = iDotN * (PREVIEW_INDIRECT_RES - 1)
@@ -552,8 +587,6 @@ if CLIENT then
 		edgetintMixer:SetConVarG("bsdf_material_edgetint_g")
 		edgetintMixer:SetConVarB("bsdf_material_edgetint_b")
 		CPanel:AddItem(edgetintMixer)
-
-		local plr = LocalPlayer()
 
 		local metalnessOverride = CPanel:CheckBox("Override metalness", "bsdf_material_metalnessoverride")
 		local metalness = CPanel:NumSlider("Metalness", "bsdf_material_metalness", 0, 1, 2)
