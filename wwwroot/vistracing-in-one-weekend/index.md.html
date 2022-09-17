@@ -2592,7 +2592,7 @@ Then replace the calls to our BRDF with the VisTrace BSDF (you can delete those 
 
 ![From left to right: rough dielectric, smooth dielectric, rough conductor](images/vistrace-bsdf.png)
 
-You can see the effect of one of the bundled PBR materials on the hunder plate.
+You can see the effect of one of the bundled PBR materials on the hunter plate.
 
 We have to do two more things to support all the lobes of the BSDF though: disable NEE/MIS on delta (single reflection/transmission direction) lobes and invert the normal passed to `CalcRayOrigin` on transmission as we did when ray tracing
 
