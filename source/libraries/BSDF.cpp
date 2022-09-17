@@ -154,13 +154,6 @@ inline float microfacet_energy_avg_fit(const float roughness)
 	return A[0] * r3 / (1 + A[1] * roughness + A[2] * r2);
 }
 
-inline float spectrans_compensation(const float cosThetaR, const float cosThetaT, const float roughness, const float fresnel)
-{
-	const float EssR = microfacet_energy_fit(cosThetaR, roughness);
-	const float EssT = microfacet_energy_fit(cosThetaT, roughness);
-	return 1.f / (fresnel * EssR + (1 - fresnel) * EssT);
-}
-
 inline float schlick_dielectric(const float f0, const float cosTheta, const float f90 = 1.f)
 {
 	return f0 + (f90 - f0) * powf(1.f - cosTheta, 5.f);
@@ -186,7 +179,10 @@ inline vec3 schlicks_conductor_edgetint_avg(const vec3& reflectance, const vec3&
 // Slide 18 https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
 inline float fresnel_dielectric(const float eta, const float cosTheta)
 {
-	const float g = sqrtf(eta * eta + cosTheta * cosTheta - 1.f);
+	const float k = eta * eta + cosTheta * cosTheta - 1.f;
+	if (k < 0.f) return 1.f;
+
+	const float g = sqrtf(k);
 	const float c1 = g + cosTheta;
 	const float c2 = g - cosTheta;
 	const float c3 = c2 / c1;
@@ -573,7 +569,7 @@ vec3 EvalSpecularTransmission(
 	const float G1scattered = microfacet_g1(ggxAlpha, scattered);
 
 	if (isReflection) {
-		const float compensation = spectrans_compensation(sDotH, sqrtf(1.f - invEta * invEta * (1.f - iDotH * iDotH)), data.linearRoughness, F);
+		const float compensation = 1.f;
 		return vec3(F, F, F) * G1incident * G1scattered * D / (4 * iDotN * sDotN) * abs(sDotN) * compensation;
 	}
 
@@ -583,7 +579,7 @@ vec3 EvalSpecularTransmission(
 	denom *= denom;
 	const float rhs = iorS * iorS * (1.f - F) * G1incident * G1scattered * D / denom;
 
-	const float compensation = spectrans_compensation(iDotH, sDotH, data.linearRoughness, F);
+	const float compensation = 1.f;
 	return vec3(1.f, 1.f, 1.f) * (lhs * rhs * abs(sDotN) * compensation);
 }
 
@@ -747,7 +743,6 @@ bool SampleSpecularTransmission(
 		const float G1scattered = microfacet_g1(ggxAlpha, scattered);
 
 		weight = vec3(F, F, F) * G1scattered * sDotH / (sDotN * iDotH) * abs(sDotN) / pReflect;
-		weight *= spectrans_compensation(sDotH, sqrtf(1.f - invEta * invEta * (1.f - iDotH * iDotH)), data.linearRoughness, F);
 		pdf = D * G1incident * iDotH / (4 * iDotN * sDotH) * pReflect;
 		
 		return true;
@@ -792,7 +787,6 @@ bool SampleSpecularTransmission(
 		// (1.f - F) * G1scattered
 
 		weight = vec3(1.f, 1.f, 1.f) * ((1.f - F) * G1scattered) / (1.f - pReflect);
-		weight *= spectrans_compensation(iDotH, sDotH, data.linearRoughness, F);
 		pdf = jacobian * G1incident * iDotH * D / iDotN * (1.f - pReflect);
 
 		return true;
