@@ -569,8 +569,7 @@ vec3 EvalSpecularTransmission(
 	const float G1scattered = microfacet_g1(ggxAlpha, scattered);
 
 	if (isReflection) {
-		const float compensation = 1.f;
-		return vec3(F, F, F) * G1incident * G1scattered * D / (4 * iDotN * sDotN) * abs(sDotN) * compensation;
+		return vec3(F, F, F) * G1incident * G1scattered * D / (4 * iDotN * sDotN) * abs(sDotN);
 	}
 
 	const float lhs = abs(iDotH) * abs(sDotH) / (abs(iDotN) * abs(sDotN));
@@ -579,8 +578,7 @@ vec3 EvalSpecularTransmission(
 	denom *= denom;
 	const float rhs = iorS * iorS * (1.f - F) * G1incident * G1scattered * D / denom;
 
-	const float compensation = 1.f;
-	return vec3(1.f, 1.f, 1.f) * (lhs * rhs * abs(sDotN) * compensation);
+	return vec3(1.f, 1.f, 1.f) * (lhs * rhs * abs(sDotN));
 }
 
 float EvalSpecularTransmissionPDF(
