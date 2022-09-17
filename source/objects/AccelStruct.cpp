@@ -525,7 +525,6 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			std::string materialPath = LUA->GetString();
 			LUA->Pop(2); // _G util meshes
 
-
 			if (materialIds.find(materialPath) == materialIds.end()) {
 				LUA->GetField(-3, "Material"); // _G util meshes Material
 				LUA->PushString(materialPath.c_str()); // _G util meshes Material materialPath
