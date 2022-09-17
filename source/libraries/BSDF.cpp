@@ -408,7 +408,7 @@ float EvalConductorPDF(
 )
 {
 	if (scattered.z < 0.f) return 0.f;
-	if (data.roughness < kMinGGXAlpha) 0.f;
+	if (data.roughness < kMinGGXAlpha) return 0.f;
 
 	const vec3 halfway = normalize(incident + scattered);
 
