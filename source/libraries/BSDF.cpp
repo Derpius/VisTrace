@@ -154,13 +154,6 @@ inline float microfacet_energy_avg_fit(const float roughness)
 	return A[0] * r3 / (1 + A[1] * roughness + A[2] * r2);
 }
 
-inline float spectrans_compensation(const float cosThetaR, const float cosThetaT, const float roughness, const float fresnel)
-{
-	const float EssR = microfacet_energy_fit(cosThetaR, roughness);
-	const float EssT = microfacet_energy_fit(cosThetaT, roughness);
-	return 1.f / (fresnel * EssR + (1 - fresnel) * EssT);
-}
-
 inline float schlick_dielectric(const float f0, const float cosTheta, const float f90 = 1.f)
 {
 	return f0 + (f90 - f0) * powf(1.f - cosTheta, 5.f);
@@ -186,7 +179,10 @@ inline vec3 schlicks_conductor_edgetint_avg(const vec3& reflectance, const vec3&
 // Slide 18 https://blog.selfshadow.com/publications/s2017-shading-course/imageworks/s2017_pbs_imageworks_slides_v2.pdf
 inline float fresnel_dielectric(const float eta, const float cosTheta)
 {
-	const float g = sqrtf(eta * eta + cosTheta * cosTheta - 1.f);
+	const float k = eta * eta + cosTheta * cosTheta - 1.f;
+	if (k < 0.f) return 1.f;
+
+	const float g = sqrtf(k);
 	const float c1 = g + cosTheta;
 	const float c2 = g - cosTheta;
 	const float c3 = c2 / c1;
@@ -288,11 +284,7 @@ vec3 EvalSpecularReflection(const BSDFMaterial& data, const vec3& incident, cons
 
 	const float eta = data.ior; // TODO: user configurable incident IoR
 
-	if (data.roughness < kMinGGXAlpha) {
-		return vec3(-incident.x, -incident.y, incident.z) == scattered ?
-			vec3{ 1.f, 1.f, 1.f } * fresnel_dielectric(eta, incident.z) :
-			vec3{ 0.f, 0.f, 0.f };
-	}
+	if (data.roughness < kMinGGXAlpha) vec3(0.f, 0.f, 0.f);
 
 	const vec3 halfway = normalize(incident + scattered);
 	const float iDotN = incident.z;
@@ -313,9 +305,7 @@ vec3 EvalSpecularReflection(const BSDFMaterial& data, const vec3& incident, cons
 
 float EvalSpecularReflectionPDF(const BSDFMaterial& data, const vec3& incident, const vec3& scattered)
 {
-	if (data.roughness < kMinGGXAlpha) {
-		return vec3(-incident.x, -incident.y, incident.z) == scattered ? 1.f : 0.f;
-	}
+	if (data.roughness < kMinGGXAlpha) return 0.f;
 
 	const vec3 halfway = normalize(incident + scattered);
 
@@ -389,11 +379,7 @@ vec3 EvalConductor(
 )
 {
 	if (scattered.z < 0.f) return vec3(0.f, 0.f, 0.f);
-
-	if (data.roughness < kMinGGXAlpha)
-		return (vec3(-incident.x, -incident.y, incident.z) == scattered ?
-			schlicks_conductor_edgetint(data.conductor, data.edgetint, data.falloff, incident.z) :
-			vec3(0.f, 0.f, 0.f));
+	if (data.roughness < kMinGGXAlpha) return vec3(0.f, 0.f, 0.f);
 
 	const vec3 halfway = normalize(incident + scattered);
 	const float iDotH = dot(incident, halfway);
@@ -422,9 +408,7 @@ float EvalConductorPDF(
 )
 {
 	if (scattered.z < 0.f) return 0.f;
-
-	if (data.roughness < kMinGGXAlpha)
-		return vec3(-incident.x, -incident.y, incident.z) == scattered ? 1.f : 0.f;
+	if (data.roughness < kMinGGXAlpha) return 0.f;
 
 	const vec3 halfway = normalize(incident + scattered);
 
@@ -522,6 +506,8 @@ vec3 EvalSpecularTransmission(
 	const vec3& incident, const vec3& scattered, const bool entering
 )
 {
+	if (data.roughness < kMinGGXAlpha) return vec3(0.f, 0.f, 0.f);
+
 	bool hasReflection = (data.activeLobes & (data.roughness < kMinGGXAlpha ? LobeType::DeltaSpecularReflection : LobeType::SpecularReflection)) != LobeType::None;
 	bool hasTransmission = (data.activeLobes & (data.roughness < kMinGGXAlpha ? LobeType::DeltaSpecularTransmission : LobeType::SpecularTransmission)) != LobeType::None;
 
@@ -534,33 +520,16 @@ vec3 EvalSpecularTransmission(
 	if (isReflection && !hasReflection) return vec3(0.f, 0.f, 0.f);
 	if (!isReflection && !hasTransmission) return vec3(0.f, 0.f, 0.f);
 
-	if (data.roughness < kMinGGXAlpha) {
-		if (data.thin) {
-			if (isReflection) {
-				if (scattered != vec3(-incident.x, -incident.y, incident.z)) return vec3(0.f, 0.f, 0.f);
-				return vec3(1.f, 1.f, 1.f) * fresnel_dielectric(data.ior, incident.z);
-			} else {
-				if (scattered != -incident) return vec3(0.f, 0.f, 0.f);
-				return data.dielectric * (1.f - fresnel_dielectric(data.ior, incident.z));
-			}
-		} else {
-			if (isReflection) {
-				if (scattered != vec3(-incident.x, -incident.y, incident.z)) return vec3(0.f, 0.f, 0.f);
-				return vec3(1.f, 1.f, 1.f) * fresnel_dielectric(eta, incident.z);
-			} else {
-				if (scattered != refract(-incident, vec3(0.f, 0.f, 1.f), invEta)) return vec3(0.f, 0.f, 0.f);
-				return vec3(1.f, 1.f, 1.f) * (1.f - fresnel_dielectric(eta, incident.z));
-			}
-		}
-	}
-
 	if (data.thin) {
 		return vec3(0.f, 0.f, 0.f); // Not implemented yet
 	}
 
 	const vec3 halfway = isReflection ? normalize(incident + scattered) : -normalize(iorI * incident + iorS * scattered);
+	if (halfway.z < 0.f) return vec3(0.f, 0.f, 0.f);
 
 	const float iDotH = dot(incident, halfway);
+	if (iDotH < 0.f) return vec3(0.f, 0.f, 0.f);
+
 	const float iDotN = incident.z;
 	const float sDotH = dot(scattered, halfway);
 	const float sDotN = scattered.z;
@@ -573,18 +542,16 @@ vec3 EvalSpecularTransmission(
 	const float G1scattered = microfacet_g1(ggxAlpha, scattered);
 
 	if (isReflection) {
-		const float compensation = spectrans_compensation(sDotH, sqrtf(1.f - invEta * invEta * (1.f - iDotH * iDotH)), data.linearRoughness, F);
-		return vec3(F, F, F) * G1incident * G1scattered * D / (4 * iDotN * sDotN) * abs(sDotN) * compensation;
+		return vec3(F, F, F) * G1incident * G1scattered * D / (4 * iDotN * sDotN) * sDotN;
 	}
 
-	const float lhs = abs(iDotH) * abs(sDotH) / (abs(iDotN) * abs(sDotN));
+	const float lhs = abs(iDotH) * abs(sDotH) / (abs(iDotN) * -sDotN);
 
 	float denom = iorI * iDotH + iorS * sDotH;
 	denom *= denom;
 	const float rhs = iorS * iorS * (1.f - F) * G1incident * G1scattered * D / denom;
 
-	const float compensation = spectrans_compensation(iDotH, sDotH, data.linearRoughness, F);
-	return vec3(1.f, 1.f, 1.f) * (lhs * rhs * abs(sDotN) * compensation);
+	return vec3(1.f, 1.f, 1.f) * (lhs * rhs * -sDotN);
 }
 
 float EvalSpecularTransmissionPDF(
@@ -592,6 +559,8 @@ float EvalSpecularTransmissionPDF(
 	const vec3& incident, const vec3& scattered, const bool entering
 )
 {
+	if (data.roughness < kMinGGXAlpha) return 0.f;
+
 	bool hasReflection = (data.activeLobes & (data.roughness < kMinGGXAlpha ? LobeType::DeltaSpecularReflection : LobeType::SpecularReflection)) != LobeType::None;
 	bool hasTransmission = (data.activeLobes & (data.roughness < kMinGGXAlpha ? LobeType::DeltaSpecularTransmission : LobeType::SpecularTransmission)) != LobeType::None;
 
@@ -601,17 +570,12 @@ float EvalSpecularTransmissionPDF(
 	const float invEta = 1.f / eta;
 
 	const bool isReflection = scattered.z >= 0.f;
-	if (isReflection && !hasReflection) return 0.f;
-	if (!isReflection && !hasTransmission) return 0.f;
-
-	if (data.roughness < kMinGGXAlpha) {
-		if (isReflection) {
-			if (scattered != vec3(-incident.x, -incident.y, incident.z)) return 0.f;
-			return fresnel_dielectric(data.thin ? data.ior : eta, incident.z);
-		} else {
-			if (scattered != (data.thin ? -incident : refract(-incident, vec3(0.f, 0.f, 1.f), invEta))) return 0.f;
-			return 1.f - fresnel_dielectric(data.thin ? data.ior : eta, incident.z);
-		}
+	if (isReflection) {
+		if (!hasReflection) return 0.f;
+		if (!hasTransmission) return 1.f;
+	} else {
+		if (!hasTransmission) return 0.f;
+		if (!hasReflection) return 1.f;
 	}
 
 	if (data.thin) {
@@ -619,18 +583,18 @@ float EvalSpecularTransmissionPDF(
 	}
 
 	const vec3 halfway = isReflection ? normalize(incident + scattered) : -normalize(iorI * incident + iorS * scattered);
+	if (halfway.z < 0.f) return 0.f;
 
 	const float iDotH = dot(incident, halfway);
+	if (iDotH < 0.f) return 0.f;
+
 	const float iDotN = incident.z;
 	const float sDotH = dot(scattered, halfway);
 	const float sDotN = scattered.z;
 
-	if (halfway.z < 0.f) return 0.f;
-	if (iDotH < 0.f) return 0.f;
-
 	const vec2 ggxAlpha = anisotropy_to_alpha(data.roughness, data.anisotropy);
 
-	const float F = fresnel_dielectric(eta, incident.z);
+	const float F = fresnel_dielectric(eta, iDotH);
 	const float D = microfacet_d(ggxAlpha, halfway);
 	const float G1incident = microfacet_g1(ggxAlpha, incident);
 
@@ -747,7 +711,6 @@ bool SampleSpecularTransmission(
 		const float G1scattered = microfacet_g1(ggxAlpha, scattered);
 
 		weight = vec3(F, F, F) * G1scattered * sDotH / (sDotN * iDotH) * abs(sDotN) / pReflect;
-		weight *= spectrans_compensation(sDotH, sqrtf(1.f - invEta * invEta * (1.f - iDotH * iDotH)), data.linearRoughness, F);
 		pdf = D * G1incident * iDotH / (4 * iDotN * sDotH) * pReflect;
 		
 		return true;
@@ -792,7 +755,6 @@ bool SampleSpecularTransmission(
 		// (1.f - F) * G1scattered
 
 		weight = vec3(1.f, 1.f, 1.f) * ((1.f - F) * G1scattered) / (1.f - pReflect);
-		weight *= spectrans_compensation(iDotH, sDotH, data.linearRoughness, F);
 		pdf = jacobian * G1incident * iDotH * D / iDotN * (1.f - pReflect);
 
 		return true;
