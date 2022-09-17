@@ -570,8 +570,13 @@ float EvalSpecularTransmissionPDF(
 	const float invEta = 1.f / eta;
 
 	const bool isReflection = scattered.z >= 0.f;
-	if (isReflection && !hasReflection) return 0.f;
-	if (!isReflection && !hasTransmission) return 0.f;
+	if (isReflection) {
+		if (!hasReflection) return 0.f;
+		if (!hasTransmission) return 1.f;
+	} else {
+		if (!hasTransmission) return 0.f;
+		if (!hasReflection) return 1.f;
+	}
 
 	if (data.thin) {
 		return 0.f; // Not implemented yet
@@ -589,7 +594,7 @@ float EvalSpecularTransmissionPDF(
 
 	const vec2 ggxAlpha = anisotropy_to_alpha(data.roughness, data.anisotropy);
 
-	const float F = fresnel_dielectric(eta, incident.z);
+	const float F = fresnel_dielectric(eta, iDotH);
 	const float D = microfacet_d(ggxAlpha, halfway);
 	const float G1incident = microfacet_g1(ggxAlpha, incident);
 
