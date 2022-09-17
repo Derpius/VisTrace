@@ -358,8 +358,8 @@ if CLIENT then
 		)
 		local falloff  = plr:GetInfoNum("bsdf_material_falloff", 0.2)
 
-		local roughness = plr:GetInfoNum("bsdf_material_roughnessoverride", 0) ~= "0" and plr:GetInfoNum("bsdf_material_roughness", 1) or 1
-		local metalness = plr:GetInfoNum("bsdf_material_metalnessoverride", 0) ~= "0" and plr:GetInfoNum("bsdf_material_metalness", 0) or 0
+		local roughness = plr:GetInfoNum("bsdf_material_roughnessoverride", 0) ~= 0 and plr:GetInfoNum("bsdf_material_roughness", 1) or 1
+		local metalness = plr:GetInfoNum("bsdf_material_metalnessoverride", 0) ~= 0 and plr:GetInfoNum("bsdf_material_metalness", 0) or 0
 
 		local anisotropy          = plr:GetInfoNum("bsdf_material_anisotropy", 0)
 		local anisotropicrotation = plr:GetInfoNum("bsdf_material_anisotropicrotation", 0) / 360
@@ -465,7 +465,7 @@ if CLIENT then
 					local incident = Vector(-1, 0, 0)
 					iDotN = normal:Dot(incident)
 					local deltaReflect = Reflect(incident, normal)
-					local deltaRefract = Refract(incident, normal, 1 / ior)
+					local deltaRefract = thin and -incident or Refract(incident, normal, 1 / ior)
 
 					-- Direct contribution
 					local lDir = PREVIEW_SPOT_LIGHT - normal
