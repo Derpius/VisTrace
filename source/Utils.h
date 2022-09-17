@@ -4,6 +4,7 @@
 #include "glm/glm.hpp"
 
 #include "vistrace/IVTFTexture.h"
+#include "SourceTypes.h"
 
 #include <string>
 #include <vector>
@@ -31,12 +32,21 @@ Vector MakeVector(const float n);
 Vector MakeVector(const float x, const float y, const float z);
 
 /// <summary>
-/// Gets a string from the material at the top of the stack
+/// Gets a string from the material
 /// </summary>
-/// <param name="LUA">ILuaBase pointer</param>
+/// <param name="mat">Material pointer</param>
 /// <param name="key">String key</param>
 /// <returns>Value at the key or an empty string</returns>
-std::string GetMaterialString(GarrysMod::Lua::ILuaBase* LUA, const std::string& key);
+std::string GetMaterialString(IMaterial* mat, const std::string& key);
+
+/// <summary>
+/// Gets a material variable from the given IMaterial
+/// The reason for this function existing is to handle the extra "found" variable in ->FindVar and to support std::string
+/// </summary>
+/// <param name="mat">Material pointer</param>
+/// <param name="key">String key</param>
+/// <returns>Pointer to the IMaterialVar or a nullptr</returns>
+IMaterialVar* GetMaterialVar(IMaterial* mat, const std::string& key);
 
 /// <summary>
 /// VMT flags

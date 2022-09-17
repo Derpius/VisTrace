@@ -51,20 +51,6 @@ glm::vec3 TransformToBone(
 	return glm::vec3(final);
 }
 
-VMatrix* VMatrix::FromMaterial(ILuaBase* LUA, const std::string& key)
-{
-	VMatrix* pMat = nullptr;
-
-	LUA->GetField(-1, "GetMatrix");
-	LUA->Push(-2);
-	LUA->PushString(key.c_str());
-	LUA->Call(2, 1);
-	if (LUA->IsType(-1, Type::Matrix)) pMat = LUA->GetUserType<VMatrix>(-1, Type::Matrix);
-	LUA->Pop();
-
-	return pMat;
-}
-
 const IVTFTexture* CacheTexture(
 	const std::string& path,
 	std::unordered_map<std::string, const IVTFTexture*>& cache,
@@ -190,34 +176,27 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				LUA->ThrowError("Invalid material on world");
 			}
 
+			IMaterial* sourceMaterial = LUA->GetUserType<IMaterial>(-1, Type::Material);
 			Material mat{};
 			mat.maskedBlending = false;
-
-			// Note, GetShader doesnt work on Linux srcds according to the wiki
-			// If I made a server binary and water didnt render correctly, this is why
-			LUA->GetField(-1, "GetShader");
-			LUA->Push(-2);
-			LUA->Call(1, 1);
-			const char* shaderName = LUA->GetString();
-			LUA->Pop();
+			
+			const char* shaderName = sourceMaterial->GetShaderName();
 
 			if (shaderName == nullptr || strncmp(shaderName, "Water", 5) != 0) {
-				LUA->GetField(-1, "GetInt");
-				LUA->Push(-2);
-				LUA->PushString("$maskedblending");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.maskedBlending = LUA->GetNumber() != 0;
-				LUA->Pop();
+				IMaterialVar* maskedblending = GetMaterialVar(sourceMaterial, "$maskedblending");
+				if (maskedblending) {
+					mat.maskedBlending = maskedblending->GetIntValue() != 0;
+				}
 
-				std::string baseTexture = GetMaterialString(LUA, "$basetexture");
-				std::string normalMap = GetMaterialString(LUA, "$bumpmap");
+				std::string baseTexture = GetMaterialString(sourceMaterial, "$basetexture");
+				std::string normalMap = GetMaterialString(sourceMaterial, "$bumpmap");
 
-				std::string baseTexture2 = GetMaterialString(LUA, "$basetexture2");
-				std::string normalMap2 = GetMaterialString(LUA, "$bumpmap2");
+				std::string baseTexture2 = GetMaterialString(sourceMaterial, "$basetexture2");
+				std::string normalMap2 = GetMaterialString(sourceMaterial, "$bumpmap2");
 
-				std::string blendTexture = GetMaterialString(LUA, "$blendmodulatetexture");
+				std::string blendTexture = GetMaterialString(sourceMaterial, "$blendmodulatetexture");
 
-				std::string detailTexture = GetMaterialString(LUA, "$detail");
+				std::string detailTexture = GetMaterialString(sourceMaterial, "$detail");
 
 				mat.baseTexture = CacheTexture(baseTexture, textureCache, textureCache[MISSING_TEXTURE]);
 				mat.normalMap = CacheTexture(normalMap, textureCache);
@@ -230,83 +209,88 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				mat.blendTexture = CacheTexture(blendTexture, textureCache);
 				mat.detail = CacheTexture(detailTexture, textureCache);
 
-				const VMatrix* pMat = VMatrix::FromMaterial(LUA, "$basetexturetransform");
-				if (pMat != nullptr) mat.baseTexMat = pMat->To2x4();
-				pMat = VMatrix::FromMaterial(LUA, "$bumptransform");
-				if (pMat != nullptr) mat.normalMapMat = pMat->To2x4();
-
-				pMat = VMatrix::FromMaterial(LUA, "$basetexturetransform2");
-				if (pMat != nullptr) mat.baseTexMat2 = pMat->To2x4();
-				pMat = VMatrix::FromMaterial(LUA, "$bumptransform2");
-				if (pMat != nullptr) mat.normalMapMat2 = pMat->To2x4();
-
-				pMat = VMatrix::FromMaterial(LUA, "$blendmasktransform");
-				if (pMat != nullptr) mat.blendTexMat = pMat->To2x4();
-
-				pMat = VMatrix::FromMaterial(LUA, "$detailtexturetransform");
-				if (pMat != nullptr) mat.detailMat = pMat->To2x4();
-
-				LUA->GetField(-1, "GetFloat");
-				LUA->Push(-2);
-				LUA->PushString("$detailscale");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.detailScale = LUA->GetNumber();
-				LUA->Pop();
-
-				LUA->GetField(-1, "GetFloat");
-				LUA->Push(-2);
-				LUA->PushString("$detailblendfactor");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.detailBlendFactor = LUA->GetNumber();
-				LUA->Pop();
-
-				LUA->GetField(-1, "GetInt");
-				LUA->Push(-2);
-				LUA->PushString("$detailblendmode");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.detailBlendMode = static_cast<DetailBlendMode>(LUA->GetNumber());
-				LUA->Pop();
-
-				LUA->GetField(-1, "GetFloat");
-				LUA->Push(-2);
-				LUA->PushString("$alphatestreference");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.alphatestreference = LUA->GetNumber();
-				LUA->Pop();
-
-				LUA->GetField(-1, "GetVector");
-				LUA->Push(-2);
-				LUA->PushString("$detailtint");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Vector)) {
-					Vector v = LUA->GetVector();
-					mat.detailTint = glm::vec4(v.x, v.y, v.z, 1);
+				IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
+				if (basetexturetransform) {
+					const VMatrix pMat = basetexturetransform->GetMatrixValue();
+					mat.baseTexMat = pMat.To2x4();
 				}
-				LUA->Pop();
 
-				LUA->GetField(-1, "GetInt");
-				LUA->Push(-2);
-				LUA->PushString("$detail_alpha_mask_base_texture");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.detailAlphaMaskBaseTexture = LUA->GetNumber() != 0;
-				LUA->Pop();
+				IMaterialVar* bumptransform = GetMaterialVar(sourceMaterial, "$bumptransform");
+				if (bumptransform) {
+					const VMatrix pMat = bumptransform->GetMatrixValue();
+					mat.normalMapMat = pMat.To2x4();
+				}
+
+				IMaterialVar* basetexturetransform2 = GetMaterialVar(sourceMaterial, "$basetexturetransform2");
+				if (basetexturetransform2) {
+					const VMatrix pMat = basetexturetransform2->GetMatrixValue();
+					mat.baseTexMat2 = pMat.To2x4();
+				}
+
+				IMaterialVar* bumptransform2 = GetMaterialVar(sourceMaterial, "$bumptransform2");
+				if (bumptransform2) {
+					const VMatrix pMat = bumptransform2->GetMatrixValue();
+					mat.normalMapMat2 = pMat.To2x4();
+				}
+
+				IMaterialVar* blendmasktransform = GetMaterialVar(sourceMaterial, "$blendmasktransform");
+				if (blendmasktransform) {
+					const VMatrix pMat = blendmasktransform->GetMatrixValue();
+					mat.blendTexMat = pMat.To2x4();
+				}
+
+				IMaterialVar* detailtexturetransform = GetMaterialVar(sourceMaterial, "$detailtexturetransform");
+				if (detailtexturetransform) {
+					const VMatrix pMat = detailtexturetransform->GetMatrixValue();
+					mat.detailMat = pMat.To2x4();
+				}
+
+				IMaterialVar* detailscale = GetMaterialVar(sourceMaterial, "$detailscale");
+				if (detailscale) {
+					mat.detailScale = detailscale->GetFloatValue();
+				}
+
+				IMaterialVar* detailblendfactor = GetMaterialVar(sourceMaterial, "$detailblendfactor");
+				if (detailblendfactor) {
+					mat.detailBlendFactor = detailblendfactor->GetFloatValue();
+				}
+
+				IMaterialVar* detailblendmode = GetMaterialVar(sourceMaterial, "$detailblendmode");
+				if (detailblendmode) {
+					mat.detailBlendMode = static_cast<DetailBlendMode>(detailblendmode->GetIntValue());
+				}
+
+				IMaterialVar* alphatestreference = GetMaterialVar(sourceMaterial, "$alphatestreference");
+				if (alphatestreference) {
+					mat.alphatestreference = alphatestreference->GetFloatValue();
+				}
+
+				IMaterialVar* detailtint = GetMaterialVar(sourceMaterial, "$detailtint");
+				if (detailtint) {
+					float values[3];
+					detailtint->GetVecValue(values, 3);
+					mat.detailTint = glm::vec3(values[0], values[1], values[2]);
+				}
+
+				IMaterialVar* detail_ambt = GetMaterialVar(sourceMaterial, "$detail_alpha_mask_base_texture");
+				if (detail_ambt) {
+					mat.detailAlphaMaskBaseTexture = detail_ambt->GetIntValue() != 0;
+				}
 			} else {
 				mat.water = true;
-				std::string normalMap = GetMaterialString(LUA, "$normalmap");
+				std::string normalMap = GetMaterialString(sourceMaterial, "$normalmap");
 
-				LUA->GetField(-1, "GetVector");
-				LUA->Push(-2);
-				LUA->PushString("$fogcolor");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Vector)) {
-					Vector v = LUA->GetVector();
-					mat.colour = glm::vec4(v.x, v.y, v.z, 1);
+				IMaterialVar* fogcolor = GetMaterialVar(sourceMaterial, "$fogcolor");
+				if (fogcolor) {
+					float values[3];
+					fogcolor->GetVecValue(values, 3);
+
+					mat.colour = glm::vec4(values[0], values[1], values[2], 1);
 				}
-				LUA->Pop();
 
 				// Not sure if any gmod materials will even implement water base textures
 				// Or if it's even available in gmod's engine version, but here just in case
-				std::string baseTexture = GetMaterialString(LUA, "$basetexture");
+				std::string baseTexture = GetMaterialString(sourceMaterial, "$basetexture");
 
 				mat.baseTexture = CacheTexture(
 					baseTexture, textureCache,
@@ -315,12 +299,10 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				mat.normalMap = CacheTexture(normalMap, textureCache);
 			}
 
-			LUA->GetField(-1, "GetInt");
-			LUA->Push(-2);
-			LUA->PushString("$flags");
-			LUA->Call(2, 1);
-			if (LUA->IsType(-1, Type::Number)) mat.flags = static_cast<MaterialFlags>(LUA->GetNumber());
-			LUA->Pop();
+			IMaterialVar* flags = GetMaterialVar(sourceMaterial, "$flags");
+			if (flags) {
+				mat.flags = static_cast<MaterialFlags>(flags->GetIntValue());
+			}
 
 			LUA->Pop();
 
@@ -548,78 +530,75 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				LUA->Call(1, 1); // _G util meshes IMaterial
 				if (!LUA->IsType(-1, Type::Material)) LUA->ThrowError("Invalid material on entity");
 
+				IMaterial* sourceMaterial = LUA->GetUserType<IMaterial>(-1, Type::Material);
 				Material mat{};
 				mat.maskedBlending = false;
 
-				std::string baseTexture = GetMaterialString(LUA, "$basetexture");
-				std::string normalMap = GetMaterialString(LUA, "$bumpmap");
-				std::string detailTexture = GetMaterialString(LUA, "$detail");
+				std::string baseTexture = GetMaterialString(sourceMaterial, "$basetexture");
+				std::string normalMap = GetMaterialString(sourceMaterial, "$bumpmap");
+				std::string detailTexture = GetMaterialString(sourceMaterial, "$detail");
 
 				mat.baseTexture = CacheTexture(baseTexture, textureCache, textureCache[MISSING_TEXTURE]);
 				mat.normalMap = CacheTexture(normalMap, textureCache);
 				mat.detail = CacheTexture(detailTexture, textureCache);
 				if (!baseTexture.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + baseTexture + "_mrao", textureCache);
 
-				const VMatrix* pMat = VMatrix::FromMaterial(LUA, "$basetexturetransform");
-				if (pMat != nullptr) mat.baseTexMat = pMat->To2x4();
-
-				pMat = VMatrix::FromMaterial(LUA, "$bumptransform");
-				if (pMat != nullptr) mat.normalMapMat = pMat->To2x4();
-
-				pMat = VMatrix::FromMaterial(LUA, "$detailtexturetransform");
-				if (pMat != nullptr) mat.detailMat = pMat->To2x4();
-
-				LUA->GetField(-1, "GetFloat");
-				LUA->Push(-2);
-				LUA->PushString("$detailscale");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.detailScale = LUA->GetNumber();
-				LUA->Pop();
-
-				LUA->GetField(-1, "GetFloat");
-				LUA->Push(-2);
-				LUA->PushString("$detailblendfactor");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.detailBlendFactor = LUA->GetNumber();
-				LUA->Pop();
-
-				LUA->GetField(-1, "GetInt");
-				LUA->Push(-2);
-				LUA->PushString("$detailblendmode");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.detailBlendMode = static_cast<DetailBlendMode>(LUA->GetNumber());
-				LUA->Pop();
-
-				LUA->GetField(-1, "GetFloat");
-				LUA->Push(-2);
-				LUA->PushString("$alphatestreference");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.alphatestreference = LUA->GetNumber();
-				LUA->Pop();
-
-				LUA->GetField(-1, "GetVector");
-				LUA->Push(-2);
-				LUA->PushString("$detailtint");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Vector)) {
-					Vector v = LUA->GetVector();
-					mat.detailTint = glm::vec4(v.x, v.y, v.z, 1);
+				IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
+				if (basetexturetransform) {
+					const VMatrix pMat = basetexturetransform->GetMatrixValue();
+					mat.baseTexMat = pMat.To2x4();
 				}
-				LUA->Pop();
 
-				LUA->GetField(-1, "GetInt");
-				LUA->Push(-2);
-				LUA->PushString("$detail_alpha_mask_base_texture");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.detailAlphaMaskBaseTexture = LUA->GetNumber() != 0;
-				LUA->Pop();
+				IMaterialVar* bumptransform = GetMaterialVar(sourceMaterial, "$bumptransform");
+				if (bumptransform) {
+					const VMatrix pMat = bumptransform->GetMatrixValue();
+					mat.normalMapMat = pMat.To2x4();
+				}
 
-				LUA->GetField(-1, "GetInt"); // _G util meshes IMaterial GetInt
-				LUA->Push(-2); // _G util meshes IMaterial GetInt IMaterial
-				LUA->PushString("$flags"); // _G util meshes IMaterial GetInt IMaterial $flags
-				LUA->Call(2, 1); // _G util meshes IMaterial flags
-				if (LUA->IsType(-1, Type::Number)) mat.flags = static_cast<MaterialFlags>(LUA->GetNumber());
-				LUA->Pop(2); // _G util meshes
+				IMaterialVar* detailtexturetransform = GetMaterialVar(sourceMaterial, "$detailtexturetransform");
+				if (detailtexturetransform) {
+					const VMatrix pMat = detailtexturetransform->GetMatrixValue();
+					mat.detailMat = pMat.To2x4();
+				}
+
+				IMaterialVar* detailscale = GetMaterialVar(sourceMaterial, "$detailscale");
+				if (detailscale) {
+					mat.detailScale = detailscale->GetFloatValue();
+				}
+
+				IMaterialVar* detailblendfactor = GetMaterialVar(sourceMaterial, "$detailblendfactor");
+				if (detailblendfactor) {
+					mat.detailBlendFactor = detailblendfactor->GetFloatValue();
+				}
+
+				IMaterialVar* detailblendmode = GetMaterialVar(sourceMaterial, "$detailblendmode");
+				if (detailblendmode) {
+					mat.detailBlendMode = static_cast<DetailBlendMode>(detailblendmode->GetIntValue());
+				}
+
+				IMaterialVar* alphatestreference = GetMaterialVar(sourceMaterial, "$alphatestreference");
+				if (alphatestreference) {
+					mat.alphatestreference = alphatestreference->GetFloatValue();
+				}
+				
+				IMaterialVar* detailtint = GetMaterialVar(sourceMaterial, "$detailtint");
+				if (detailtint) {
+					float values[3];
+					detailtint->GetVecValue(values, 3);
+					mat.detailTint = glm::vec3(values[0], values[1], values[2]);
+				}
+
+				IMaterialVar* detail_ambt = GetMaterialVar(sourceMaterial, "$detail_alpha_mask_base_texture");
+				if (detail_ambt) {
+					mat.detailAlphaMaskBaseTexture = detail_ambt->GetIntValue() != 0;
+				}
+
+				IMaterialVar* flags = GetMaterialVar(sourceMaterial, "$flags");
+				if (flags) {
+					mat.flags = static_cast<MaterialFlags>(flags->GetIntValue());
+				}
+
+				LUA->Pop(); // _G util meshes
 
 				materialIds.emplace(materialPath, materials.size());
 				materials.push_back(mat);
@@ -1030,35 +1009,42 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				LUA->Call(1, 1);
 				if (!LUA->IsType(-1, Type::Material)) LUA->ThrowError("Invalid material on entity");
 
+				// Grab the source material
+				IMaterial* sourceMaterial = LUA->GetUserType<IMaterial>(-1, Type::Material);
+
 				Material mat{};
 				mat.maskedBlending = false;
 
-				std::string baseTexture = GetMaterialString(LUA, "$basetexture");
-				std::string normalMap = GetMaterialString(LUA, "$bumpmap");
+				std::string baseTexture = GetMaterialString(sourceMaterial, "$basetexture");
+				std::string normalMap = GetMaterialString(sourceMaterial, "$bumpmap");
 
 				mat.baseTexture = CacheTexture(baseTexture, mTextureCache, mTextureCache[MISSING_TEXTURE]);
 				mat.normalMap = CacheTexture(normalMap, mTextureCache);
 				if (!baseTexture.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + baseTexture + "_mrao", mTextureCache);
 
-				const VMatrix* pMat = VMatrix::FromMaterial(LUA, "$basetexturetransform");
-				if (pMat != nullptr) mat.baseTexMat = pMat->To2x4();
-				pMat = VMatrix::FromMaterial(LUA, "$bumptransform");
-				if (pMat != nullptr) mat.normalMapMat = pMat->To2x4();
+				IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
+				if (basetexturetransform) {
+					const VMatrix pMat = basetexturetransform->GetMatrixValue();
+					mat.baseTexMat = pMat.To2x4();
+				}
 
-				LUA->GetField(-1, "GetInt");
-				LUA->Push(-2);
-				LUA->PushString("$flags");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.flags = static_cast<MaterialFlags>(LUA->GetNumber());
-				LUA->Pop();
+				IMaterialVar* bumptransform = GetMaterialVar(sourceMaterial, "$bumptransform");
+				if (bumptransform) {
+					const VMatrix pMat = bumptransform->GetMatrixValue();
+					mat.normalMapMat = pMat.To2x4();
+				}
 
-				LUA->GetField(-1, "GetFloat");
-				LUA->Push(-2);
-				LUA->PushString("$alphatestreference");
-				LUA->Call(2, 1);
-				if (LUA->IsType(-1, Type::Number)) mat.alphatestreference = LUA->GetNumber();
-				LUA->Pop();
+				IMaterialVar* flags = GetMaterialVar(sourceMaterial, "$flags");
+				if (flags) {
+					mat.flags = static_cast<MaterialFlags>(flags->GetIntValue());
+				}
 
+				IMaterialVar* alphatestreference = GetMaterialVar(sourceMaterial, "$alphatestreference");
+				if (alphatestreference) {
+					mat.alphatestreference = alphatestreference->GetFloatValue();
+				}
+
+				// Pop the material
 				LUA->Pop();
 
 				mMaterialIds.emplace(materialPath, mMaterials.size());

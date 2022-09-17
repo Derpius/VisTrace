@@ -48,6 +48,7 @@ namespace bvh
 
 #include "Utils.h"
 #include "VTFTexture.h"
+#include "SourceTypes.h"
 #include "vistrace/IRenderTarget.h"
 
 using Vector3 = bvh::Vector3<float>;
@@ -282,41 +283,6 @@ struct TriangleBackfaceCull
 using Triangle = TriangleBackfaceCull<float>;
 using Intersector = bvh::ClosestPrimitiveIntersector<BVH, Triangle>;
 using Traverser = bvh::SingleRayTraverser<BVH>;
-
-typedef void CBaseEntity;
-
-// Minimal implementation of Valve's matrix type for efficiently reading from the stack
-struct VMatrix
-{
-	typedef float vec_t;
-	vec_t m[4][4];
-
-	inline glm::mat2x4 To2x4() const
-	{
-		return glm::mat2x4(
-			m[0][0], m[0][1], m[0][2], m[0][3],
-			m[1][0], m[1][1], m[1][2], m[1][3]
-		);
-	}
-
-	inline glm::mat4 To4x4() const
-	{
-		return glm::mat4(
-			m[0][0], m[1][0], m[2][0], m[3][0],
-			m[0][1], m[1][1], m[2][1], m[3][1],
-			m[0][2], m[1][2], m[2][2], m[3][2],
-			m[0][3], m[1][3], m[2][3], m[3][3]
-		);
-	}
-
-	/// <summary>
-	/// Gets a VMatrix from the material at the top of the stack
-	/// </summary>
-	/// <param name="LUA">Lua instance</param>
-	/// <param name="key">Material key</param>
-	/// <returns>VMatrix pointer on success or nullptr on failure</returns>
-	static VMatrix* FromMaterial(GarrysMod::Lua::ILuaBase* LUA, const std::string& key);
-};
 
 struct Entity
 {
