@@ -8,6 +8,7 @@
 #include "Sampler.h"
 #include "RenderTarget.h"
 #include "VTFTexture.h"
+#include "SourceTypes.h"
 
 #include "TraceResult.h"
 #include "AccelStruct.h"

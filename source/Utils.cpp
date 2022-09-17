@@ -72,18 +72,31 @@ Vector MakeVector(const float x, const float y, const float z)
 	return v;
 }
 
-std::string GetMaterialString(ILuaBase* LUA, const std::string& key)
-{
-	std::string val = "";
-	LUA->GetField(-1, "GetString");
-	LUA->Push(-2);
-	LUA->PushString(key.c_str());
-	LUA->Call(2, 1);
-	if (LUA->IsType(-1, Type::String)) val = LUA->GetString();
-	LUA->Pop();
+IMaterialVar* GetMaterialVar(IMaterial* mat, const std::string& key) {
+	IMaterialVar* result = nullptr;
+	bool found = false;
 
-	return val;
+	result = mat->FindVar(key.c_str(), &found, true);
+
+	if (found) {
+		return result;
+	} else {
+		return nullptr;
+	}
 }
+
+std::string GetMaterialString(IMaterial* mat, const std::string& key)
+{
+	// Check if the variable is even present
+	IMaterialVar* var = GetMaterialVar(mat, key);
+	if (var) {
+		const char* string = var->GetStringValue();
+		return string;
+	}
+
+	return {};
+}
+
 
 bool ValidVector(const glm::vec3& v)
 {
