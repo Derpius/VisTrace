@@ -284,11 +284,7 @@ vec3 EvalSpecularReflection(const BSDFMaterial& data, const vec3& incident, cons
 
 	const float eta = data.ior; // TODO: user configurable incident IoR
 
-	if (data.roughness < kMinGGXAlpha) {
-		return vec3(-incident.x, -incident.y, incident.z) == scattered ?
-			vec3{ 1.f, 1.f, 1.f } * fresnel_dielectric(eta, incident.z) :
-			vec3{ 0.f, 0.f, 0.f };
-	}
+	if (data.roughness < kMinGGXAlpha) vec3(0.f, 0.f, 0.f);
 
 	const vec3 halfway = normalize(incident + scattered);
 	const float iDotN = incident.z;
@@ -309,9 +305,7 @@ vec3 EvalSpecularReflection(const BSDFMaterial& data, const vec3& incident, cons
 
 float EvalSpecularReflectionPDF(const BSDFMaterial& data, const vec3& incident, const vec3& scattered)
 {
-	if (data.roughness < kMinGGXAlpha) {
-		return vec3(-incident.x, -incident.y, incident.z) == scattered ? 1.f : 0.f;
-	}
+	if (data.roughness < kMinGGXAlpha) return 0.f;
 
 	const vec3 halfway = normalize(incident + scattered);
 
@@ -385,11 +379,7 @@ vec3 EvalConductor(
 )
 {
 	if (scattered.z < 0.f) return vec3(0.f, 0.f, 0.f);
-
-	if (data.roughness < kMinGGXAlpha)
-		return (vec3(-incident.x, -incident.y, incident.z) == scattered ?
-			schlicks_conductor_edgetint(data.conductor, data.edgetint, data.falloff, incident.z) :
-			vec3(0.f, 0.f, 0.f));
+	if (data.roughness < kMinGGXAlpha) return vec3(0.f, 0.f, 0.f);
 
 	const vec3 halfway = normalize(incident + scattered);
 	const float iDotH = dot(incident, halfway);
@@ -418,9 +408,7 @@ float EvalConductorPDF(
 )
 {
 	if (scattered.z < 0.f) return 0.f;
-
-	if (data.roughness < kMinGGXAlpha)
-		return vec3(-incident.x, -incident.y, incident.z) == scattered ? 1.f : 0.f;
+	if (data.roughness < kMinGGXAlpha) 0.f;
 
 	const vec3 halfway = normalize(incident + scattered);
 
@@ -518,6 +506,8 @@ vec3 EvalSpecularTransmission(
 	const vec3& incident, const vec3& scattered, const bool entering
 )
 {
+	if (data.roughness < kMinGGXAlpha) return vec3(0.f, 0.f, 0.f);
+
 	bool hasReflection = (data.activeLobes & (data.roughness < kMinGGXAlpha ? LobeType::DeltaSpecularReflection : LobeType::SpecularReflection)) != LobeType::None;
 	bool hasTransmission = (data.activeLobes & (data.roughness < kMinGGXAlpha ? LobeType::DeltaSpecularTransmission : LobeType::SpecularTransmission)) != LobeType::None;
 
@@ -529,26 +519,6 @@ vec3 EvalSpecularTransmission(
 	const bool isReflection = scattered.z >= 0.f;
 	if (isReflection && !hasReflection) return vec3(0.f, 0.f, 0.f);
 	if (!isReflection && !hasTransmission) return vec3(0.f, 0.f, 0.f);
-
-	if (data.roughness < kMinGGXAlpha) {
-		if (data.thin) {
-			if (isReflection) {
-				if (scattered != vec3(-incident.x, -incident.y, incident.z)) return vec3(0.f, 0.f, 0.f);
-				return vec3(1.f, 1.f, 1.f) * fresnel_dielectric(data.ior, incident.z);
-			} else {
-				if (scattered != -incident) return vec3(0.f, 0.f, 0.f);
-				return data.dielectric * (1.f - fresnel_dielectric(data.ior, incident.z));
-			}
-		} else {
-			if (isReflection) {
-				if (scattered != vec3(-incident.x, -incident.y, incident.z)) return vec3(0.f, 0.f, 0.f);
-				return vec3(1.f, 1.f, 1.f) * fresnel_dielectric(eta, incident.z);
-			} else {
-				if (scattered != refract(-incident, vec3(0.f, 0.f, 1.f), invEta)) return vec3(0.f, 0.f, 0.f);
-				return vec3(1.f, 1.f, 1.f) * (1.f - fresnel_dielectric(eta, incident.z));
-			}
-		}
-	}
 
 	if (data.thin) {
 		return vec3(0.f, 0.f, 0.f); // Not implemented yet
@@ -589,6 +559,8 @@ float EvalSpecularTransmissionPDF(
 	const vec3& incident, const vec3& scattered, const bool entering
 )
 {
+	if (data.roughness < kMinGGXAlpha) return 0.f;
+
 	bool hasReflection = (data.activeLobes & (data.roughness < kMinGGXAlpha ? LobeType::DeltaSpecularReflection : LobeType::SpecularReflection)) != LobeType::None;
 	bool hasTransmission = (data.activeLobes & (data.roughness < kMinGGXAlpha ? LobeType::DeltaSpecularTransmission : LobeType::SpecularTransmission)) != LobeType::None;
 
@@ -600,16 +572,6 @@ float EvalSpecularTransmissionPDF(
 	const bool isReflection = scattered.z >= 0.f;
 	if (isReflection && !hasReflection) return 0.f;
 	if (!isReflection && !hasTransmission) return 0.f;
-
-	if (data.roughness < kMinGGXAlpha) {
-		if (isReflection) {
-			if (scattered != vec3(-incident.x, -incident.y, incident.z)) return 0.f;
-			return fresnel_dielectric(data.thin ? data.ior : eta, incident.z);
-		} else {
-			if (scattered != (data.thin ? -incident : refract(-incident, vec3(0.f, 0.f, 1.f), invEta))) return 0.f;
-			return 1.f - fresnel_dielectric(data.thin ? data.ior : eta, incident.z);
-		}
-	}
 
 	if (data.thin) {
 		return 0.f; // Not implemented yet
