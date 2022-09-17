@@ -76,7 +76,7 @@ IMaterialVar* GetMaterialVar(IMaterial* mat, const std::string& key) {
 	IMaterialVar* result = nullptr;
 	bool found = false;
 
-	result = mat->FindVar(key.c_str(), &found, true);
+	result = mat->FindVar(key.c_str(), &found, false);
 
 	if (found) {
 		return result;
@@ -90,13 +90,11 @@ std::string GetMaterialString(IMaterial* mat, const std::string& key)
 	// Check if the variable is even present
 	IMaterialVar* var = GetMaterialVar(mat, key);
 	if (var) {
-		const char* string = var->GetStringValue();
-		return string;
+		return var->GetStringValue();
 	}
 
-	return {};
+	return "";
 }
-
 
 bool ValidVector(const glm::vec3& v)
 {

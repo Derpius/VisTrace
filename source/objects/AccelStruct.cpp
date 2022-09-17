@@ -51,19 +51,6 @@ glm::vec3 TransformToBone(
 	return glm::vec3(final);
 }
 
-VMatrix* VMatrix::FromMaterial(ILuaBase* LUA, const std::string& key)
-{
-	VMatrix* pMat = nullptr;
-
-	LUA->GetField(-1, "GetMatrix");
-	LUA->Push(-2);
-	LUA->PushString(key.c_str());
-	LUA->Call(2, 1);
-	if (LUA->IsType(-1, Type::Matrix)) pMat = LUA->GetUserType<VMatrix>(-1, Type::Matrix);
-	LUA->Pop();
-
-	return pMat;
-}
 
 const IVTFTexture* CacheTexture(
 	const std::string& path,
@@ -261,7 +248,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 				IMaterialVar* detailscale = GetMaterialVar(sourceMaterial, "$detailscale");
 				if (detailscale) {
-					mat.detailScale = detailscale->GetIntValue();
+					mat.detailScale = detailscale->GetFloatValue();
 				}
 
 				IMaterialVar* detailblendfactor = GetMaterialVar(sourceMaterial, "$detailblendfactor");
@@ -283,7 +270,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				if (detailtint) {
 					float values[3];
 					detailtint->GetVecValue(values, 3);
-					mat.detailTint = glm::vec4(values[0], values[1], values[2], 1);
+					mat.detailTint = glm::vec3(values[0], values[1], values[2]);
 				}
 
 				IMaterialVar* detail_ambt = GetMaterialVar(sourceMaterial, "$detail_alpha_mask_base_texture");
@@ -578,7 +565,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 				IMaterialVar* detailscale = GetMaterialVar(sourceMaterial, "$detailscale");
 				if (detailscale) {
-					mat.detailScale = detailscale->GetIntValue();
+					mat.detailScale = detailscale->GetFloatValue();
 				}
 
 				IMaterialVar* detailblendfactor = GetMaterialVar(sourceMaterial, "$detailblendfactor");
@@ -600,7 +587,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				if (detailtint) {
 					float values[3];
 					detailtint->GetVecValue(values, 3);
-					mat.detailTint = glm::vec4(values[0], values[1], values[2], 1);
+					mat.detailTint = glm::vec3(values[0], values[1], values[2]);
 				}
 
 				IMaterialVar* detail_ambt = GetMaterialVar(sourceMaterial, "$detail_alpha_mask_base_texture");

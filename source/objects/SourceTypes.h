@@ -42,14 +42,6 @@ struct VMatrix
 			m[0][3], m[1][3], m[2][3], m[3][3]
 		);
 	}
-
-	/// <summary>
-	/// Gets a VMatrix from the material at the top of the stack
-	/// </summary>
-	/// <param name="LUA">Lua instance</param>
-	/// <param name="key">Material key</param>
-	/// <returns>VMatrix pointer on success or nullptr on failure</returns>
-	static VMatrix* FromMaterial(GarrysMod::Lua::ILuaBase* LUA, const std::string& key);
 };
 
 // A class just to take up storage (so the class layout is properly aligned when reading from a IMaterialVar pointer)
