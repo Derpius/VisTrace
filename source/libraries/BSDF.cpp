@@ -555,8 +555,11 @@ vec3 EvalSpecularTransmission(
 	}
 
 	const vec3 halfway = isReflection ? normalize(incident + scattered) : -normalize(iorI * incident + iorS * scattered);
+	if (halfway.z < 0.f) return vec3(0.f, 0.f, 0.f);
 
 	const float iDotH = dot(incident, halfway);
+	if (iDotH < 0.f) return vec3(0.f, 0.f, 0.f);
+
 	const float iDotN = incident.z;
 	const float sDotH = dot(scattered, halfway);
 	const float sDotN = scattered.z;
@@ -569,16 +572,16 @@ vec3 EvalSpecularTransmission(
 	const float G1scattered = microfacet_g1(ggxAlpha, scattered);
 
 	if (isReflection) {
-		return vec3(F, F, F) * G1incident * G1scattered * D / (4 * iDotN * sDotN) * abs(sDotN);
+		return vec3(F, F, F) * G1incident * G1scattered * D / (4 * iDotN * sDotN) * sDotN;
 	}
 
-	const float lhs = abs(iDotH) * abs(sDotH) / (abs(iDotN) * abs(sDotN));
+	const float lhs = abs(iDotH) * abs(sDotH) / (abs(iDotN) * -sDotN);
 
 	float denom = iorI * iDotH + iorS * sDotH;
 	denom *= denom;
 	const float rhs = iorS * iorS * (1.f - F) * G1incident * G1scattered * D / denom;
 
-	return vec3(1.f, 1.f, 1.f) * (lhs * rhs * abs(sDotN));
+	return vec3(1.f, 1.f, 1.f) * (lhs * rhs * -sDotN);
 }
 
 float EvalSpecularTransmissionPDF(
@@ -613,14 +616,14 @@ float EvalSpecularTransmissionPDF(
 	}
 
 	const vec3 halfway = isReflection ? normalize(incident + scattered) : -normalize(iorI * incident + iorS * scattered);
+	if (halfway.z < 0.f) return 0.f;
 
 	const float iDotH = dot(incident, halfway);
+	if (iDotH < 0.f) return 0.f;
+
 	const float iDotN = incident.z;
 	const float sDotH = dot(scattered, halfway);
 	const float sDotN = scattered.z;
-
-	if (halfway.z < 0.f) return 0.f;
-	if (iDotH < 0.f) return 0.f;
 
 	const vec2 ggxAlpha = anisotropy_to_alpha(data.roughness, data.anisotropy);
 
