@@ -51,7 +51,6 @@ glm::vec3 TransformToBone(
 	return glm::vec3(final);
 }
 
-
 const IVTFTexture* CacheTexture(
 	const std::string& path,
 	std::unordered_map<std::string, const IVTFTexture*>& cache,
