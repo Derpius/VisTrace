@@ -2657,6 +2657,19 @@ We have to do two more things to support all the lobes of the BSDF though: disab
 Conclusion
 ----------
 
+You now have a capable path tracer powered by the VisTrace BSDF, and you should also know enough about the theory of path tracing to implement both your own physically based techniques and those found in graphics blog posts and research papers.
+
+But you don't have to stop there, you can continue reading for a deep dive into BSDFs themselves, or try implementing as many of the following features as you can:
+* Enable world tracing by passing true to `CreateAccel` and checking `result:HitSky()` in addition to whether the ray missed
+* Add a material for water and use `result:HitWater()` to apply it. Hint: map water surfaces are actually two planes stacked on top of each other, so you'll need to invert the normal when the ray points upwards and call the global BSDF functions `vistrace.EvalBSDF`, `vistrace.EvalPDF`, and `vistrace.SampleBSDF`
+* Implement analytical lights. These can be added exactly the same way as HDRI direct sampling with a few simple ones being
+	* Point lights
+	* Area lights
+	* Spot lights
+* Add volumetrics. You could instead implement Beer's law for specular transmission to get some easy absorption
+
+`![BSDF Showcase](images/path-tracing-conclusion.png)` *(coming soon)*
+
 Shading
 =======
 
