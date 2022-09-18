@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 
-<svg viewBox="0 0 100 20" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 88 16.5" preserveAspectRatio="xMidYMid meet" width="1920px" xmlns="http://www.w3.org/2000/svg">
 	<defs>
 		<style type="text/css">
 			@font-face {
@@ -56,10 +56,11 @@
 		</filter>
 
 		<mask id="ray" maskUnits="userSpaceOnUse">
-			<rect width="100%" height="100%" fill="white"/>
-			<rect width="100%" height="0.7" y="11.3" fill="black"/>
+			<rect width="88" height="20" fill="white"/>
+			<rect width="88" height="0.7" y="9.8" fill="black"/>
 		</mask>
 	</defs>
+
 	<g filter="url(#shadow)"><g filter="url(#blend)"><g filter="url(#bevel-dark)"><g filter="url(#bevel-light)">
 	<text
 		xml:space="preserve"
@@ -67,15 +68,15 @@
 		font-family="Libre Franklin"
 		font-weight="900"
 		font-style="italic"
-		x="50%"
-		y="50%"
+		x="42.5"
+		y="8.5"
 		text-anchor="middle"
 		dominant-baseline="central"
 		fill="#ee7b0f"
 		filter=""
 		mask="url(#ray)"
 	>VisTrace</text>
-	<circle fill="#ee7b0f" cx="8.7" cy="11.65" r="0.8" />
-	<circle fill="#ee7b0f" cx="94.4" cy="11.65" r="0.8" />
+	<circle fill="#ee7b0f" cx="1.2" cy="10.15" r="0.8" />
+	<circle fill="#ee7b0f" cx="86.8" cy="10.15" r="0.8" />
 	</g></g></g></g>
 </svg>
