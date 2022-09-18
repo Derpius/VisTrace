@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 
-<svg viewBox="0 0 100 20" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 90 20" preserveAspectRatio="xMidYMid meet" width="1920px" xmlns="http://www.w3.org/2000/svg">
 	<defs>
 		<style type="text/css">
-			@import url("https://fonts.googleapis.com/css?family=Libre+Franklin:900italic");
+			@font-face {
+				font-family: 'Libre Franklin';
+				font-style: italic;
+				font-weight: 900;
+				src: url(data:application/octet-stream;base64,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);
+			}
 
 			text {
 				cursor: default;
@@ -52,9 +57,10 @@
 
 		<mask id="ray" maskUnits="userSpaceOnUse">
 			<rect width="100%" height="100%" fill="white"/>
-			<rect width="100%" height="0.7" y="11.3" fill="black"/>
+			<rect width="100%" height="0.7" y="11.7" fill="black"/>
 		</mask>
 	</defs>
+
 	<g filter="url(#shadow)"><g filter="url(#blend)"><g filter="url(#bevel-dark)"><g filter="url(#bevel-light)">
 	<text
 		xml:space="preserve"
@@ -62,15 +68,15 @@
 		font-family="Libre Franklin"
 		font-weight="900"
 		font-style="italic"
-		x="50%"
-		y="50%"
+		x="43.5"
+		y="10.4"
 		text-anchor="middle"
 		dominant-baseline="central"
 		fill="#ee7b0f"
 		filter=""
 		mask="url(#ray)"
 	>VisTrace</text>
-	<circle fill="#ee7b0f" cx="8.7" cy="11.65" r="0.8" />
-	<circle fill="#ee7b0f" cx="94.4" cy="11.65" r="0.8" />
+	<circle fill="#ee7b0f" cx="2.1" cy="12.05" r="0.8" />
+	<circle fill="#ee7b0f" cx="87.9" cy="12.05" r="0.8" />
 	</g></g></g></g>
 </svg>
