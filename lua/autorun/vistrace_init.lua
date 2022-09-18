@@ -1,5 +1,13 @@
+VISTRACE_VERSION = "0.12"
+
 if SERVER then
 	AddCSLuaFile()
+
+	CreateConVar(
+		"vistrace_version", VISTRACE_VERSION, FCVAR_NOTIFY,
+		"The VisTrace addon's API version. This is used to find VisTrace servers from the master server and should not be edited"
+	)
+
 	return
 end
 
@@ -7,8 +15,6 @@ end
 	https://github.com/Derpius/VisTrace/issues/13
 	pcall(require, "VisTrace-v0.4") -- Don't throw an error if the module failed to load
 ]]
-
-VISTRACE_VERSION = "0.12"
 
 local files = file.Find("lua/bin/gmcl_VisTrace-v" .. VISTRACE_VERSION .. "_*.dll", "GAME")
 if not files or #files == 0 then return end
