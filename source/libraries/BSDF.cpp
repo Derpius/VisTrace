@@ -352,7 +352,7 @@ bool SampleSpecularReflection(
 
 	float iDotN = incident.z;
 
-	scattered = reflect(incident, halfway);
+	scattered = reflect(-incident, halfway);
 	if (scattered.z < 0.f) return false;
 
 	float sDotN = scattered.z;
@@ -850,9 +850,8 @@ vec3 EvalBSDF(
 		result += (1.f - data.metallic) * (1.f - data.specularTransmission) * EvalDiffuse(data, incident, scattered);
 	if (pSpecularReflection > 0.f)
 		result += (1.f - data.metallic) * (1.f - data.specularTransmission) * EvalSpecularReflection(data, incident, scattered);
-	if (pConductor > 0.f) {
+	if (pConductor > 0.f)
 		result += data.metallic * EvalConductor(data, incident, scattered);
-	}
 	if (pSpecTrans > 0.f)
 		result += (1.f - data.metallic) * data.specularTransmission * EvalSpecularTransmission(data, incident, scattered, entering);
 
