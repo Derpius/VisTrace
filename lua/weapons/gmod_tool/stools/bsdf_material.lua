@@ -453,8 +453,11 @@ if CLIENT then
 
 					local specularReflection = Vector(0, 0, 0)
 					if delta then
-						mat:ActiveLobes(bit.bor(LobeType.DeltaSpecularReflection, LobeType.DeltaConductiveReflection))
+						mat:ActiveLobes(LobeType.DeltaSpecularReflection)
 						specularReflection = vistrace.SampleBSDF(sampler, mat, normal, tangent, binormal, incident).weight * DirToCubemap(hdri, deltaReflect, 0)
+
+						mat:ActiveLobes(LobeType.DeltaConductiveReflection)
+						specularReflection = specularReflection + vistrace.SampleBSDF(sampler, mat, normal, tangent, binormal, incident).weight * DirToCubemap(hdri, deltaReflect, 0)
 					else
 						mat:ActiveLobes(bit.bor(LobeType.SpecularReflection, LobeType.ConductiveReflection))
 						local specularReflectionPdf = vistrace.EvalPDF(mat, normal, tangent, binormal, incident, deltaReflect)
