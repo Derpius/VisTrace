@@ -300,16 +300,34 @@ if CLIENT then
 		return -incident * invEta + (invEta * cosine - math.sqrt(k)) * normal;
 	end
 
+	-- https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
+	local function ACESFilmic(x)
+		local a = 2.51
+		local b = 0.03
+		local c = 2.43
+		local d = 0.59
+		local e = 0.14
+
+		local num = x * (a * x + Vector(b, b, b))
+		local denom = x * (c * x + Vector(d, d, d)) + Vector(e, e, e)
+		local fit = Vector(num[1] / denom[1], num[2] / denom[2], num[3] / denom[3])
+		fit[1] = math.Clamp(fit[1], 0, 1)
+		fit[2] = math.Clamp(fit[2], 0, 1)
+		fit[3] = math.Clamp(fit[3], 0, 1)
+
+		return fit
+	end
+
 	-- Preview params
 	local PREVIEW_RES = 256
 	local PREVIEW_PADDING = 64
-	local PREVIEW_SPOT_LIGHT = Vector(-4, 3, 3) -- Position of spot light relative to sphere (x points into the screen, y and z are screen x and y)
-	local PREVIEW_INDIRECT_MINCOS = 0.001 -- Minimum cosine to sample (no point sampling parallel to the surface)
-	local PREVIEW_INDIRECT_RES = 8       -- How many snapshots of iDotN should we take evenly between min cosine and 1
-	local PREVIEW_INDIRECT_SAMPLES = 1024   -- How many samples of the BSDF to take at each snapshot
+	local PREVIEW_GAMMA = 1 / 2.2
+	local PREVIEW_POINT_LIGHT = Vector(-4, 3, 3) -- Position of point light relative to sphere (x points into the screen, y and z are screen x and y)
+	local PREVIEW_POINT_LIGHT_COLOUR = Vector(1, 1, 1)
+	local PREVIEW_POINT_LIGHT_INTENSITY = 300
 
 	-- Only used for displaying the background
-	local FOCAL_LENGTH = 10
+	local FOCAL_LENGTH = 20
 	local SENSOR_HEIGHT = 24
 
 	local previewRT = GetRenderTarget("VisTrace.BSDFMaterialPreview", PREVIEW_RES, PREVIEW_RES)
@@ -320,9 +338,6 @@ if CLIENT then
 	-- Cache padding calcs
 	local RES_MINUS_PADDING = PREVIEW_RES - PREVIEW_PADDING
 	local PAD_DIV_2 = PREVIEW_PADDING / 2
-
-	-- Cache indirect sampling calcs
-	local INDIRECT_INCREMENT = (1 - PREVIEW_INDIRECT_MINCOS) / PREVIEW_INDIRECT_RES
 
 	-- Cache camera calcs
 	local CAM_SCALE = 0.5 * SENSOR_HEIGHT / FOCAL_LENGTH
@@ -371,7 +386,7 @@ if CLIENT then
 
 		local mat = vistrace.CreateMaterial()
 		mat:DielectricColour(dielectric)
-		mat:ConductorColour(dielectric)
+		mat:ConductorColour(conductive)
 
 		mat:EdgeTint(edgetint)
 		mat:EdgeTintFalloff(falloff)
@@ -387,69 +402,17 @@ if CLIENT then
 		mat:SpecularTransmission(spectrans)
 		mat:Thin(thin)
 
-		-- Compute average throughput of a few iDotNs and store in a LUT
-		-- This means we can approximate the intergral for indirect lighting assuming a uniform colour in all directions of the integral
-		-- by linearly interpolating between LUT values
-		local indirectLUTDiffuseReflection = {}
-		local indirectLUTSpecularReflection = {}
-		local indirectLUTSpecularTransmission = {}
-		local iDotN = PREVIEW_INDIRECT_MINCOS
-		for i = 1, PREVIEW_INDIRECT_RES do
-			-- Convert sampled dot product to an incident vector (assuming the normal is positive Z)
-			local incident = Vector(math.sin(math.acos(iDotN)), 0, iDotN)
-			local normal = Vector(0, 0, 1)
-			local tangent = Vector(1, 0, 0)
-			local binormal = Vector(0, 1, 0)
-
-			-- Sample diffuse reflection
-			mat:ActiveLobes(LobeType.DiffuseReflection)
-			local throughput = Vector(0, 0, 0)
-			local validSamples = PREVIEW_INDIRECT_SAMPLES
-			for j = 1, PREVIEW_INDIRECT_SAMPLES do
-				local sample = vistrace.SampleBSDF(sampler, mat, normal, tangent, binormal, incident)
-				if sample then
-					throughput = throughput + sample.weight
-				else
-					validSamples = validSamples - 1
-				end
-			end
-			indirectLUTDiffuseReflection[i] = throughput / validSamples
-
-			-- Sample specular reflection
-			mat:ActiveLobes(bit.band(LobeType.Specular, LobeType.Reflection))
-			throughput = Vector(0, 0, 0)
-			validSamples = PREVIEW_INDIRECT_SAMPLES * roughness + 1
-			for j = 0, PREVIEW_INDIRECT_SAMPLES * roughness do
-				local sample = vistrace.SampleBSDF(sampler, mat, normal, tangent, binormal, incident)
-				if sample then
-					throughput = throughput + sample.weight
-				else
-					validSamples = validSamples - 1
-				end
-			end
-			indirectLUTSpecularReflection[i] = throughput / validSamples
-
-			-- Sample specular transmission
-			mat:ActiveLobes(bit.band(LobeType.Specular, LobeType.Transmission))
-			throughput = Vector(0, 0, 0)
-			validSamples = PREVIEW_INDIRECT_SAMPLES * roughness + 1
-			for j = 0, PREVIEW_INDIRECT_SAMPLES * roughness do
-				local sample = vistrace.SampleBSDF(sampler, mat, normal, tangent, binormal, incident)
-				if sample then
-					throughput = throughput + sample.weight
-				else
-					validSamples = validSamples - 1
-				end
-			end
-			indirectLUTSpecularTransmission[i] = throughput / validSamples
-
-			iDotN = iDotN + INDIRECT_INCREMENT
-		end
-		mat:ActiveLobes(LobeType.All)
+		local delta = (roughness * roughness) < 0.0064 -- kMinGGXAlpha from the binary
 
 		for y = 0, PREVIEW_RES - 1 do
 			for x = 0, PREVIEW_RES - 1 do
 				render.SetViewPort(x, y, 1, 1)
+
+				local xCam = (2 * (x + 0.5) / PREVIEW_RES - 1) * CAM_SCALE
+				local yCam = (1 - 2 * (y + 0.5) / PREVIEW_RES) * CAM_SCALE
+
+				local dir = Vector(1, xCam, yCam)
+				dir:Normalize()
 
 				local u = (x - PAD_DIV_2) / RES_MINUS_PADDING
 				local v = (y - PAD_DIV_2) / RES_MINUS_PADDING
@@ -465,51 +428,74 @@ if CLIENT then
 					local incident = Vector(-1, 0, 0)
 					iDotN = normal:Dot(incident)
 					local deltaReflect = Reflect(incident, normal)
-					local deltaRefract = thin and -incident or Refract(incident, normal, 1 / ior)
+					local deltaRefract = thin and dir or Refract(incident, normal, 1 / ior)
 
 					-- Direct contribution
-					local lDir = PREVIEW_SPOT_LIGHT - normal
-					lDir:Normalize()
-					local direct = vistrace.EvalBSDF(mat, normal, tangent, binormal, incident, lDir)
+					local lDir = PREVIEW_POINT_LIGHT - normal
+					local lengthSqr = lDir:LengthSqr()
+					local length = math.sqrt(lengthSqr)
+					lDir = lDir / length
 
-					-- Indirect contribution
-					local index = iDotN * (PREVIEW_INDIRECT_RES - 1)
-					local iLow, iHigh = math.floor(index), math.ceil(index)
-					local diffuseReflection, specularReflection, specularTransmission
-					if iLow == iHigh then
-						diffuseReflection = indirectLUTDiffuseReflection[iLow + 1]
-						specularReflection = indirectLUTSpecularReflection[iLow + 1]
-						specularTransmission = indirectLUTSpecularTransmission[iLow + 1]
-					else
-						local fract = index - iLow
-						diffuseReflection = (1 - fract) * indirectLUTDiffuseReflection[iLow + 1] + fract * indirectLUTDiffuseReflection[iHigh + 1]
-						specularReflection = (1 - fract) * indirectLUTSpecularReflection[iLow + 1] + fract * indirectLUTSpecularReflection[iHigh + 1]
-						specularTransmission = (1 - fract) * indirectLUTSpecularTransmission[iLow + 1] + fract * indirectLUTSpecularTransmission[iHigh + 1]
+					local Li = PREVIEW_POINT_LIGHT_COLOUR * PREVIEW_POINT_LIGHT_INTENSITY / (4 * math.pi * lengthSqr)
+
+					mat:ActiveLobes(delta and LobeType.Diffuse or LobeType.All)
+					local direct = vistrace.EvalBSDF(mat, normal, tangent, binormal, incident, lDir) * Li
+
+					--- Indirect contribution
+					mat:ActiveLobes(LobeType.DiffuseReflection)
+					local diffusePdf = vistrace.EvalPDF(mat, normal, tangent, binormal, incident, normal)
+					local diffuseReflection = Vector(0, 0, 0)
+					if diffusePdf > 0 then
+						diffuseReflection = vistrace.EvalBSDF(mat, normal, tangent, binormal, incident, normal)
+							/ diffusePdf
+							* DirToCubemap(hdri, normal, hdrimips - 1)
 					end
-					diffuseReflection = diffuseReflection * DirToCubemap(hdri, normal, hdrimips - 1)
-					specularReflection = specularReflection * DirToCubemap(hdri, deltaReflect, roughness * (hdrimips - 1))
-					specularTransmission = specularTransmission * DirToCubemap(hdri, deltaRefract, roughness * (hdrimips - 1))
+
+					local specularReflection = Vector(0, 0, 0)
+					if delta then
+						mat:ActiveLobes(bit.bor(LobeType.DeltaSpecularReflection, LobeType.DeltaConductiveReflection))
+						specularReflection = vistrace.SampleBSDF(sampler, mat, normal, tangent, binormal, incident).weight * DirToCubemap(hdri, deltaReflect, 0)
+					else
+						mat:ActiveLobes(bit.bor(LobeType.SpecularReflection, LobeType.ConductiveReflection))
+						local specularReflectionPdf = vistrace.EvalPDF(mat, normal, tangent, binormal, incident, deltaReflect)
+						if specularReflectionPdf > 0 then
+							specularReflection = vistrace.EvalBSDF(mat, normal, tangent, binormal, incident, deltaReflect)
+								/ specularReflectionPdf
+								* DirToCubemap(hdri, deltaReflect, roughness * (hdrimips - 1))
+						end
+					end
+
+					local specularTransmission = Vector(0, 0, 0)
+					if delta then
+						mat:ActiveLobes(LobeType.DeltaSpecularTransmission)
+						specularTransmission = vistrace.SampleBSDF(sampler, mat, normal, tangent, binormal, incident).weight * DirToCubemap(hdri, deltaRefract, 0)
+					else
+						mat:ActiveLobes(LobeType.SpecularTransmission)
+						local specularTransmissionPdf = vistrace.EvalPDF(mat, normal, tangent, binormal, incident, deltaRefract)
+						if specularTransmissionPdf > 0 then
+							specularTransmission = vistrace.EvalBSDF(mat, normal, tangent, binormal, incident, deltaRefract)
+								/ specularTransmissionPdf
+								* DirToCubemap(hdri, deltaRefract, roughness * (hdrimips - 1))
+						end
+					end
 
 					local lighting = direct + diffuseReflection + specularReflection + specularTransmission
+					lighting = ACESFilmic(lighting)
 
 					render.Clear(
-						math.Clamp(lighting[1], 0, 1) * 255,
-						math.Clamp(lighting[2], 0, 1) * 255,
-						math.Clamp(lighting[3], 0, 1) * 255,
+						math.Clamp(math.pow(lighting[1], PREVIEW_GAMMA), 0, 1) * 255,
+						math.Clamp(math.pow(lighting[2], PREVIEW_GAMMA), 0, 1) * 255,
+						math.Clamp(math.pow(lighting[3], PREVIEW_GAMMA), 0, 1) * 255,
 						255, true, true
 					)
 				else
-					local xCam = (2 * (x + 0.5) / PREVIEW_RES - 1) * CAM_SCALE
-					local yCam = (1 - 2 * (y + 0.5) / PREVIEW_RES) * CAM_SCALE
+					local lighting = DirToCubemap(hdri, dir, 0)
+					lighting = ACESFilmic(lighting)
 
-					local dir = Vector(1, xCam, yCam)
-					dir:Normalize()
-
-					local envcol = DirToCubemap(hdri, dir, 0)
 					render.Clear(
-						envcol[1] * 255,
-						envcol[2] * 255,
-						envcol[3] * 255,
+						math.Clamp(math.pow(lighting[1], PREVIEW_GAMMA), 0, 1) * 255,
+						math.Clamp(math.pow(lighting[2], PREVIEW_GAMMA), 0, 1) * 255,
+						math.Clamp(math.pow(lighting[3], PREVIEW_GAMMA), 0, 1) * 255,
 						255, true, true
 					)
 				end
