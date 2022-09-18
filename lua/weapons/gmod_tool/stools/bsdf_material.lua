@@ -402,7 +402,7 @@ if CLIENT then
 		mat:SpecularTransmission(spectrans)
 		mat:Thin(thin)
 
-		local delta = (roughness * roughness) < 0.0064 -- kMinGGXAlpha from the binary
+		local delta = (roughness * roughness) < 0.0063 -- kMinGGXAlpha from the binary (slightly lower due what i assume are precision issues)
 
 		for y = 0, PREVIEW_RES - 1 do
 			for x = 0, PREVIEW_RES - 1 do
