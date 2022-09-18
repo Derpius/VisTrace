@@ -1,0 +1,4 @@
+[submodule "wwwroot/branding"]
+	path = wwwroot/branding
+	url = https://github.com/Derpius/VisTrace.git
+	branch = branding
