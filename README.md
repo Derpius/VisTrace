@@ -5,14 +5,17 @@
 	<a href="https://github.com/Derpius/VisTrace/actions/workflows/build.yml" style="text-decoration: none;">
 		<img alt="GitHub Workflow Status" src="https://img.shields.io/github/workflow/status/Derpius/VisTrace/CI%20Build?logo=c%2B%2B&style=for-the-badge" />
 	</a>
+	<a href="https://github.com/Derpius/VisTrace/issues" style="text-decoration: none;">
+		<img alt="GitHub Open Issues" src="https://img.shields.io/github/issues/Derpius/VisTrace?logo=github&style=for-the-badge" />
+	</a>
+	<a href="https://discord.gg/N4NxezCgFQ" style="text-decoration: none;">
+		<img alt="Discord" src="https://img.shields.io/discord/1020968021289873418?color=%237289DA&label=Discord&logo=discord&logoColor=white&style=for-the-badge" />
+	</a><br>
 	<a href="https://github.com/Derpius/VisTrace/releases/latest" style="text-decoration: none;">
 		<img alt="GitHub Release Downloads" src="https://img.shields.io/github/downloads/Derpius/VisTrace/total?logo=github&style=for-the-badge">
 	</a>
 	<a href="https://steamcommunity.com/sharedfiles/filedetails/?id=2531198548" style="text-decoration: none;">
 		<img alt="Steam Workshop Subscribers" src="https://img.shields.io/steam/subscriptions/2531198548?label=SUBSCRIBERS&logo=steam&style=for-the-badge" />
-	</a>
-	<a href="https://github.com/Derpius/VisTrace/issues" style="text-decoration: none;">
-		<img alt="GitHub Open Issues" src="https://img.shields.io/github/issues/Derpius/VisTrace?logo=github&style=for-the-badge" />
 	</a>
 </p>
 
