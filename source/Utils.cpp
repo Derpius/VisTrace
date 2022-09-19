@@ -73,27 +73,16 @@ Vector MakeVector(const float x, const float y, const float z)
 }
 
 IMaterialVar* GetMaterialVar(IMaterial* mat, const std::string& key) {
-	IMaterialVar* result = nullptr;
 	bool found = false;
 
-	result = mat->FindVar(key.c_str(), &found, false);
-
-	if (found) {
-		return result;
-	} else {
-		return nullptr;
-	}
+	IMaterialVar* result = mat->FindVar(key.c_str(), &found, false);
+	return found ? result : nullptr;
 }
 
 std::string GetMaterialString(IMaterial* mat, const std::string& key)
 {
-	// Check if the variable is even present
 	IMaterialVar* var = GetMaterialVar(mat, key);
-	if (var) {
-		return var->GetStringValue();
-	}
-
-	return "";
+	return var == nullptr ? "" : var->GetStringValue();
 }
 
 bool ValidVector(const glm::vec3& v)
