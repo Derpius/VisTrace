@@ -933,7 +933,7 @@ LUA_FUNCTION(Material_ActiveLobes)
 	LUA->CheckType(1, BSDFMaterial::id);
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
 	if (LUA->Top() == 1) {
-		LUA->PushNumber(static_cast<int>(pMat->activeLobes));
+		LUA->PushNumber(static_cast<double>(pMat->activeLobes));
 		return 1;
 	}
 
