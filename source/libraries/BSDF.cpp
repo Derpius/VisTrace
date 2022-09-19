@@ -524,7 +524,9 @@ vec3 EvalSpecularTransmission(
 		return vec3(0.f, 0.f, 0.f); // Not implemented yet
 	}
 
-	const vec3 halfway = isReflection ? normalize(incident + scattered) : -normalize(iorI * incident + iorS * scattered);
+	const vec3 halfway = isReflection ?
+		normalize(incident + scattered) :
+		((iorI < iorS ? -1.f : 1.f) * normalize(iorI * incident + iorS * scattered));
 	if (halfway.z < 0.f) return vec3(0.f, 0.f, 0.f);
 
 	const float iDotH = dot(incident, halfway);
@@ -582,7 +584,9 @@ float EvalSpecularTransmissionPDF(
 		return 0.f; // Not implemented yet
 	}
 
-	const vec3 halfway = isReflection ? normalize(incident + scattered) : -normalize(iorI * incident + iorS * scattered);
+	const vec3 halfway = isReflection ?
+		normalize(incident + scattered) :
+		((iorI < iorS ? -1.f : 1.f) * normalize(iorI * incident + iorS * scattered));
 	if (halfway.z < 0.f) return 0.f;
 
 	const float iDotH = dot(incident, halfway);
@@ -784,7 +788,7 @@ bool SampleBSDF(
 	float lobeSelect = sg->GetFloat();
 
 	const bool entering = dot(incidentWorld, normal) >= 0.f;
-	const vec3 incident = entering ? to_local(data, tangent, binormal, normal, incidentWorld) : to_local(data, -tangent, -binormal, -normal, incidentWorld);
+	const vec3 incident = entering ? to_local(data, tangent, binormal, normal, incidentWorld) : to_local(data, tangent, binormal, -normal, incidentWorld);
 
 	if (lobeSelect < pDiffuse) {
 		if (!SampleDiffuse(data, incident, sg, result.lobe, result.scattered, result.weight, result.pdf)) return false;
@@ -824,7 +828,7 @@ bool SampleBSDF(
 		if (pSpecTrans > 0.f) result.pdf += pSpecTrans * EvalSpecularTransmissionPDF(data, incident, result.scattered, entering);
 	}
 
-	result.scattered = entering ? from_local(data, tangent, binormal, normal, result.scattered) : from_local(data, -tangent, -binormal, -normal, result.scattered);
+	result.scattered = entering ? from_local(data, tangent, binormal, normal, result.scattered) : from_local(data, tangent, binormal, -normal, result.scattered);
 	return true;
 }
 
@@ -840,10 +844,10 @@ vec3 EvalBSDF(
 	const bool entering = dot(incidentWorld, normal) >= 0.f;
 	const vec3 incident = entering ?
 		to_local(data, tangent, binormal, normal, incidentWorld) :
-		to_local(data, -tangent, -binormal, -normal, incidentWorld);
+		to_local(data, tangent, binormal, -normal, incidentWorld);
 	const vec3 scattered = entering ?
 		to_local(data, tangent, binormal, normal, scatteredWorld) :
-		to_local(data, -tangent, -binormal, -normal, scatteredWorld);
+		to_local(data, tangent, binormal, -normal, scatteredWorld);
 
 	vec3 result{ 0, 0, 0 };
 	if (pDiffuse > 0.f)
@@ -870,10 +874,10 @@ float EvalPDF(
 	const bool entering = dot(incidentWorld, normal) >= 0.f;
 	const vec3 incident = entering ?
 		to_local(data, tangent, binormal, normal, incidentWorld) :
-		to_local(data, -tangent, -binormal, -normal, incidentWorld);
+		to_local(data, tangent, binormal, -normal, incidentWorld);
 	const vec3 scattered = entering ?
 		to_local(data, tangent, binormal, normal, scatteredWorld) :
-		to_local(data, -tangent, -binormal, -normal, scatteredWorld);
+		to_local(data, tangent, binormal, -normal, scatteredWorld);
 
 	float pdf = 0.f;
 	if (pDiffuse > 0.f)
