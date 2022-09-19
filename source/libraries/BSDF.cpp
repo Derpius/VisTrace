@@ -572,13 +572,8 @@ float EvalSpecularTransmissionPDF(
 	const float invEta = 1.f / eta;
 
 	const bool isReflection = scattered.z >= 0.f;
-	if (isReflection) {
-		if (!hasReflection) return 0.f;
-		if (!hasTransmission) return 1.f;
-	} else {
-		if (!hasTransmission) return 0.f;
-		if (!hasReflection) return 1.f;
-	}
+	if (isReflection && !hasReflection) return 0.f;
+	if (!isReflection && !hasTransmission) return 0.f;
 
 	if (data.thin) {
 		return 0.f; // Not implemented yet
@@ -599,13 +594,19 @@ float EvalSpecularTransmissionPDF(
 	const vec2 ggxAlpha = anisotropy_to_alpha(data.roughness, data.anisotropy);
 
 	const float F = fresnel_dielectric(eta, iDotH);
+	float pReflect = F;
+	if ((data.activeLobes & LobeType::SpecularTransmission) == LobeType::None)
+		pReflect = 1.f;
+	else if ((data.activeLobes & LobeType::SpecularReflection) == LobeType::None)
+		pReflect = 0.f;
+
 	const float D = microfacet_d(ggxAlpha, halfway);
 	const float G1incident = microfacet_g1(ggxAlpha, incident);
 
 	if (isReflection) {
 		const float pdf = D * G1incident * iDotH / (4 * iDotN * sDotH);
 		if (pdf < 0.f || !std::isfinite(pdf)) return 0.f;
-		return F * pdf;
+		return pReflect * pdf;
 	}
 
 	// pdf is VNDF pdf * jacobian of refraction
@@ -620,7 +621,7 @@ float EvalSpecularTransmissionPDF(
 
 	const float pdf = jacobian * G1incident * iDotH * D / iDotN;
 	if (pdf < 0.f || !std::isfinite(pdf)) return 0.f;
-	return (1.f - F) * pdf;
+	return (1.f - pReflect) * pdf;
 }
 
 bool SampleSpecularTransmission(
