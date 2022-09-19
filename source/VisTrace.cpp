@@ -736,9 +736,15 @@ LUA_FUNCTION(vistrace_CreateMaterial)
 LUA_FUNCTION(Material_Colour)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Vector);
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushVector(MakeVector(pMat->dielectricInput.x, pMat->dielectricInput.y, pMat->dielectricInput.z));
+		LUA->PushVector(MakeVector(pMat->conductorInput.x, pMat->conductorInput.y, pMat->conductorInput.z));
+		return 2;
+	}
+
+	LUA->CheckType(2, Type::Vector);
 	Vector v = LUA->GetVector(2);
 	pMat->dielectricInput = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
 	pMat->conductorInput = pMat->conductor = pMat->dielectric = pMat->dielectricInput;
@@ -749,9 +755,13 @@ LUA_FUNCTION(Material_Colour)
 LUA_FUNCTION(Material_DielectricColour)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Vector);
-
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushVector(MakeVector(pMat->dielectricInput.x, pMat->dielectricInput.y, pMat->dielectricInput.z));
+		return 1;
+	}
+
+	LUA->CheckType(2, Type::Vector);
 	Vector v = LUA->GetVector(2);
 	pMat->dielectricInput = pMat->dielectric = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
 	return 0;
@@ -760,9 +770,13 @@ LUA_FUNCTION(Material_DielectricColour)
 LUA_FUNCTION(Material_ConductorColour)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Vector);
-
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushVector(MakeVector(pMat->conductorInput.x, pMat->conductorInput.y, pMat->conductorInput.z));
+		return 1;
+	}
+
+	LUA->CheckType(2, Type::Vector);
 	Vector v = LUA->GetVector(2);
 	pMat->conductorInput = pMat->conductor = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
 	return 0;
@@ -771,9 +785,13 @@ LUA_FUNCTION(Material_ConductorColour)
 LUA_FUNCTION(Material_EdgeTint)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Vector);
-
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushVector(MakeVector(pMat->edgetint.x, pMat->edgetint.y, pMat->edgetint.z));
+		return 1;
+	}
+
+	LUA->CheckType(2, Type::Vector);
 	Vector v = LUA->GetVector(2);
 	pMat->edgetint = glm::clamp(glm::vec3(v.x, v.y, v.z), 0.f, 1.f);
 	return 0;
@@ -782,9 +800,13 @@ LUA_FUNCTION(Material_EdgeTint)
 LUA_FUNCTION(Material_EdgeTintFalloff)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Number);
-
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushNumber(pMat->falloff);
+		return 1;
+	}
+
+	LUA->CheckType(2, Type::Number);
 	pMat->falloff = glm::clamp(LUA->GetNumber(2), 0.001, 1.);
 	return 0;
 }
@@ -792,9 +814,13 @@ LUA_FUNCTION(Material_EdgeTintFalloff)
 LUA_FUNCTION(Material_Metalness)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Number);
-
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushNumber(pMat->metallic);
+		return 1;
+	}
+
+	LUA->CheckType(2, Type::Number);
 	pMat->metallic = glm::clamp(LUA->GetNumber(2), 0., 1.);
 	pMat->metallicOverridden = true;
 	return 0;
@@ -802,9 +828,13 @@ LUA_FUNCTION(Material_Metalness)
 LUA_FUNCTION(Material_Roughness)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Number);
-
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushNumber(pMat->linearRoughness);
+		return 1;
+	}
+
+	LUA->CheckType(2, Type::Number);
 	pMat->linearRoughness = glm::clamp(LUA->GetNumber(2), 0., 1.);
 	pMat->roughness = pMat->linearRoughness * pMat->linearRoughness;
 	pMat->roughnessOverridden = true;
@@ -814,12 +844,16 @@ LUA_FUNCTION(Material_Roughness)
 LUA_FUNCTION(Material_Anisotropy)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Number);
-
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushNumber(pMat->anisotropy);
+		return 1;
+	}
+
 	// While anisotropy can be mapped -1 to 1
 	// with rotation it makes more sense to have it 0-1 (easily stored in a texture) and use rotation to change the direction
 	// This is also how blender's principled BSDF node does it
+	LUA->CheckType(2, Type::Number);
 	pMat->anisotropy = glm::clamp(LUA->GetNumber(2), 0., 1. - kMinGGXAlpha);
 	pMat->anisotropyOverriden = true;
 	return 0;
@@ -827,9 +861,13 @@ LUA_FUNCTION(Material_Anisotropy)
 LUA_FUNCTION(Material_AnisotropicRotation)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Number);
-
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushNumber(pMat->anisotropicRotation);
+		return 1;
+	}
+
+	LUA->CheckType(2, Type::Number);
 	pMat->anisotropicRotation = glm::clamp(LUA->GetNumber(2), 0., 1.) * 2. * glm::pi<double>();
 	pMat->anisotropicRotationOverriden = true;
 	return 0;
@@ -838,9 +876,13 @@ LUA_FUNCTION(Material_AnisotropicRotation)
 LUA_FUNCTION(Material_IoR)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Number);
-
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushNumber(pMat->ior);
+		return 1;
+	}
+
+	LUA->CheckType(2, Type::Number);
 	pMat->ior = LUA->GetNumber(2);
 	return 0;
 }
@@ -848,18 +890,26 @@ LUA_FUNCTION(Material_IoR)
 LUA_FUNCTION(Material_DiffuseTransmission)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Number);
-
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushNumber(pMat->diffuseTransmission);
+		return 1;
+	}
+
+	LUA->CheckType(2, Type::Number);
 	pMat->diffuseTransmission = glm::clamp(LUA->GetNumber(2), 0., 1.);
 	return 0;
 }
 LUA_FUNCTION(Material_SpecularTransmission)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Number);
-
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushNumber(pMat->specularTransmission);
+		return 1;
+	}
+
+	LUA->CheckType(2, Type::Number);
 	pMat->specularTransmission = glm::clamp(LUA->GetNumber(2), 0., 1.);
 	return 0;
 }
@@ -867,9 +917,13 @@ LUA_FUNCTION(Material_SpecularTransmission)
 LUA_FUNCTION(Material_Thin)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
-	LUA->CheckType(2, Type::Bool);
-
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushBool(pMat->thin);
+		return 1;
+	}
+
+	LUA->CheckType(2, Type::Bool);
 	pMat->thin = LUA->GetBool(2);
 	return 0;
 }
@@ -878,6 +932,11 @@ LUA_FUNCTION(Material_ActiveLobes)
 {
 	LUA->CheckType(1, BSDFMaterial::id);
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushNumber(static_cast<double>(pMat->activeLobes));
+		return 1;
+	}
+
 	LobeType lobes = static_cast<LobeType>(LUA->CheckNumber(2));
 
 	pMat->activeLobes = lobes;
