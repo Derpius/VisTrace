@@ -576,11 +576,6 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 					mat.detailBlendMode = static_cast<DetailBlendMode>(detailblendmode->GetIntValue());
 				}
 
-				IMaterialVar* alphatestreference = GetMaterialVar(sourceMaterial, "$alphatestreference");
-				if (alphatestreference) {
-					mat.alphatestreference = alphatestreference->GetFloatValue();
-				}
-				
 				IMaterialVar* detailtint = GetMaterialVar(sourceMaterial, "$detailtint");
 				if (detailtint) {
 					float values[3];
@@ -596,6 +591,11 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				IMaterialVar* flags = GetMaterialVar(sourceMaterial, "$flags");
 				if (flags) {
 					mat.flags = static_cast<MaterialFlags>(flags->GetIntValue());
+				}
+
+				IMaterialVar* alphatestreference = GetMaterialVar(sourceMaterial, "$alphatestreference");
+				if (alphatestreference) {
+					mat.alphatestreference = alphatestreference->GetFloatValue();
 				}
 
 				LUA->Pop(); // _G util meshes
@@ -1017,9 +1017,11 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 
 				std::string baseTexture = GetMaterialString(sourceMaterial, "$basetexture");
 				std::string normalMap = GetMaterialString(sourceMaterial, "$bumpmap");
+				std::string detailTexture = GetMaterialString(sourceMaterial, "$detail");
 
 				mat.baseTexture = CacheTexture(baseTexture, mTextureCache, mTextureCache[MISSING_TEXTURE]);
 				mat.normalMap = CacheTexture(normalMap, mTextureCache);
+				mat.detail = CacheTexture(detailTexture, mTextureCache);
 				if (!baseTexture.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + baseTexture + "_mrao", mTextureCache);
 
 				IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
@@ -1032,6 +1034,39 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				if (bumptransform) {
 					const VMatrix pMat = bumptransform->GetMatrixValue();
 					mat.normalMapMat = pMat.To2x4();
+				}
+
+				IMaterialVar* detailtexturetransform = GetMaterialVar(sourceMaterial, "$detailtexturetransform");
+				if (detailtexturetransform) {
+					const VMatrix pMat = detailtexturetransform->GetMatrixValue();
+					mat.detailMat = pMat.To2x4();
+				}
+
+				IMaterialVar* detailscale = GetMaterialVar(sourceMaterial, "$detailscale");
+				if (detailscale) {
+					mat.detailScale = detailscale->GetFloatValue();
+				}
+
+				IMaterialVar* detailblendfactor = GetMaterialVar(sourceMaterial, "$detailblendfactor");
+				if (detailblendfactor) {
+					mat.detailBlendFactor = detailblendfactor->GetFloatValue();
+				}
+
+				IMaterialVar* detailblendmode = GetMaterialVar(sourceMaterial, "$detailblendmode");
+				if (detailblendmode) {
+					mat.detailBlendMode = static_cast<DetailBlendMode>(detailblendmode->GetIntValue());
+				}
+
+				IMaterialVar* detailtint = GetMaterialVar(sourceMaterial, "$detailtint");
+				if (detailtint) {
+					float values[3];
+					detailtint->GetVecValue(values, 3);
+					mat.detailTint = glm::vec3(values[0], values[1], values[2]);
+				}
+
+				IMaterialVar* detail_ambt = GetMaterialVar(sourceMaterial, "$detail_alpha_mask_base_texture");
+				if (detail_ambt) {
+					mat.detailAlphaMaskBaseTexture = detail_ambt->GetIntValue() != 0;
 				}
 
 				IMaterialVar* flags = GetMaterialVar(sourceMaterial, "$flags");
