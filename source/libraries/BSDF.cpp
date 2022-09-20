@@ -281,10 +281,9 @@ bool SampleDiffuse(
 vec3 EvalSpecularReflection(const BSDFMaterial& data, const vec3& incident, const vec3& scattered)
 {
 	if (scattered.z < 0.f) return vec3(0.f, 0.f, 0.f);
+	if (data.roughness < kMinGGXAlpha) return vec3(0.f, 0.f, 0.f);
 
 	const float eta = data.ior; // TODO: user configurable incident IoR
-
-	if (data.roughness < kMinGGXAlpha) vec3(0.f, 0.f, 0.f);
 
 	const vec3 halfway = normalize(incident + scattered);
 	const float iDotN = incident.z;
