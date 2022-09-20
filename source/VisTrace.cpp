@@ -1389,6 +1389,42 @@ LUA_FUNCTION(vistrace_CalcRayOrigin)
 }
 #pragma endregion
 
+static void LoadExtension(ILuaBase* LUA)
+{
+	if (LUA->IsType(-2, Type::String) && LUA->IsType(-1, Type::Table)) {
+		const std::string name = LUA->GetString(-2);
+
+		LUA->GetField(-1, "Version"); // name data version
+		const std::string version = LUA->IsType(-1, Type::String) ? LUA->GetString() : "";
+		LUA->Pop(); // name data
+
+		if (version == API_VERSION) {
+			LUA->GetField(-1, "Open"); // name data openFunc
+			if (LUA->IsType(-1, Type::Function)) {
+				if (LUA->PCall(0, 0, NULL) != 0) { // name data [errorMessage]
+					printLua(LUA, ("VisTrace: Error loading extension " + name + "\n" + LUA->GetString()).c_str());
+					LUA->Pop(); // name data
+				} else {
+					printLua(LUA, ("VisTrace: Loaded extension " + name).c_str());
+				}
+			} else {
+				printLua(LUA, ("VisTrace: Extension " + name + " has an invalid open function").c_str());
+				LUA->Pop(); // name data
+			}
+		} else {
+			printLua(LUA, ("VisTrace: Extension " + name + "'s API version is incompatible with this version of VisTrace").c_str());
+		}
+	}
+}
+
+LUA_FUNCTION(Extensions__newindex)
+{
+	// self name data
+	LoadExtension(LUA);
+	LUA->RawSet(1); // self
+	return 0;
+}
+
 LUA_FUNCTION(GM_Initialize)
 {
 	printLua(LUA, "VisTrace: Loading map...");
@@ -1403,17 +1439,34 @@ LUA_FUNCTION(GM_Initialize)
 	if (!g_pWorld->IsValid()) {
 		delete g_pWorld;
 		g_pWorld = nullptr;
-		LUA->ThrowError("Failed to load map, acceleration structures will only trace props");
+		printLua(LUA, "VisTrace: Failed to load map, acceleration structures will only trace props");
+	} else {
+		printLua(LUA, "VisTrace: Map loaded successfully!");
 	}
 
-	printLua(LUA, "VisTrace: Map loaded successfully!");
+	LUA->PushSpecial(SPECIAL_REG); // REG
+	LUA->GetField(-1, "VisTrace.Extensions"); // REG extensions
 
-	// Call init hook to tell extensions to load
-	LUA->PushSpecial(SPECIAL_GLOB);
-	LUA->GetField(-1, "hook");
-	LUA->GetField(-1, "Call");
-	LUA->PushString("VisTraceInit");
-	LUA->Call(1, 0);
+	// Load extensions that were already registered (if any)
+	if (LUA->IsType(-1, Type::Table)) {
+		LUA->PushNil(); // REG extensions nil
+		while (LUA->Next(-2) != 0) { // REG extensions key value
+			LoadExtension(LUA); // REG extensions key value
+			LUA->Pop(); // REG extensions key
+		}
+	} else {
+		LUA->Pop(); // REG
+		LUA->CreateTable(); // REG extensions
+		LUA->SetField(-2, "VisTrace.Extensions"); // REG
+		LUA->GetField(-1, "VisTrace.Extensions"); // REG extensions
+	}
+
+	// Set metatable of extensions table to instantly load extension on newindex
+	LUA->CreateTable(); // REG extensions meta
+	LUA->PushCFunction(Extensions__newindex); // REG extensions meta func
+	LUA->SetField(-2, "__newindex"); // REG extensions meta
+	LUA->SetMetaTable(-2); // REG extensions
+
 	LUA->Pop(2);
 
 	return 0;
