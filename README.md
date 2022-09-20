@@ -42,8 +42,8 @@ While it's recommended to just download the latest release binary, if you want t
 4. Compile (compiled dll can be found in `out/build/{presetname}`)
 
 ## Extensions
-VisTrace versions v0.10.0 and newer support user made extensions that can interface with VisTrace's objects via interfaces in `include`, or using the GLua API.  
-You should `require()` any binary modules and initialise your extension from the `VisTraceInit` hook, which will be called by the binary if everything loaded correctly.  
+VisTrace versions v0.10.0 and newer support user made extensions that can use and extend VisTrace's objects via interfaces in `include`.  
+A quick start repository template is available [here](https://github.com/Derpius/VisTraceExtension)
 
 Additionally, an svg badge is provided to include in your readmes to show that your addon/binary module is VisTrace compatible:  
 | Markdown | Preview |
