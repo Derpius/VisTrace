@@ -1,100 +1,49 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
 
-<svg
-   width="192"
-   height="32"
-   viewBox="0 0 192 32"
-   version="1.1"
-   id="svg5"
-   inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
-   sodipodi:docname="extension.svg"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg">
-  <sodipodi:namedview
-     id="namedview7"
-     pagecolor="#ffffff"
-     bordercolor="#000000"
-     borderopacity="0.25"
-     inkscape:showpageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1"
-     inkscape:document-units="mm"
-     showgrid="false"
-     inkscape:zoom="4"
-     inkscape:cx="108.75"
-     inkscape:cy="64.625"
-     inkscape:window-width="2560"
-     inkscape:window-height="1361"
-     inkscape:window-x="-9"
-     inkscape:window-y="-9"
-     inkscape:window-maximized="1"
-     inkscape:current-layer="layer1"
-     showguides="true">
-    <inkscape:grid
-       type="xygrid"
-       id="grid16"
-       originx="64"
-       originy="16"
-       empspacing="8"
-       visible="true" />
-  </sodipodi:namedview>
-  <defs
-     id="defs2">
-    <rect
-       x="256"
-       y="0"
-       width="144"
-       height="32"
-       id="rect2877" />
-    <rect
-       x="0"
-       y="0"
-       width="88"
-       height="32"
-       id="rect2649" />
-  </defs>
-  <g
-     inkscape:label="Layer 1"
-     inkscape:groupmode="layer"
-     id="layer1">
-    <rect
-       style="fill:#1a1a1a;stroke-width:1.22474"
-       id="rect128"
-       width="96"
-       height="32"
-       x="0"
-       y="0"
-       ry="0"
-       inkscape:label="left-background" />
-    <rect
-       style="fill:#4d4d4d;stroke-width:1.22474"
-       id="rect352"
-       width="96"
-       height="32"
-       x="96"
-       y="0"
-       inkscape:label="right-background" />
-    <text
-       xml:space="preserve"
-       id="text2647"
-       style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:21.3333px;line-height:1.6;font-family:'Franklin Gothic Heavy', Arial, sans-serif;-inkscape-font-specification:'Franklin Gothic Heavy,  Italic';text-align:center;white-space:pre;shape-inside:url(#rect128);display:inline;fill:#ff6600"
-       x="41.515556"
-       y="0"
-       inkscape:label="VisTrace"><tspan
-         x="5.578192"
-         y="23.181094"
-         id="tspan3664">VisTrace</tspan></text>
-    <text
-       xml:space="preserve"
-       id="text2875"
-       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:13.3333px;line-height:2.6;font-family:Verdana, 'Verdana Ref', sans-serif;-inkscape-font-specification:'Verdana Bold';text-align:center;white-space:pre;shape-inside:url(#rect352);display:inline;fill:#ececec"
-       inkscape:label="EXTENSION"><tspan
-         x="99.924591"
-         y="21.16435"
-         id="tspan3666">EXTENSION</tspan></text>
-  </g>
+<svg viewBox="0 0 169.5 24" preserveAspectRatio="xMidYMid meet" width="256px" xmlns="http://www.w3.org/2000/svg">
+	<defs>
+		<style type="text/css">
+			@font-face {
+				font-family: 'Libre Franklin';
+				font-style: italic;
+				font-weight: 900;
+				src: url(data:application/octet-stream;base64,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);
+			}
+
+			text {
+				cursor: default;
+				-webkit-user-select: none; /* Safari */        
+				   -moz-user-select: none; /* Firefox */
+				    -ms-user-select: none; /* IE10+/Edge */
+				        user-select: none; /* Standard */
+			}
+		</style>
+	</defs>
+
+	<rect x="75" width="100%" height="100%" fill="#4d4d4d" />
+	<rect width="80" height="100%" fill="#1a1a1a" />
+	<text
+		xml:space="preserve"
+		font-size="16"
+		font-family="Libre Franklin"
+		font-weight="900"
+		font-style="italic"
+		x="39.5"
+		y="50%"
+		text-anchor="middle"
+		dominant-baseline="central"
+		fill="#ee7b0f"
+	>VisTrace</text>
+	<text
+		xml:space="preserve"
+		font-size="12"
+		font-family="Verdana, 'Verdana Ref', sans-serif"
+		font-weight="bold"
+		font-style="normal"
+		x="124.5"
+		y="50%"
+		text-anchor="middle"
+		dominant-baseline="central"
+		fill="#ececec"
+	>EXTENSION</text>
 </svg>
