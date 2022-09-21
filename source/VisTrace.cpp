@@ -451,6 +451,16 @@ LUA_FUNCTION(TraceResult_Pos)
 	LUA->PushVector(MakeVector(pResult->GetPos().x, pResult->GetPos().y, pResult->GetPos().z));
 	return 1;
 }
+
+LUA_FUNCTION(TraceResult_Incident)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	LUA->PushVector(MakeVector(-pResult->wo.x, -pResult->wo.y, -pResult->wo.z));
+	return 1;
+}
+
 LUA_FUNCTION(TraceResult_Distance)
 {
 	LUA->CheckType(1, TraceResult::id);
@@ -1558,6 +1568,7 @@ GMOD_MODULE_OPEN()
 		LUA->SetField(-2, "__tostring");
 
 		PUSH_C_FUNC(TraceResult, Pos);
+		PUSH_C_FUNC(TraceResult, Incident);
 		PUSH_C_FUNC(TraceResult, Distance);
 
 		PUSH_C_FUNC(TraceResult, Entity);
