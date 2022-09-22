@@ -461,6 +461,15 @@ LUA_FUNCTION(TraceResult_Incident)
 	return 1;
 }
 
+LUA_FUNCTION(TraceResult_Material)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+
+	LUA->PushString(pResult->materialPath->c_str());
+	return 1;
+}
+
 LUA_FUNCTION(TraceResult_Distance)
 {
 	LUA->CheckType(1, TraceResult::id);
@@ -1589,6 +1598,7 @@ GMOD_MODULE_OPEN()
 		PUSH_C_FUNC(TraceResult, Roughness);
 
 		PUSH_C_FUNC(TraceResult, MaterialFlags);
+		PUSH_C_FUNC(TraceResult, Material);
 		PUSH_C_FUNC(TraceResult, SurfaceFlags);
 
 		PUSH_C_FUNC(TraceResult, HitSky);

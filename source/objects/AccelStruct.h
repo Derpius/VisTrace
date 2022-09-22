@@ -88,6 +88,8 @@ enum class DetailBlendMode : uint8_t
 
 struct Material
 {
+	std::string path = "";
+
 	glm::vec4 colour = glm::vec4(1.f);
 	const VisTrace::IVTFTexture* baseTexture = nullptr;
 	glm::mat2x4 baseTexMat = glm::identity<glm::mat2x4>();

@@ -162,7 +162,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			LUA->ThrowError(e.what());
 		}
 
-		const std::string strPath = tex.path;
+		std::string strPath = tex.path;
 		if (materialIds.find(strPath) == materialIds.end()) {
 			LUA->GetField(-1, "Material");
 			LUA->PushString(tex.path);
@@ -178,6 +178,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 			IMaterial* sourceMaterial = LUA->GetUserType<IMaterial>(-1, Type::Material);
 			Material mat{};
+			mat.path = strPath;
 			mat.maskedBlending = false;
 			
 			const char* shaderName = sourceMaterial->GetShaderName();
@@ -521,7 +522,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			// Get material
 			LUA->GetField(-1, "material"); // _G util meshes mesh material
 			if (!LUA->IsType(-1, Type::String)) LUA->ThrowError("Submesh has no material");
-			std::string materialPath = LUA->GetString();
+			const std::string materialPath = LUA->GetString();
 			LUA->Pop(2); // _G util meshes
 
 			if (materialIds.find(materialPath) == materialIds.end()) {
@@ -532,6 +533,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 				IMaterial* sourceMaterial = LUA->GetUserType<IMaterial>(-1, Type::Material);
 				Material mat{};
+				mat.path = materialPath;
 				mat.maskedBlending = false;
 
 				std::string baseTexture = GetMaterialString(sourceMaterial, "$basetexture");
@@ -1013,6 +1015,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				IMaterial* sourceMaterial = LUA->GetUserType<IMaterial>(-1, Type::Material);
 
 				Material mat{};
+				mat.path = materialPath;
 				mat.maskedBlending = false;
 
 				std::string baseTexture = GetMaterialString(sourceMaterial, "$basetexture");

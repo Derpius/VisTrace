@@ -90,6 +90,8 @@ public:
 	CBaseEntity* rawEnt;
 	uint32_t submatIdx;
 
+	const std::string* materialPath = nullptr;
+
 	MaterialFlags materialFlags;
 	BSPEnums::SURF surfaceFlags;
 	bool hitSky = false;

@@ -59,7 +59,8 @@ TraceResult::TraceResult(
 	detailScale(mat.detailScale), detailBlendFactor(mat.detailBlendFactor),
 	detailBlendMode(mat.detailBlendMode), detailTint(mat.detailTint),
 	detailAlphaMaskBaseTexture(mat.detailAlphaMaskBaseTexture),
-	texScale(mat.texScale)
+	texScale(mat.texScale),
+	materialPath(&mat.path)
 {
 	if (!triData.ignoreNormalMap) {
 		normalMap = mat.normalMap;
