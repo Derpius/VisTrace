@@ -162,7 +162,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			LUA->ThrowError(e.what());
 		}
 
-		std::string strPath = tex.path;
+		const std::string strPath = tex.path;
 		if (materialIds.find(strPath) == materialIds.end()) {
 			LUA->GetField(-1, "Material");
 			LUA->PushString(tex.path);
@@ -522,7 +522,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			// Get material
 			LUA->GetField(-1, "material"); // _G util meshes mesh material
 			if (!LUA->IsType(-1, Type::String)) LUA->ThrowError("Submesh has no material");
-			const std::string materialPath = LUA->GetString();
+			std::string materialPath = LUA->GetString();
 			LUA->Pop(2); // _G util meshes
 
 			if (materialIds.find(materialPath) == materialIds.end()) {
