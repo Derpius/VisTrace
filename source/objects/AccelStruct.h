@@ -88,32 +88,46 @@ enum class DetailBlendMode : uint8_t
 
 struct Material
 {
+	std::string path = "";
+
 	glm::vec4 colour = glm::vec4(1.f);
+
+	std::string baseTexPath = "";
 	const VisTrace::IVTFTexture* baseTexture = nullptr;
 	glm::mat2x4 baseTexMat = glm::identity<glm::mat2x4>();
+
+	std::string normalMapPath = "";
 	const VisTrace::IVTFTexture* normalMap = nullptr;
 	glm::mat2x4 normalMapMat = glm::identity<glm::mat2x4>();
+
 	const VisTrace::IVTFTexture* mrao = nullptr;
 	//glm::mat2x4 mraoMat     = glm::identity<glm::mat2x4>(); MRAO texture lookups are driven by the base texture
 
+	std::string baseTexPath2 = "";
 	const VisTrace::IVTFTexture* baseTexture2 = nullptr;
 	glm::mat2x4 baseTexMat2 = glm::identity<glm::mat2x4>();
+
+	std::string normalMapPath2 = "";
 	const VisTrace::IVTFTexture* normalMap2 = nullptr;
 	glm::mat2x4 normalMapMat2 = glm::identity<glm::mat2x4>();
+
 	const VisTrace::IVTFTexture* mrao2 = nullptr;
 	//glm::mat2x4 mraoMat2    = glm::identity<glm::mat2x4>(); MRAO texture lookups are driven by the base texture
 
+	std::string blendTexPath = "";
 	const VisTrace::IVTFTexture* blendTexture = nullptr;
 	glm::mat2x4 blendTexMat = glm::identity<glm::mat2x4>();
 	bool maskedBlending = false;
 
+	std::string detailPath = "";
 	const VisTrace::IVTFTexture* detail = nullptr;
-	glm::mat2x4 detailMat = glm::identity<glm::mat2x4>();
-	float detailScale = 4.f;
-	float detailBlendFactor = 1.f;
-	DetailBlendMode detailBlendMode = DetailBlendMode::DecalModulate;
-	glm::vec3 detailTint = glm::vec3(1.f);
-	bool detailAlphaMaskBaseTexture = false;
+
+	glm::mat2x4     detailMat                  = glm::identity<glm::mat2x4>();
+	float           detailScale                = 4.f;
+	float           detailBlendFactor          = 1.f;
+	DetailBlendMode detailBlendMode            = DetailBlendMode::DecalModulate;
+	glm::vec3       detailTint                 = glm::vec3(1.f);
+	bool            detailAlphaMaskBaseTexture = false;
 
 	float texScale = 1.f;
 

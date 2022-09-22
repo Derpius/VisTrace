@@ -443,10 +443,21 @@ LUA_FUNCTION(RT_tostring)
 #pragma endregion
 
 #pragma region TraceResult
+LUA_FUNCTION(TraceResult_gc)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pRes = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+
+	LUA->SetUserType(1, NULL);
+	delete pRes;
+
+	return 0;
+}
+
 LUA_FUNCTION(TraceResult_Pos)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	LUA->PushVector(MakeVector(pResult->GetPos().x, pResult->GetPos().y, pResult->GetPos().z));
 	return 1;
@@ -464,7 +475,7 @@ LUA_FUNCTION(TraceResult_Incident)
 LUA_FUNCTION(TraceResult_Distance)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 	LUA->PushNumber(pResult->distance);
 	return 1;
 }
@@ -472,7 +483,7 @@ LUA_FUNCTION(TraceResult_Distance)
 LUA_FUNCTION(TraceResult_Entity)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	LUA->PushSpecial(SPECIAL_GLOB);
 	LUA->GetField(-1, "Entity");
@@ -492,7 +503,7 @@ LUA_FUNCTION(TraceResult_Entity)
 LUA_FUNCTION(TraceResult_GeometricNormal)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	LUA->PushVector(MakeVector(pResult->geometricNormal.x, pResult->geometricNormal.y, pResult->geometricNormal.z));
 	return 1;
@@ -501,7 +512,7 @@ LUA_FUNCTION(TraceResult_GeometricNormal)
 LUA_FUNCTION(TraceResult_Normal)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	const glm::vec3& v = pResult->GetNormal();
 	LUA->PushVector(MakeVector(v.x, v.y, v.z));
@@ -510,7 +521,7 @@ LUA_FUNCTION(TraceResult_Normal)
 LUA_FUNCTION(TraceResult_Tangent)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	const glm::vec3& v = pResult->GetTangent();
 	LUA->PushVector(MakeVector(v.x, v.y, v.z));
@@ -519,7 +530,7 @@ LUA_FUNCTION(TraceResult_Tangent)
 LUA_FUNCTION(TraceResult_Binormal)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	const glm::vec3& v = pResult->GetBinormal();
 	LUA->PushVector(MakeVector(v.x, v.y, v.z));
@@ -529,7 +540,7 @@ LUA_FUNCTION(TraceResult_Binormal)
 LUA_FUNCTION(TraceResult_Barycentric)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	LUA->PushVector(MakeVector(pResult->uvw.x, pResult->uvw.y, pResult->uvw.z));
 	return 1;
@@ -537,7 +548,7 @@ LUA_FUNCTION(TraceResult_Barycentric)
 LUA_FUNCTION(TraceResult_TextureUV)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	LUA->CreateTable();
 	LUA->PushNumber(pResult->texUV.x);
@@ -550,7 +561,7 @@ LUA_FUNCTION(TraceResult_TextureUV)
 LUA_FUNCTION(TraceResult_SubMaterialIndex)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	LUA->PushNumber(pResult->submatIdx + 1);
 	return 1;
@@ -559,7 +570,7 @@ LUA_FUNCTION(TraceResult_SubMaterialIndex)
 LUA_FUNCTION(TraceResult_Albedo)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	const glm::vec3& v = pResult->GetAlbedo();
 	LUA->PushVector(MakeVector(v.x, v.y, v.z));
@@ -568,21 +579,21 @@ LUA_FUNCTION(TraceResult_Albedo)
 LUA_FUNCTION(TraceResult_Alpha)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 	LUA->PushNumber(pResult->GetAlpha());
 	return 1;
 }
 LUA_FUNCTION(TraceResult_Metalness)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 	LUA->PushNumber(pResult->GetMetalness());
 	return 1;
 }
 LUA_FUNCTION(TraceResult_Roughness)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 	LUA->PushNumber(pResult->GetRoughness());
 	return 1;
 }
@@ -590,37 +601,37 @@ LUA_FUNCTION(TraceResult_Roughness)
 LUA_FUNCTION(TraceResult_MaterialFlags)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
-	LUA->PushNumber(static_cast<double>(pResult->materialFlags));
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+	LUA->PushNumber(static_cast<double>(pResult->GetMaterialFlags()));
 	return 1;
 }
 LUA_FUNCTION(TraceResult_SurfaceFlags)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
-	LUA->PushNumber(static_cast<double>(pResult->surfaceFlags));
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+	LUA->PushNumber(static_cast<double>(pResult->GetSurfFlags()));
 	return 1;
 }
 
 LUA_FUNCTION(TraceResult_HitSky)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 	LUA->PushBool(pResult->hitSky);
 	return 1;
 }
 LUA_FUNCTION(TraceResult_HitWater)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
-	LUA->PushBool(pResult->hitWater);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+	LUA->PushBool(pResult->HitWater());
 	return 1;
 }
 
 LUA_FUNCTION(TraceResult_FrontFacing)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 	LUA->PushBool(pResult->frontFacing);
 	return 1;
 }
@@ -628,8 +639,75 @@ LUA_FUNCTION(TraceResult_FrontFacing)
 LUA_FUNCTION(TraceResult_BaseMIPLevel)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 	LUA->PushNumber(pResult->GetBaseMIPLevel());
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_Material)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+	LUA->PushString(pResult->GetMaterial().c_str());
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_BaseTexture)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+	LUA->PushString(pResult->GetBaseTexture().c_str());
+	return 1;
+}
+LUA_FUNCTION(TraceResult_NormalMap)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+	LUA->PushString(pResult->GetNormalMap().c_str());
+	return 1;
+}
+LUA_FUNCTION(TraceResult_MRAO)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+	LUA->PushString(pResult->GetMRAO().c_str());
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_BaseTexture2)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+	LUA->PushString(pResult->GetBaseTexture2().c_str());
+	return 1;
+}
+LUA_FUNCTION(TraceResult_NormalMap2)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+	LUA->PushString(pResult->GetNormalMap2().c_str());
+	return 1;
+}
+LUA_FUNCTION(TraceResult_MRAO2)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+	LUA->PushString(pResult->GetMRAO2().c_str());
+	return 1;
+}
+
+LUA_FUNCTION(TraceResult_BlendTexture)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+	LUA->PushString(pResult->GetBlendTexture().c_str());
+	return 1;
+}
+LUA_FUNCTION(TraceResult_DetailTexture)
+{
+	LUA->CheckType(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+	LUA->PushString(pResult->GetDetailTexture().c_str());
 	return 1;
 }
 
@@ -975,7 +1053,7 @@ LUA_FUNCTION(TraceResult_SampleBSDF)
 	LUA->CheckType(2, Sampler::id);
 	LUA->CheckType(3, BSDFMaterial::id);
 
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 	ISampler* pSampler = *LUA->GetUserType<ISampler*>(2, Sampler::id);
 
 	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(3, BSDFMaterial::id);
@@ -1025,7 +1103,7 @@ LUA_FUNCTION(TraceResult_EvalBSDF)
 	LUA->CheckType(2, BSDFMaterial::id);
 	LUA->CheckType(3, Type::Vector);
 
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	glm::vec3 scattered;
 	{
@@ -1065,7 +1143,7 @@ LUA_FUNCTION(TraceResult_EvalPDF)
 	LUA->CheckType(2, BSDFMaterial::id);
 	LUA->CheckType(3, Type::Vector);
 
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	glm::vec3 scattered;
 	{
@@ -1566,6 +1644,8 @@ GMOD_MODULE_OPEN()
 		LUA->SetField(-2, "__index");
 		LUA->PushCFunction(TraceResult_tostring);
 		LUA->SetField(-2, "__tostring");
+		LUA->PushCFunction(TraceResult_gc);
+		LUA->SetField(-2, "__gc");
 
 		PUSH_C_FUNC(TraceResult, Pos);
 		PUSH_C_FUNC(TraceResult, Incident);
@@ -1597,6 +1677,19 @@ GMOD_MODULE_OPEN()
 		PUSH_C_FUNC(TraceResult, FrontFacing);
 
 		PUSH_C_FUNC(TraceResult, BaseMIPLevel);
+
+		PUSH_C_FUNC(TraceResult, Material);
+
+		PUSH_C_FUNC(TraceResult, BaseTexture);
+		PUSH_C_FUNC(TraceResult, NormalMap);
+		PUSH_C_FUNC(TraceResult, MRAO);
+
+		PUSH_C_FUNC(TraceResult, BaseTexture2);
+		PUSH_C_FUNC(TraceResult, NormalMap2);
+		PUSH_C_FUNC(TraceResult, MRAO2);
+
+		PUSH_C_FUNC(TraceResult, BlendTexture);
+		PUSH_C_FUNC(TraceResult, DetailTexture);
 
 		PUSH_C_FUNC(TraceResult, SampleBSDF);
 		PUSH_C_FUNC(TraceResult, EvalBSDF);

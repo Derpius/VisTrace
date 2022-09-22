@@ -47,25 +47,15 @@ TraceResult::TraceResult(
 	float coneWidth, float coneAngle,
 	const Triangle& tri, const TriangleData& triData,
 	const vec2& uv,
-	const Entity& ent, const Material& mat
+	const Entity& ent, const Material mat
 ) :
 	distance(distance),
 	coneWidth(coneWidth), coneAngle(coneAngle), lodOffset(tri.lod), mipOverride(coneWidth < 0.f || coneAngle <= 0.f),
-	materialFlags(mat.flags), surfaceFlags(mat.surfFlags), maskedBlending(mat.maskedBlending),
-	baseTexture(mat.baseTexture), baseTexMat(mat.baseTexMat), mrao(mat.mrao),
-	baseTexture2(mat.baseTexture2), baseTexMat2(mat.baseTexMat2), mrao2(mat.mrao2),
-	blendTexture(mat.blendTexture), blendTexMat(mat.blendTexMat),
-	detailTexture(mat.detail), detailTexMat(mat.detailMat),
-	detailScale(mat.detailScale), detailBlendFactor(mat.detailBlendFactor),
-	detailBlendMode(mat.detailBlendMode), detailTint(mat.detailTint),
-	detailAlphaMaskBaseTexture(mat.detailAlphaMaskBaseTexture),
-	texScale(mat.texScale)
+	material(mat)
 {
-	if (!triData.ignoreNormalMap) {
-		normalMap = mat.normalMap;
-		normalMapMat = mat.normalMapMat;
-		normalMap2 = mat.normalMap2;
-		normalMapMat2 = mat.normalMapMat2;
+	if (triData.ignoreNormalMap) {
+		material.normalMap = nullptr;
+		material.normalMap2 = nullptr;
 	}
 
 	wo = -direction;
@@ -92,11 +82,10 @@ TraceResult::TraceResult(
 	rawEnt = ent.rawEntity;
 	submatIdx = triData.submatIdx;
 
-	albedo = ent.colour * mat.colour;
-	alpha = ent.colour.a * mat.colour.a;
+	albedo = ent.colour * material.colour;
+	alpha = ent.colour.a * material.colour.a;
 
-	hitSky = (surfaceFlags & BSPEnums::SURF::SKY) != BSPEnums::SURF::NONE;
-	hitWater = mat.water;
+	hitSky = (material.surfFlags & BSPEnums::SURF::SKY) != BSPEnums::SURF::NONE;
 
 	frontFacing = dot(wo, geometricNormal) >= 0.f;
 }
@@ -123,17 +112,17 @@ void TraceResult::CalcBlendFactor()
 {
 	if (blendFactorSet) return;
 
-	if (maskedBlending) blendFactor = 0.5f;
-	if (blendTexture != nullptr) {
+	if (material.maskedBlending) blendFactor = 0.5f;
+	if (material.blendTexture != nullptr) {
 		CalcFootprint();
 
-		vec2 scaled = TransformTexcoord(texUV, blendTexMat, texScale);
-		Pixel pixelBlend = blendTexture->Sample(
+		vec2 scaled = TransformTexcoord(texUV, material.blendTexMat, material.texScale);
+		Pixel pixelBlend = material.blendTexture->Sample(
 			scaled.x, scaled.y,
-			mipOverride ? 0 : TriUVInfoToTexLOD(blendTexture, textureLodInfo)
+			mipOverride ? 0 : TriUVInfoToTexLOD(material.blendTexture, textureLodInfo)
 		);
 
-		if (maskedBlending) {
+		if (material.maskedBlending) {
 			blendFactor = pixelBlend.g;
 		} else {
 			float minb = saturate(pixelBlend.g - pixelBlend.r);
@@ -153,22 +142,22 @@ void TraceResult::CalcTBN()
 	tangent = normalize(uvw[2] * vT[0] + uvw[0] * vT[1] + uvw[1] * vT[2]);
 	binormal = normalize(uvw[2] * vB[0] + uvw[0] * vB[1] + uvw[1] * vB[2]);
 
-	if (normalMap != nullptr) {
+	if (material.normalMap != nullptr) {
 		CalcFootprint();
 		CalcBlendFactor();
 
-		vec2 scaled = TransformTexcoord(texUV, normalMapMat, texScale);
-		Pixel pixelNormal = normalMap->Sample(
+		vec2 scaled = TransformTexcoord(texUV, material.normalMapMat, material.texScale);
+		Pixel pixelNormal = material.normalMap->Sample(
 			scaled.x, scaled.y,
-			mipOverride ? 0 : TriUVInfoToTexLOD(normalMap, textureLodInfo)
+			mipOverride ? 0 : TriUVInfoToTexLOD(material.normalMap, textureLodInfo)
 		);
 		vec3 mappedNormal = vec3(pixelNormal.r, pixelNormal.g, pixelNormal.b) * 2.f - 1.f;
 
-		if (normalMap2 != nullptr) {
-			scaled = TransformTexcoord(texUV, normalMapMat2, texScale);
-			pixelNormal = normalMap2->Sample(
+		if (material.normalMap2 != nullptr) {
+			scaled = TransformTexcoord(texUV, material.normalMapMat2, material.texScale);
+			pixelNormal = material.normalMap2->Sample(
 				scaled.x, scaled.y,
-				mipOverride ? 0 : TriUVInfoToTexLOD(normalMap2, textureLodInfo)
+				mipOverride ? 0 : TriUVInfoToTexLOD(material.normalMap2, textureLodInfo)
 			);
 			vec3 mappedNormal2 = vec3(pixelNormal.r, pixelNormal.g, pixelNormal.b) * 2.f - 1.f;
 
@@ -206,52 +195,52 @@ void TraceResult::CalcShadingData()
 	CalcBlendFactor();
 
 	// Cache the scaled textures for both here cause we might use them again on the MRAO
-	vec2 scaled = TransformTexcoord(texUV, baseTexMat, texScale);
-	vec2 scaled2 = TransformTexcoord(texUV, baseTexMat2, texScale);
+	vec2 scaled = TransformTexcoord(texUV, material.baseTexMat, material.texScale);
+	vec2 scaled2 = TransformTexcoord(texUV, material.baseTexMat2, material.texScale);
 
-	Pixel pixelColour = baseTexture->Sample(
+	Pixel pixelColour = material.baseTexture->Sample(
 		scaled.x, scaled.y,
-		mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture, textureLodInfo)
+		mipOverride ? 0 : TriUVInfoToTexLOD(material.baseTexture, textureLodInfo)
 	);
 	vec4 colour(pixelColour.r, pixelColour.g, pixelColour.b, pixelColour.a);
 
-	if (baseTexture2 != nullptr) {
-		pixelColour = baseTexture2->Sample(
+	if (material.baseTexture2 != nullptr) {
+		pixelColour = material.baseTexture2->Sample(
 			scaled2.x, scaled2.y,
-			mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture2, textureLodInfo)
+			mipOverride ? 0 : TriUVInfoToTexLOD(material.baseTexture2, textureLodInfo)
 		);
 		vec4 colour2(pixelColour.r, pixelColour.g, pixelColour.b, pixelColour.a);
 
 		colour = lerp(colour, colour2, blendFactor);
 	}
 
-	if (detailTexture != nullptr) {
-		vec2 detailUVs = TransformTexcoord(texUV, detailTexMat, detailScale);
-		Pixel detailColour = detailTexture->Sample(
+	if (material.detail != nullptr) {
+		vec2 detailUVs = TransformTexcoord(texUV, material.detailMat, material.detailScale);
+		Pixel detailColour = material.detail->Sample(
 			detailUVs.x, detailUVs.y,
-			mipOverride ? 0 : TriUVInfoToTexLOD(detailTexture, textureLodInfo)
+			mipOverride ? 0 : TriUVInfoToTexLOD(material.detail, textureLodInfo)
 		);
 
 		colour = clamp(TextureCombine(
 			colour, vec4(detailColour.r, detailColour.g, detailColour.b, detailColour.a),
-			detailBlendMode, detailBlendFactor
+			material.detailBlendMode, material.detailBlendFactor
 		), 0.f, 1.f);
 	}
 
 	albedo *= vec3(colour.r, colour.g, colour.b);
 	alpha *= colour.a;
 
-	if (mrao != nullptr) {
-		Pixel pixelMRAO = mrao->Sample(
+	if (material.mrao != nullptr) {
+		Pixel pixelMRAO = material.mrao->Sample(
 			scaled.x, scaled.y,
-			mipOverride ? 0 : TriUVInfoToTexLOD(mrao, textureLodInfo)
+			mipOverride ? 0 : TriUVInfoToTexLOD(material.mrao, textureLodInfo)
 		);
 		vec2 metalnessRoughness(pixelMRAO.r, pixelMRAO.g);
 
-		if (mrao2 != nullptr) {
-			pixelMRAO = mrao2->Sample(
+		if (material.mrao2 != nullptr) {
+			pixelMRAO = material.mrao2->Sample(
 				scaled2.x, scaled2.y,
-				mipOverride ? 0 : TriUVInfoToTexLOD(mrao2, textureLodInfo)
+				mipOverride ? 0 : TriUVInfoToTexLOD(material.mrao2, textureLodInfo)
 			);
 			vec2 metalnessRoughness2(pixelMRAO.r, pixelMRAO.g);
 
@@ -315,5 +304,21 @@ float TraceResult::GetRoughness()
 float TraceResult::GetBaseMIPLevel()
 {
 	CalcFootprint();
-	return mipOverride ? 0 : TriUVInfoToTexLOD(baseTexture, textureLodInfo);
+	return mipOverride ? 0 : TriUVInfoToTexLOD(material.baseTexture, textureLodInfo);
 }
+
+std::string    TraceResult::GetMaterial()      const { return material.path; }
+MaterialFlags  TraceResult::GetMaterialFlags() const { return material.flags; }
+BSPEnums::SURF TraceResult::GetSurfFlags()     const { return material.surfFlags; }
+bool           TraceResult::HitWater()         const { return material.water; }
+
+std::string TraceResult::GetBaseTexture()   const { return material.baseTexPath; }
+std::string TraceResult::GetNormalMap()     const { return material.normalMapPath; }
+std::string TraceResult::GetMRAO()          const { return "vistrace/pbr/" + material.baseTexPath + "_mrao"; }
+
+std::string TraceResult::GetBaseTexture2()  const { return material.baseTexPath2; }
+std::string TraceResult::GetNormalMap2()    const { return material.normalMapPath2; }
+std::string TraceResult::GetMRAO2()         const { return "vistrace/pbr/" + material.baseTexPath2 + "_mrao"; }
+
+std::string TraceResult::GetBlendTexture()  const { return material.blendTexPath; }
+std::string TraceResult::GetDetailTexture() const { return material.detailPath; }

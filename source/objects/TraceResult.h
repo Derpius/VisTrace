@@ -13,31 +13,9 @@
 class TraceResult
 {
 private:
-	const VisTrace::IVTFTexture* baseTexture  = nullptr;
-	glm::mat2x4 baseTexMat;
-	const VisTrace::IVTFTexture* normalMap    = nullptr;
-	glm::mat2x4 normalMapMat;
-	const VisTrace::IVTFTexture* mrao         = nullptr;
-
-	const VisTrace::IVTFTexture* baseTexture2 = nullptr;
-	glm::mat2x4 baseTexMat2;
-	const VisTrace::IVTFTexture* normalMap2   = nullptr;
-	glm::mat2x4 normalMapMat2;
-	const VisTrace::IVTFTexture* mrao2        = nullptr;
-
-	const VisTrace::IVTFTexture* blendTexture = nullptr;
-	glm::mat2x4 blendTexMat;
-
-	const VisTrace::IVTFTexture* detailTexture = nullptr;
-	glm::mat2x4 detailTexMat;
-	float detailScale = 4.f;
-	float detailBlendFactor = 0.f;
-	DetailBlendMode detailBlendMode = DetailBlendMode::DecalModulate;
-	glm::vec3 detailTint = glm::vec3(1.f);
-	bool detailAlphaMaskBaseTexture = false;
+	Material material;
 
 	bool blendFactorSet = false;
-	bool maskedBlending;
 	float blendFactor;
 
 	glm::vec3 v[3];
@@ -83,17 +61,13 @@ public:
 
 	glm::vec3 uvw;
 	glm::vec2 texUV;
-	float texScale;
 	float lodOffset;
 
 	uint32_t entIdx;
 	CBaseEntity* rawEnt;
 	uint32_t submatIdx;
 
-	MaterialFlags materialFlags;
-	BSPEnums::SURF surfaceFlags;
 	bool hitSky = false;
-	bool hitWater = false;
 
 	bool frontFacing;
 
@@ -102,7 +76,7 @@ public:
 		float coneWidth, float coneAngle,
 		const Triangle& tri, const TriangleData& triData,
 		const glm::vec2& uv,
-		const Entity& ent, const Material& mat
+		const Entity& ent, const Material mat
 	);
 
 	const glm::vec3& GetPos();
@@ -118,4 +92,20 @@ public:
 	float GetRoughness();
 
 	float GetBaseMIPLevel();
+
+	std::string GetMaterial() const;
+	MaterialFlags GetMaterialFlags() const;
+	BSPEnums::SURF GetSurfFlags() const;
+	bool HitWater() const;
+
+	std::string GetBaseTexture() const;
+	std::string GetNormalMap() const;
+	std::string GetMRAO() const;
+
+	std::string GetBaseTexture2() const;
+	std::string GetNormalMap2() const;
+	std::string GetMRAO2() const;
+
+	std::string GetBlendTexture() const;
+	std::string GetDetailTexture() const;
 };

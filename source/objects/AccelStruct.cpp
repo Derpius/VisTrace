@@ -178,6 +178,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 			IMaterial* sourceMaterial = LUA->GetUserType<IMaterial>(-1, Type::Material);
 			Material mat{};
+			mat.path = tex.path;
 			mat.maskedBlending = false;
 			
 			const char* shaderName = sourceMaterial->GetShaderName();
@@ -188,26 +189,26 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 					mat.maskedBlending = maskedblending->GetIntValue() != 0;
 				}
 
-				std::string baseTexture = GetMaterialString(sourceMaterial, "$basetexture");
-				std::string normalMap = GetMaterialString(sourceMaterial, "$bumpmap");
+				mat.baseTexPath = GetMaterialString(sourceMaterial, "$basetexture");
+				mat.normalMapPath = GetMaterialString(sourceMaterial, "$bumpmap");
 
-				std::string baseTexture2 = GetMaterialString(sourceMaterial, "$basetexture2");
-				std::string normalMap2 = GetMaterialString(sourceMaterial, "$bumpmap2");
+				mat.baseTexPath2 = GetMaterialString(sourceMaterial, "$basetexture2");
+				mat.normalMapPath2 = GetMaterialString(sourceMaterial, "$bumpmap2");
 
-				std::string blendTexture = GetMaterialString(sourceMaterial, "$blendmodulatetexture");
+				mat.blendTexPath = GetMaterialString(sourceMaterial, "$blendmodulatetexture");
 
-				std::string detailTexture = GetMaterialString(sourceMaterial, "$detail");
+				mat.detailPath = GetMaterialString(sourceMaterial, "$detail");
 
-				mat.baseTexture = CacheTexture(baseTexture, textureCache, textureCache[MISSING_TEXTURE]);
-				mat.normalMap = CacheTexture(normalMap, textureCache);
-				if (!baseTexture.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + baseTexture + "_mrao", textureCache);
+				mat.baseTexture = CacheTexture(mat.baseTexPath, textureCache, textureCache[MISSING_TEXTURE]);
+				mat.normalMap = CacheTexture(mat.normalMapPath, textureCache);
+				if (!mat.baseTexPath.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + mat.baseTexPath + "_mrao", textureCache);
 
-				mat.baseTexture2 = CacheTexture(baseTexture2, textureCache);
-				mat.normalMap2 = CacheTexture(normalMap2, textureCache);
-				if (!baseTexture2.empty()) mat.mrao2 = CacheTexture("vistrace/pbr/" + baseTexture2 + "_mrao", textureCache);
+				mat.baseTexture2 = CacheTexture(mat.baseTexPath2, textureCache);
+				mat.normalMap2 = CacheTexture(mat.normalMapPath2, textureCache);
+				if (!mat.baseTexPath2.empty()) mat.mrao2 = CacheTexture("vistrace/pbr/" + mat.baseTexPath2 + "_mrao", textureCache);
 
-				mat.blendTexture = CacheTexture(blendTexture, textureCache);
-				mat.detail = CacheTexture(detailTexture, textureCache);
+				mat.blendTexture = CacheTexture(mat.blendTexPath, textureCache);
+				mat.detail = CacheTexture(mat.detailPath, textureCache);
 
 				IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
 				if (basetexturetransform) {
@@ -278,7 +279,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				}
 			} else {
 				mat.water = true;
-				std::string normalMap = GetMaterialString(sourceMaterial, "$normalmap");
+				mat.normalMapPath = GetMaterialString(sourceMaterial, "$normalmap");
 
 				IMaterialVar* fogcolor = GetMaterialVar(sourceMaterial, "$fogcolor");
 				if (fogcolor) {
@@ -290,13 +291,13 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 				// Not sure if any gmod materials will even implement water base textures
 				// Or if it's even available in gmod's engine version, but here just in case
-				std::string baseTexture = GetMaterialString(sourceMaterial, "$basetexture");
+				mat.baseTexPath = GetMaterialString(sourceMaterial, "$basetexture");
 
 				mat.baseTexture = CacheTexture(
-					baseTexture, textureCache,
+					mat.baseTexPath, textureCache,
 					(textureCache.find(WATER_BASE_TEXTURE) == textureCache.end()) ? textureCache[MISSING_TEXTURE] : textureCache[WATER_BASE_TEXTURE]
 				);
-				mat.normalMap = CacheTexture(normalMap, textureCache);
+				mat.normalMap = CacheTexture(mat.normalMapPath, textureCache);
 			}
 
 			IMaterialVar* flags = GetMaterialVar(sourceMaterial, "$flags");
@@ -532,16 +533,17 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 				IMaterial* sourceMaterial = LUA->GetUserType<IMaterial>(-1, Type::Material);
 				Material mat{};
+				mat.path = materialPath;
 				mat.maskedBlending = false;
 
-				std::string baseTexture = GetMaterialString(sourceMaterial, "$basetexture");
-				std::string normalMap = GetMaterialString(sourceMaterial, "$bumpmap");
-				std::string detailTexture = GetMaterialString(sourceMaterial, "$detail");
+				mat.baseTexPath = GetMaterialString(sourceMaterial, "$basetexture");
+				mat.normalMapPath = GetMaterialString(sourceMaterial, "$bumpmap");
+				mat.detailPath = GetMaterialString(sourceMaterial, "$detail");
 
-				mat.baseTexture = CacheTexture(baseTexture, textureCache, textureCache[MISSING_TEXTURE]);
-				mat.normalMap = CacheTexture(normalMap, textureCache);
-				mat.detail = CacheTexture(detailTexture, textureCache);
-				if (!baseTexture.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + baseTexture + "_mrao", textureCache);
+				mat.baseTexture = CacheTexture(mat.baseTexPath, textureCache, textureCache[MISSING_TEXTURE]);
+				mat.normalMap = CacheTexture(mat.normalMapPath, textureCache);
+				mat.detail = CacheTexture(mat.detailPath, textureCache);
+				if (!mat.baseTexPath.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + mat.baseTexPath + "_mrao", textureCache);
 
 				IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
 				if (basetexturetransform) {
@@ -1013,16 +1015,17 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				IMaterial* sourceMaterial = LUA->GetUserType<IMaterial>(-1, Type::Material);
 
 				Material mat{};
+				mat.path = materialPath;
 				mat.maskedBlending = false;
 
-				std::string baseTexture = GetMaterialString(sourceMaterial, "$basetexture");
-				std::string normalMap = GetMaterialString(sourceMaterial, "$bumpmap");
-				std::string detailTexture = GetMaterialString(sourceMaterial, "$detail");
+				mat.baseTexPath = GetMaterialString(sourceMaterial, "$basetexture");
+				mat.normalMapPath = GetMaterialString(sourceMaterial, "$bumpmap");
+				mat.detailPath = GetMaterialString(sourceMaterial, "$detail");
 
-				mat.baseTexture = CacheTexture(baseTexture, mTextureCache, mTextureCache[MISSING_TEXTURE]);
-				mat.normalMap = CacheTexture(normalMap, mTextureCache);
-				mat.detail = CacheTexture(detailTexture, mTextureCache);
-				if (!baseTexture.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + baseTexture + "_mrao", mTextureCache);
+				mat.baseTexture = CacheTexture(mat.baseTexPath, mTextureCache, mTextureCache[MISSING_TEXTURE]);
+				mat.normalMap = CacheTexture(mat.normalMapPath, mTextureCache);
+				mat.detail = CacheTexture(mat.detailPath, mTextureCache);
+				if (!mat.baseTexPath.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + mat.baseTexPath + "_mrao", mTextureCache);
 
 				IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
 				if (basetexturetransform) {
@@ -1164,7 +1167,7 @@ int AccelStruct::Traverse(ILuaBase* LUA)
 		const Entity& ent = mEntities[triData.entIdx];
 		const Material& mat = mMaterials[ent.materials[triData.submatIdx]];
 
-		TraceResult res(
+		TraceResult* pRes = new TraceResult(
 			glm::normalize(glm::vec3(direction.x, direction.y, direction.z)), hit->distance(),
 			coneWidth, coneAngle,
 			tri, triData,
@@ -1172,7 +1175,7 @@ int AccelStruct::Traverse(ILuaBase* LUA)
 			ent, mat
 		);
 
-		LUA->PushUserType_Value(res, TraceResult::id);
+		LUA->PushUserType_Value(pRes, TraceResult::id);
 		return 1;
 	}
 
