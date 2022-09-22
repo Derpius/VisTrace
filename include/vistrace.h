@@ -11,9 +11,9 @@ namespace VisTrace
 
 	namespace VType
 	{
-		inline static int VTFTexture = -1;
-		inline static int RenderTarget = -1;
-		inline static int Sampler = -1;
+		int VTFTexture = -1;
+		int RenderTarget = -1;
+		int Sampler = -1;
 	};
 }
 
