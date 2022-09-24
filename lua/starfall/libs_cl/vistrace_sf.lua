@@ -71,7 +71,9 @@ SF.RegisterType("Sampler", true, false, debug.getregistry().Sampler)
 -- @libtbl hdri_meta
 SF.RegisterType("HDRI", true, false, debug.getregistry().HDRI)
 
---- VisTrace BSDF material
+--- VisTrace BSDF material  
+--- 
+--- Pass no arguments to any functions to return the values stored in the material
 -- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 -- @name BSDFMaterial
 -- @class type
@@ -742,122 +744,209 @@ return function(instance)
 
 	--- Set the colour of the material (multiplies by the sampled colour)
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param Vector colour Colour to set as a 0-1 normalised vector
+	-- @param Vector? colour Colour to set as a 0-1 normalised vector
+	-- @return Vector? Dielectric colour
+	-- @return Vector? Conductor colour
 	function bsdfmaterial_methods:colour(colour)
 		canRun()
-		uwrapMat(self):Colour(uwrapVec(colour))
+
+		if colour ~= nil then
+			uwrapMat(self):Colour(uwrapVec(colour))
+		else
+			local d, c = uwrapMat(self):Colour()
+			return wrapVec(d), wrapVec(c)
+		end
 	end
 
 	--- Set the colour of the material's dielectric lobes  
 	--- Overridden by BSDFMaterial:colour()
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param Vector colour Colour to set as a 0-1 normalised vector
+	-- @param Vector? colour Colour to set as a 0-1 normalised vector
+	-- @return Vector? Dielectric colour
 	function bsdfmaterial_methods:dielectricColour(colour)
 		canRun()
-		uwrapMat(self):DielectricColour(uwrapVec(colour))
+
+		if colour ~= nil then
+			uwrapMat(self):DielectricColour(uwrapVec(colour))
+		else
+			return wrapVec(uwrapMat(self):DielectricColour())
+		end
 	end
 
 	--- Set the colour of the material's conductor lobes  
 	--- Overridden by BSDFMaterial:colour()
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param Vector colour Colour to set as a 0-1 normalised vector
+	-- @param Vector? colour Colour to set as a 0-1 normalised vector
+	-- @return Vector? Conductor colour
 	function bsdfmaterial_methods:conductorColour(colour)
 		canRun()
-		uwrapMat(self):ConductorColour(uwrapVec(colour))
+
+		if colour ~= nil then
+			uwrapMat(self):ConductorColour(uwrapVec(colour))
+		else
+			return wrapVec(uwrapMat(self):ConductorColour())
+		end
 	end
 
 	--- Set the colour of conductors at grazing angles (useful for anodized materials)
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param Vector colour Colour to set as a 0-1 normalised vector
+	-- @param Vector? colour Colour to set as a 0-1 normalised vector
+	-- @return Vector? Edge tint colour
 	function bsdfmaterial_methods:edgeTint(colour)
 		canRun()
-		uwrapMat(self):EdgeTint(uwrapVec(colour))
+
+		if colour ~= nil then
+			uwrapMat(self):EdgeTint(uwrapVec(colour))
+		else
+			return wrapVec(uwrapMat(self):EdgeTint())
+		end
 	end
 
 	--- Set the falloff of the conductor's edge tint
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param number falloff Falloff value (0.2 is equivalent to Fresnel)
+	-- @param number? falloff Falloff value (0.2 is equivalent to Fresnel)
+	-- @return number? Falloff value
 	function bsdfmaterial_methods:edgeTintFalloff(falloff)
 		canRun()
-		checkLuaType(falloff, TYPE_NUMBER)
-		uwrapMat(self):EdgeTintFalloff(falloff)
+
+		if falloff ~= nil then
+			checkLuaType(falloff, TYPE_NUMBER)
+			uwrapMat(self):EdgeTintFalloff(falloff)
+		else
+			return uwrapMat(self):EdgeTintFalloff()
+		end
 	end
 
 	--- Set the metalness of the material (overrides PBR textures)
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param number metalness Metalness to set
+	-- @param number? metalness Metalness to set
+	-- @return number? Metalness
 	function bsdfmaterial_methods:metalness(metalness)
 		canRun()
-		checkLuaType(metalness, TYPE_NUMBER)
-		uwrapMat(self):Metalness(metalness)
+
+		if metalness ~= nil then
+			checkLuaType(metalness, TYPE_NUMBER)
+			uwrapMat(self):Metalness(metalness)
+		else
+			return uwrapMat(self):Metalness()
+		end
 	end
 	--- Set the roughness of the material (overrides PBR textures)
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param number roughness Roughness to set
+	-- @param number? roughness Roughness to set
+	-- @return number? Roughness
 	function bsdfmaterial_methods:roughness(roughness)
 		canRun()
-		checkLuaType(roughness, TYPE_NUMBER)
-		uwrapMat(self):Roughness(roughness)
+
+		if roughness ~= nil then
+			checkLuaType(roughness, TYPE_NUMBER)
+			uwrapMat(self):Roughness(roughness)
+		else
+			return uwrapMat(self):Roughness()
+		end
 	end
 
 	--- Set how anisotropic the specular reflection is in the tangent direction
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param number anisotropy 0 - isotropic, 1 - anisotropic in the tangent direction
+	-- @param number? anisotropy 0 - isotropic, 1 - anisotropic in the tangent direction
+	-- @return number? Anisotropy
 	function bsdfmaterial_methods:anisotropy(anisotropy)
 		canRun()
-		checkLuaType(anisotropy, TYPE_NUMBER)
-		uwrapMat(self):Anisotropy(anisotropy)
+
+		if anisotropy ~= nil then
+			checkLuaType(anisotropy, TYPE_NUMBER)
+			uwrapMat(self):Anisotropy(anisotropy)
+		else
+			return uwrapMat(self):Anisotropy()
+		end
 	end
 	--- Set the amount to rotate the tangent frame by before localising (for anisotropic materials)
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param number rotation Rotation of the tangent and binormal about the normal where 0 is no rotation and 1 is a full circle
+	-- @param number? rotation Rotation of the tangent and binormal about the normal where 0 is no rotation and 1 is a full circle
+	-- @return number? Anisotropic rotation
 	function bsdfmaterial_methods:anisotropicRotation(rotation)
 		canRun()
-		checkLuaType(rotation, TYPE_NUMBER)
-		uwrapMat(self):AnisotropicRotation(rotation)
+
+		if rotation ~= nil then
+			checkLuaType(rotation, TYPE_NUMBER)
+			uwrapMat(self):AnisotropicRotation(rotation)
+		else
+			return uwrapMat(self):AnisotropicRotation()
+		end
 	end
 
 	--- Set the index of refraction of the material
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param number ior Index of refraction to set
+	-- @param number? ior Index of refraction to set
+	-- @return number? Index of refraction
 	function bsdfmaterial_methods:ior(ior)
 		canRun()
-		checkLuaType(ior, TYPE_NUMBER)
-		uwrapMat(self):IoR(ior)
+
+		if ior ~= nil then
+			checkLuaType(ior, TYPE_NUMBER)
+			uwrapMat(self):IoR(ior)
+		else
+			return uwrapMat(self):IoR()
+		end
 	end
 
 	--- Set the diffuse transmission amount
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param number diffuseTransmission 0-1 where 0 is no light transmitted and 1 is all light transmitted
+	-- @param number? diffuseTransmission Not currently implemented
+	-- @return number? Diffuse transmission
 	function bsdfmaterial_methods:diffuseTransmission(diffuseTransmission)
 		canRun()
-		checkLuaType(diffuseTransmission, TYPE_NUMBER)
-		uwrapMat(self):DiffuseTransmission(diffuseTransmission)
+
+		if diffuseTransmission ~= nil then
+			checkLuaType(diffuseTransmission, TYPE_NUMBER)
+			uwrapMat(self):DiffuseTransmission(diffuseTransmission)
+		else
+			return uwrapMat(self):DiffuseTransmission()
+		end
 	end
 	--- Set the specular transmission amount
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param number specularTransmission 0-1 where 0 is no light refracted and 1 is all light refracted
+	-- @param number? specularTransmission Blend between diffuse/specular lobes and specular reflection/transmission lobes
+	-- @return number? Specular transmission
 	function bsdfmaterial_methods:specularTransmission(specularTransmission)
 		canRun()
-		checkLuaType(specularTransmission, TYPE_NUMBER)
-		uwrapMat(self):SpecularTransmission(specularTransmission)
+
+		if specularTransmission ~= nil then
+			checkLuaType(specularTransmission, TYPE_NUMBER)
+			uwrapMat(self):SpecularTransmission(specularTransmission)
+		else
+			return uwrapMat(self):SpecularTransmission()
+		end
 	end
 
 	--- Toggle thin film
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	-- @param boolean thin True to simulate the material as thin film
+	-- @param boolean? thin True to simulate the material as thin film
+	-- @return boolean? Whether the material is thin
 	function bsdfmaterial_methods:thin(thin)
 		canRun()
-		checkLuaType(thin, TYPE_BOOL)
-		uwrapMat(self):Thin(thin)
+
+		if thin ~= nil then
+			checkLuaType(thin, TYPE_BOOL)
+			uwrapMat(self):Thin(thin)
+		else
+			return uwrapMat(self):Thin()
+		end
 	end
 
 	--- Sets which BSDF lobes should be sampled/evaluated
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number? LobeType flags to set
+	-- @return number? Active LobeType flags
 	function bsdfmaterial_methods:activeLobes(lobes)
 		canRun()
-		checkLuaType(thin, TYPE_NUMBER)
-		uwrapMat(self):ActiveLobes(lobes)
+
+		if lobes ~= nil then
+			checkLuaType(lobes, TYPE_NUMBER)
+			uwrapMat(self):ActiveLobes(lobes)
+		else
+			return uwrapMat(self):ActiveLobes()
+		end
 	end
 
 	--- Gets the entity's BSDFMaterial
