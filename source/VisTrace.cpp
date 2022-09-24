@@ -656,6 +656,8 @@ LUA_FUNCTION(TraceResult_BaseTexture)
 {
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+
+	if (pResult->GetBaseTexture().empty()) return 0;
 	LUA->PushString(pResult->GetBaseTexture().c_str());
 	return 1;
 }
@@ -663,6 +665,8 @@ LUA_FUNCTION(TraceResult_NormalMap)
 {
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+
+	if (pResult->GetNormalMap().empty()) return 0;
 	LUA->PushString(pResult->GetNormalMap().c_str());
 	return 1;
 }
@@ -670,6 +674,8 @@ LUA_FUNCTION(TraceResult_MRAO)
 {
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+
+	if (pResult->GetMRAO().empty()) return 0;
 	LUA->PushString(pResult->GetMRAO().c_str());
 	return 1;
 }
@@ -678,6 +684,8 @@ LUA_FUNCTION(TraceResult_BaseTexture2)
 {
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+
+	if (pResult->GetBaseTexture2().empty()) return 0;
 	LUA->PushString(pResult->GetBaseTexture2().c_str());
 	return 1;
 }
@@ -685,6 +693,8 @@ LUA_FUNCTION(TraceResult_NormalMap2)
 {
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+
+	if (pResult->GetNormalMap2().empty()) return 0;
 	LUA->PushString(pResult->GetNormalMap2().c_str());
 	return 1;
 }
@@ -692,6 +702,8 @@ LUA_FUNCTION(TraceResult_MRAO2)
 {
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+
+	if (pResult->GetMRAO2().empty()) return 0;
 	LUA->PushString(pResult->GetMRAO2().c_str());
 	return 1;
 }
@@ -700,6 +712,8 @@ LUA_FUNCTION(TraceResult_BlendTexture)
 {
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+
+	if (pResult->GetBlendTexture().empty()) return 0;
 	LUA->PushString(pResult->GetBlendTexture().c_str());
 	return 1;
 }
@@ -707,6 +721,8 @@ LUA_FUNCTION(TraceResult_DetailTexture)
 {
 	LUA->CheckType(1, TraceResult::id);
 	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
+
+	if (pResult->GetDetailTexture().empty()) return 0;
 	LUA->PushString(pResult->GetDetailTexture().c_str());
 	return 1;
 }
