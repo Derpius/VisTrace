@@ -72,7 +72,6 @@ SF.RegisterType("Sampler", true, false, debug.getregistry().Sampler)
 SF.RegisterType("HDRI", true, false, debug.getregistry().HDRI)
 
 --- VisTrace BSDF material  
---- 
 --- Pass no arguments to any functions to return the values stored in the material
 -- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 -- @name BSDFMaterial
@@ -473,6 +472,15 @@ return function(instance)
 		return wrapVec(uwrapResult(self):Pos())
 	end
 
+	--- Gets the incident vector of the result  
+	--- This is the inverse of the ray's direction. i.e. it points out from the surface
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return Vector Incident direction
+	function traceresult_methods:incident()
+		canRun()
+		return wrapVec(uwrapResult(self):Incident())
+	end
+
 	--- Gets the distance from the ray origin to the hit pos of the result  
 	--- This is extremely fast compared to computing the distance between origin and pos yourself, as it's calculated during triangle intersection
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
@@ -618,6 +626,77 @@ return function(instance)
 	function traceresult_methods:baseMIPLevel()
 		canRun()
 		return uwrapResult(self):BaseMIPLevel()
+	end
+
+	--- Gets the path to the hit material, relative to the materials folder
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return string Material path
+	function traceresult_methods:material()
+		canRun()
+		return uwrapResult(self):Material()
+	end
+
+	--- Gets the path to the hit material's base texture, relative to the materials folder
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return string? Base texture path
+	function traceresult_methods:baseTexture()
+		canRun()
+		return uwrapResult(self):BaseTexture()
+	end
+	--- Gets the path to the hit material's normal map, relative to the materials folder
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return string? Normal map path
+	function traceresult_methods:normalMap()
+		canRun()
+		return uwrapResult(self):NormalMap()
+	end
+	--- Gets the path to the hit material's metalness, roughness, and ambient occlusion texture, relative to the materials folder
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return string? MRAO path
+	function traceresult_methods:mrao()
+		canRun()
+		return uwrapResult(self):MRAO()
+	end
+
+	--- Gets the path to the hit material's second base texture, relative to the materials folder  
+	--- This will usually only be present on displacement surfaces
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return string? Second base texture path
+	function traceresult_methods:baseTexture2()
+		canRun()
+		return uwrapResult(self):BaseTexture2()
+	end
+	--- Gets the path to the hit material's second normal map, relative to the materials folder  
+	--- This will usually only be present on displacement surfaces
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return string? Second normal map path
+	function traceresult_methods:normalMap2()
+		canRun()
+		return uwrapResult(self):NormalMap2()
+	end
+	--- Gets the path to the hit material's second MRAO texture, relative to the materials folder  
+	--- This will usually only be present on displacement surfaces
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return string? Second MRAO path
+	function traceresult_methods:mrao2()
+		canRun()
+		return uwrapResult(self):MRAO2()
+	end
+
+	--- Gets the path to the hit material's blend texture, relative to the materials folder  
+	--- This will usually only be present on displacement surfaces
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return string? Blend texture path
+	function traceresult_methods:blendTexture()
+		canRun()
+		return uwrapResult(self):BlendTexture()
+	end
+	--- Gets the path to the hit material's detail texture, relative to the materials folder
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return string? Detail texture path
+	function traceresult_methods:detailTexture()
+		canRun()
+		return uwrapResult(self):DetailTexture()
 	end
 
 --#endregion
