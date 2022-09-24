@@ -604,7 +604,7 @@ float EvalSpecularTransmissionPDF(
 	if (isReflection || data.thin) {
 		const float pdf = D * G1incident * iDotH / (4 * iDotN * abs(sDotH));
 		if (pdf < 0.f || !std::isfinite(pdf)) return 0.f;
-		return (data.thin ? 1.f - pReflect : pReflect) * pdf;
+		return (isReflection ? pReflect : 1.f - pReflect) * pdf;
 	}
 
 	// pdf is VNDF pdf * jacobian of refraction
