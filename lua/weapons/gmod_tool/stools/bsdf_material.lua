@@ -428,7 +428,7 @@ if CLIENT then
 					local incident = Vector(-1, 0, 0)
 					iDotN = normal:Dot(incident)
 					local deltaReflect = Reflect(incident, normal)
-					local deltaRefract = thin and dir or Refract(incident, normal, 1 / ior)
+					local deltaRefract = thin and -incident or Refract(incident, normal, 1 / ior)
 
 					-- Direct contribution
 					local lDir = PREVIEW_POINT_LIGHT - normal
@@ -471,14 +471,14 @@ if CLIENT then
 					local specularTransmission = Vector(0, 0, 0)
 					if delta then
 						mat:ActiveLobes(LobeType.DeltaSpecularTransmission)
-						specularTransmission = vistrace.SampleBSDF(sampler, mat, normal, tangent, binormal, incident).weight * DirToCubemap(hdri, deltaRefract, 0)
+						specularTransmission = vistrace.SampleBSDF(sampler, mat, normal, tangent, binormal, incident).weight * DirToCubemap(hdri, thin and dir or deltaRefract, 0)
 					else
 						mat:ActiveLobes(LobeType.SpecularTransmission)
 						local specularTransmissionPdf = vistrace.EvalPDF(mat, normal, tangent, binormal, incident, deltaRefract)
 						if specularTransmissionPdf > 0 then
 							specularTransmission = vistrace.EvalBSDF(mat, normal, tangent, binormal, incident, deltaRefract)
 								/ specularTransmissionPdf
-								* DirToCubemap(hdri, deltaRefract, roughness * (hdrimips - 1))
+								* DirToCubemap(hdri, thin and dir or deltaRefract, roughness * (hdrimips - 1))
 						end
 					end
 
