@@ -1,5 +1,9 @@
 #include "HDRI.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 

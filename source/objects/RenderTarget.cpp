@@ -1,5 +1,9 @@
 #include "RenderTarget.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include "stb_image.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION

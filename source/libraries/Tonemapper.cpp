@@ -1,6 +1,8 @@
 #include "Tonemapper.h"
 
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 #include "glm/glm.hpp"
 #include "glm/gtx/compatibility.hpp"
