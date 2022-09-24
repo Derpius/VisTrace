@@ -312,13 +312,13 @@ MaterialFlags  TraceResult::GetMaterialFlags() const { return material.flags; }
 BSPEnums::SURF TraceResult::GetSurfFlags()     const { return material.surfFlags; }
 bool           TraceResult::HitWater()         const { return material.water; }
 
-std::string TraceResult::GetBaseTexture()   const { return material.baseTexPath; }
-std::string TraceResult::GetNormalMap()     const { return material.normalMapPath; }
-std::string TraceResult::GetMRAO()          const { return "vistrace/pbr/" + material.baseTexPath + "_mrao"; }
+std::string TraceResult::GetBaseTexture()   const { return material.baseTexture  != nullptr ? material.baseTexPath : ""; }
+std::string TraceResult::GetNormalMap()     const { return material.normalMap    != nullptr ? material.normalMapPath : ""; }
+std::string TraceResult::GetMRAO()          const { return material.mrao         != nullptr ? "vistrace/pbr/" + material.baseTexPath + "_mrao" : ""; }
 
-std::string TraceResult::GetBaseTexture2()  const { return material.baseTexPath2; }
-std::string TraceResult::GetNormalMap2()    const { return material.normalMapPath2; }
-std::string TraceResult::GetMRAO2()         const { return "vistrace/pbr/" + material.baseTexPath2 + "_mrao"; }
+std::string TraceResult::GetBaseTexture2()  const { return material.baseTexture2 != nullptr ? material.baseTexPath2 : ""; }
+std::string TraceResult::GetNormalMap2()    const { return material.normalMap2   != nullptr ? material.normalMapPath2 : ""; }
+std::string TraceResult::GetMRAO2()         const { return material.mrao2        != nullptr ? "vistrace/pbr/" + material.baseTexPath2 + "_mrao" : ""; }
 
-std::string TraceResult::GetBlendTexture()  const { return material.blendTexPath; }
-std::string TraceResult::GetDetailTexture() const { return material.detailPath; }
+std::string TraceResult::GetBlendTexture()  const { return material.blendTexture != nullptr ? material.blendTexPath : ""; }
+std::string TraceResult::GetDetailTexture() const { return material.detail       != nullptr ? material.detailPath : ""; }
