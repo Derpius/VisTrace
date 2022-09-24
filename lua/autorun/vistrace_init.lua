@@ -16,8 +16,23 @@ end
 	pcall(require, "VisTrace-v0.4") -- Don't throw an error if the module failed to load
 ]]
 
-local files = file.Find("lua/bin/gmcl_VisTrace-v" .. VISTRACE_VERSION .. "_*.dll", "GAME")
-if not files or #files == 0 then return end
+local suffix = "win" .. (jit.arch == "x86" and "32" or "64")
+if system.IsLinux() then
+	suffix = "linux" .. (jit.arch == "x86" and "" or "64")
+elseif system.IsOSX() then
+	suffix = "osx"
+end
+
+if not file.Exists(string.format("lua/bin/gmcl_VisTrace-v%s_%s.dll", VISTRACE_VERSION, suffix), "GAME") then
+	print("The VisTrace binary module is not installed for this GMod architecture or your operating system\nGet it here: https://www.github.com/Derpius/VisTrace")
+
+	notification.AddLegacy(
+		"The VisTrace binary module is not installed for this GMod architecture or your operating system\nGet it here: https://www.github.com/Derpius/VisTrace",
+		NOTIFY_ERROR, 10
+	)
+
+	return
+end
 
 if not system.IsWindows() then
 	error("VisTrace is currently only compatible with Windows, if you'd like a cross platform build to be worked on, please open an issue at https://github.com/Derpius/VisTrace/issues")
