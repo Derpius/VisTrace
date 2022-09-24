@@ -11,13 +11,16 @@ namespace VisTrace
 
 	namespace VType
 	{
-		int VTFTexture = -1;
-		int RenderTarget = -1;
-		int Sampler = -1;
+		extern int VTFTexture;
+		extern int RenderTarget;
+		extern int Sampler;
 	};
 }
 
 #define VISTRACE_EXTENSION_OPEN(ExtensionName)                                          \
+int VisTrace::VType::VTFTexture = -1;                                                   \
+int VisTrace::VType::RenderTarget = -1;                                                 \
+int VisTrace::VType::Sampler = -1;                                                      \
 void vt_extension_open__Imp(GarrysMod::Lua::ILuaBase* LUA);                             \
 int vt_extension_open(lua_State* L)                                                     \
 {                                                                                       \
