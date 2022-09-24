@@ -76,7 +76,7 @@ IMaterialVar* GetMaterialVar(IMaterial* mat, const std::string& key) {
 	bool found = false;
 
 	IMaterialVar* result = mat->FindVar(key.c_str(), &found, false);
-	return found ? result : nullptr;
+	return (found && result->IsDefined()) ? result : nullptr;
 }
 
 std::string GetMaterialString(IMaterial* mat, const std::string& key)
