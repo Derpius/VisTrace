@@ -1,4 +1,4 @@
-VISTRACE_VERSION = "0.12"
+VISTRACE_VERSION = "0.13"
 
 if SERVER then
 	AddCSLuaFile()
