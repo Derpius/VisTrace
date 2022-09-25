@@ -44,6 +44,7 @@ namespace VisTrace
 		virtual void SetPixel(uint16_t x, uint16_t y, const Pixel& pixel, uint8_t mip = 0) = 0;
 
 		virtual void GenerateMIPs() = 0;
+		virtual IRenderTarget* Clone() = 0;
 
 		virtual bool Save(const char* filename, uint8_t mip = 0) const = 0;
 		virtual bool Load(const char* filename, bool createMips = false) = 0;

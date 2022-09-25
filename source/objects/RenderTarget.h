@@ -56,6 +56,7 @@ public:
 	void SetPixel(uint16_t x, uint16_t y, const VisTrace::Pixel& pixel, uint8_t mip = 0);
 
 	void GenerateMIPs();
+	IRenderTarget* Clone();
 
 	bool Save(const char* filename, uint8_t mip = 0) const;
 	bool Load(const char* filename, bool createMips = false);

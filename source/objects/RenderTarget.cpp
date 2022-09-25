@@ -247,6 +247,17 @@ void RenderTarget::GenerateMIPs()
 	}
 }
 
+IRenderTarget* RenderTarget::Clone() {
+	RenderTarget* rt = new RenderTarget(GetWidth(), GetHeight(), GetFormat(), mMips);
+
+	// Copy all of the mip levels (including the raw image, 0)
+	for (uint8_t mip = 0; mip < mMips; mip++) {
+		memcpy(rt->GetRawData(mip), GetRawData(mip), GetWidth(mip) * GetHeight(mip) * mPixelSize);
+	}
+
+	return rt;
+}
+
 bool RenderTarget::Save(const char* filename, uint8_t mip) const
 {
 	if (!IsValid() || mip >= mMips) return false;

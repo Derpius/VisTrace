@@ -403,6 +403,16 @@ LUA_FUNCTION(RT_GenerateMIPs)
 	return 0;
 }
 
+LUA_FUNCTION(RT_Clone)
+{
+	LUA->CheckType(1, RenderTarget::id);
+	IRenderTarget* pRt = *LUA->GetUserType<IRenderTarget*>(1, RenderTarget::id);
+	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
+
+	LUA->PushUserType_Value(pRt->Clone(), RenderTarget::id);
+	return 1;
+}
+
 LUA_FUNCTION(RT_Save)
 {
 	LUA->CheckType(1, RenderTarget::id);
@@ -1648,6 +1658,7 @@ GMOD_MODULE_OPEN()
 		PUSH_C_FUNC(RT, SetPixel);
 
 		PUSH_C_FUNC(RT, GenerateMIPs);
+		PUSH_C_FUNC(RT, Clone);
 
 		PUSH_C_FUNC(RT, Save);
 		PUSH_C_FUNC(RT, Load);
