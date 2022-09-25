@@ -56,7 +56,7 @@
 		-webkit-backdrop-filter 0.3s ease-in-out;
 }
 .text-container:hover {
-	opacity: 0.8;
+	opacity: 0.9;
 	-webkit-backdrop-filter: brightness(30%);
 	        backdrop-filter: brightness(30%);
 
