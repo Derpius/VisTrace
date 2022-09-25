@@ -441,7 +441,7 @@ LUA_FUNCTION(RT_Tonemap)
 	if (!pRt->IsValid()) LUA->ThrowError("Invalid render target");
 	if (pRt->GetFormat() != RTFormat::RGBFFF) LUA->ThrowError("Render target's format must be RGBFFF");
 
-	Tonemap(pRt);
+	Tonemap(pRt, LUA->GetBool(2), LUA->GetNumber(3));
 	return 0;
 }
 

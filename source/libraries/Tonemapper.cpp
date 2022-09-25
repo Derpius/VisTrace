@@ -8,10 +8,14 @@
 #include "glm/gtx/compatibility.hpp"
 using namespace glm;
 
-#include "vistrace/IRenderTarget.h"
+#include "RenderTarget.h"
+
 using namespace VisTrace;
 
-// All credit to https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/ACES.hlsl
+// All credit to
+// https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/ACES.hlsl
+// https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/Exposure.hlsl
+// https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/ToneMapping.hlsl
 
 // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
 static const mat3x3 ACESInputMat = {
@@ -42,14 +46,61 @@ inline vec3 ACESFitted(vec3 colour)
 	return saturate(colour);
 }
 
-void Tonemap(IRenderTarget* pRt)
+inline float CalcExposure(float avgLuminance, const float offset = 0.f)
+{
+	avgLuminance = max(avgLuminance, 0.00001f);
+	float linearExposure = (0.264f / avgLuminance); // https://www.desmos.com/calculator/nzwwfw96fb
+	float exposure = log2(max(linearExposure, 0.00001f));
+
+	exposure += offset;
+	return exp2(exposure);
+}
+
+inline vec3 LinearTosRGB(const vec3& colour)
+{
+	vec3 x = colour * 12.92f;
+	vec3 y = 1.055f * pow(saturate(colour), vec3(1.0f / 2.4f)) - 0.055f;
+
+	return vec3(
+		colour.r < 0.0031308f ? x.r : y.r,
+		colour.g < 0.0031308f ? x.g : y.g,
+		colour.b < 0.0031308f ? x.b : y.b
+	);
+}
+
+void Tonemap(IRenderTarget* pRt, const bool autoExposure, const float autoExposureOffset)
 {
 	if (pRt->GetFormat() != RTFormat::RGBFFF) return;
-	vec3* pData = reinterpret_cast<vec3*>(pRt->GetRawData());
-	size_t size = pRt->GetWidth() * pRt->GetHeight();
+	uint16_t width = pRt->GetWidth(), height = pRt->GetHeight();
 
-	#pragma omp parallel for
-	for (size_t ptr = 0; ptr < size; ptr++) {
-		pData[ptr] = ACESFitted(pData[ptr]);
+	vec3* pData = reinterpret_cast<vec3*>(pRt->GetRawData());
+	size_t size = width * height;
+
+	if (autoExposure) {
+		RenderTarget luminance(
+			width, height, RTFormat::RF,
+			floorf(log2f(max(width, height))) + 1
+		);
+
+		float* pLumData = reinterpret_cast<float*>(luminance.GetRawData());
+		double totalLuminance = 0.0;
+
+		#pragma omp parallel for
+		for (size_t ptr = 0; ptr < size; ptr++) {
+			totalLuminance += dot(pData[ptr], vec3(0.2126f, 0.7152f, 0.0722f));
+		}
+
+		const float avgLuminance = totalLuminance / static_cast<double>(size);
+		const float exposure = CalcExposure(avgLuminance, autoExposureOffset);
+
+		#pragma omp parallel for
+		for (size_t ptr = 0; ptr < size; ptr++) {
+			pData[ptr] = LinearTosRGB(ACESFitted(exposure * pData[ptr]));
+		}
+	} else {
+		#pragma omp parallel for
+		for (size_t ptr = 0; ptr < size; ptr++) {
+			pData[ptr] = LinearTosRGB(ACESFitted(pData[ptr]));
+		}
 	}
 }
