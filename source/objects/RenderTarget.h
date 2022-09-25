@@ -37,9 +37,11 @@ public:
 	static int id;
 
 	RenderTarget() {}
+	RenderTarget(const RenderTarget& src);
 	RenderTarget(uint16_t width, uint16_t height, VisTrace::RTFormat format, uint8_t mips = 1);
 	~RenderTarget();
 
+	VisTrace::IRenderTarget* Clone() const;
 	bool Resize(uint16_t width, uint16_t height, uint8_t mips = 1);
 
 	bool IsValid() const;

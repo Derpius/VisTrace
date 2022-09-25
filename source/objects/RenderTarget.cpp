@@ -20,6 +20,21 @@ using namespace VisTrace;
 
 int RenderTarget::id{ -1 };
 
+RenderTarget::RenderTarget(const RenderTarget& src)
+{
+	mFormat = src.mFormat;
+	mChannelSize = src.mChannelSize;
+	mPixelSize = src.mPixelSize;
+
+	mSize = src.mSize;
+	mMips = src.mMips;
+	memcpy(mMipOffsets, src.mMipOffsets, sizeof(mMipOffsets));
+	memcpy(mMipDims, src.mMipDims, sizeof(mMipDims));
+
+	mpBuffer = static_cast<uint8_t*>(malloc(mSize));
+	memcpy(mpBuffer, src.mpBuffer, mSize);
+}
+
 RenderTarget::RenderTarget(uint16_t width, uint16_t height, RTFormat format, uint8_t mips)
 {
 	mFormat = format;
@@ -35,6 +50,11 @@ RenderTarget::~RenderTarget()
 		mpBuffer = nullptr;
 	}
 	mMips = 0;
+}
+
+IRenderTarget* RenderTarget::Clone() const
+{
+	return new RenderTarget(*this);
 }
 
 bool RenderTarget::Resize(uint16_t width, uint16_t height, uint8_t mips)

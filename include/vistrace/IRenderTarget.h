@@ -28,6 +28,7 @@ namespace VisTrace
 		IRenderTarget() {};
 		virtual ~IRenderTarget() {};
 
+		virtual IRenderTarget* Clone() const = 0;
 		virtual bool Resize(uint16_t width, uint16_t height, uint8_t mips = 1) = 0;
 
 		virtual bool IsValid() const = 0;
