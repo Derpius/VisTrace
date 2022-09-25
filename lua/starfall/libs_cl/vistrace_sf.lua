@@ -328,6 +328,15 @@ return function(instance)
 		return uwrapRT(self):IsValid()
 	end
 
+	--- Returns a copy of the render target
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @return VisTraceRT
+	function vistracert_methods:clone()
+		canRun()
+
+		return wrapRT(uwrapRT(self):Clone())
+	end
+
 	--- Resizes the render target and optionally creates empty MIP levels
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
 	-- @param number width New width
