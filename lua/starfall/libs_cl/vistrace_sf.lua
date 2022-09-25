@@ -464,9 +464,15 @@ return function(instance)
 	--- Tonemaps a HDR image target using ACES fitted  
 	--- Apply exposure before calling this and gamma correction after
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
-	function vistracert_methods:tonemap()
+	-- @param boolean? autoExposure Toggle automatic log average luminance exposure. This is fairly basic and just for quick exposure control
+	-- @param number? autoExposureOffset Offset value for auto exposure level to give some amount of control over the output
+	function vistracert_methods:tonemap(autoExposure, autoExposureOffset)
 		canRun()
-		return uwrapRT(self):Tonemap()
+
+		if autoExposure ~= nil then checkLuaType(autoExposure, TYPE_BOOL) end
+		if autoExposureOffset ~= nil then checkLuaType(autoExposureOffset, TYPE_NUMBER) end
+
+		return uwrapRT(self):Tonemap(autoExposure, autoExposureOffset)
 	end
 
 --#endregion
