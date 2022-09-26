@@ -67,7 +67,7 @@ jobs:
           buildPreset: "${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}"
 
       - name: Run CMake - No OpenMP
-        id: build
+        id: build-no-omp
         uses: lukka/run-cmake@v10
         with:
           configurePreset: "${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}-no-omp"
@@ -78,4 +78,4 @@ jobs:
         with:
           name: ${{ matrix.os-prefix }} ${{ matrix.arch }}
           path: release
-        if: (matrix.target == 'release') && (steps.build.outcome == 'success') && (github.event_name == 'push')
+        if: (matrix.target == 'release') && (steps.build.outcome == 'success') && (steps.build-no-omp.outcome == 'success') && (github.event_name == 'push')
