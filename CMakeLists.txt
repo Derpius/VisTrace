@@ -5,8 +5,6 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-set(USE_OPENMP 1) # Comment out to disable using OpenMP for debugging
-
 if (USE_OPENMP)
 	find_package(OpenMP QUIET)
 else()
@@ -24,8 +22,10 @@ add_subdirectory("libs/BSPParser")
 add_subdirectory("libs/VTFParser")
 add_subdirectory("libs/GMFS")
 
+set(BINARY_NAME gmcl_${PROJECT_NAME}-v${VISTRACE_API_VERSION}_${BINARY_SUFFIX})
+
 add_library(
-	${PROJECT_NAME} SHARED
+	${BINARY_NAME} SHARED
 	"source/VisTrace.cpp"
 	"source/Utils.cpp"
 
@@ -43,7 +43,7 @@ add_library(
 )
 
 target_include_directories(
-	${PROJECT_NAME} PRIVATE
+	${BINARY_NAME} PRIVATE
 	"source"
 	"source/objects"
 	"source/libraries"
@@ -63,17 +63,19 @@ target_include_directories(
 
 if (OpenMP_CXX_FOUND AND USE_OPENMP)
 	target_link_libraries(
-		${PROJECT_NAME} PRIVATE
+		${BINARY_NAME} PRIVATE
 		OpenMP::OpenMP_CXX
 		libomp.lib
 	)
 endif()
 
 target_link_libraries(
-	${PROJECT_NAME} PRIVATE
+	${BINARY_NAME} PRIVATE
 	BSPParser
 	bvh
 	glm
 	VTFParser
 	GMFS
 )
+
+set_target_properties(${BINARY_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/release/")

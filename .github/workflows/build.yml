@@ -11,6 +11,7 @@ on:
       - ".gitmodules"
       - "libs/**"
       - ".github/workflows/build.yml"
+      - "release/*.dll"
   pull_request:
     branches:
       - master
@@ -22,8 +23,7 @@ on:
       - ".gitmodules"
       - "libs/**"
       - ".github/workflows/build.yml"
-env:
-  API_VERSION: "0.13"
+      - "release/*.dll"
 
 jobs:
   build:
@@ -35,17 +35,13 @@ jobs:
         include:
           - os-prefix: windows
             os: windows-latest
-            dll-platform: win
           #- os-prefix: linux
           #  os: ubuntu-latest
-          #  dll-platform: linux
 
           #- arch: x86
           #  msvc-arch: amd64_x86
-          #  dll-arch: 32
           - arch: x64
             msvc-arch: amd64
-            dll-arch: 64
 
     name: Build module
     runs-on: ${{ matrix.os }}
@@ -63,22 +59,23 @@ jobs:
       - name: Get latest CMake and ninja
         uses: lukka/get-cmake@latest
 
-      - name: Run CMake
+      - name: Run CMake - OpenMP
         id: build
         uses: lukka/run-cmake@v10
         with:
           configurePreset: "${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}"
           buildPreset: "${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}"
 
-      - name: Rename dll
-        id: rename
-        run: |
-          mv out/build/${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}/VisTrace.dll gmcl_VisTrace-v${{ env.API_VERSION }}_${{ matrix.dll-platform }}${{ matrix.dll-arch }}.dll
-        if: (matrix.target == 'release') && (steps.build.outcome == 'success') && (github.event_name == 'push')
+      - name: Run CMake - No OpenMP
+        id: build
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: "${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}-no-omp"
+          buildPreset: "${{ matrix.os-prefix }}-${{ matrix.arch }}-${{ matrix.target }}-no-omp"
 
-      - name: Upload release binaries
+      - name: Upload Release Artefact
         uses: actions/upload-artifact@v3
         with:
-          name: gmcl_VisTrace-v${{ env.API_VERSION }}_${{ matrix.dll-platform }}${{ matrix.dll-arch }}.dll
-          path: gmcl_VisTrace-v${{ env.API_VERSION }}_${{ matrix.dll-platform }}${{ matrix.dll-arch }}.dll
-        if: (matrix.target == 'release') && (steps.rename.outcome == 'success') && (github.event_name == 'push')
+          name: ${{ matrix.os-prefix }} ${{ matrix.arch }}
+          path: release
+        if: (matrix.target == 'release') && (steps.build.outcome == 'success') && (github.event_name == 'push')

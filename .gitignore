@@ -36,3 +36,9 @@
 
 # Build Directory
 out
+
+# Program Database
+*.pdb
+
+# Exclude OpenMP runtime
+!release/libomp140.x86_64.dll

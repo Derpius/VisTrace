@@ -7,19 +7,62 @@
 	},
 	"configurePresets": [
 		{
-			"name": "windows-x64-relwithsymbols",
-			"displayName": "Windows x64 RelWithSymbols",
+			"name": "base",
+			"hidden": true,
 			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/out/build/${presetName}",
-			"installDir": "${sourceDir}/out/install/${presetName}",
+			"cacheVariables": {
+				"VISTRACE_API_VERSION": "0.13",
+				"USE_OPENMP": true
+			}
+		},
+		{
+			"name": "x86",
+			"hidden": true,
+			"architecture": {
+				"value": "x86",
+				"strategy": "external"
+			}
+		},
+		{
+			"name": "x64",
+			"hidden": true,
 			"architecture": {
 				"value": "x64",
 				"strategy": "external"
-			},
+			}
+		},
+		{
+			"name": "clang",
+			"hidden": true,
 			"cacheVariables": {
-				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
 				"CMAKE_C_COMPILER": "clang",
 				"CMAKE_CXX_COMPILER": "clang"
+			}
+		},
+		{
+			"name": "gcc",
+			"hidden": true,
+			"cacheVariables": {
+				"CMAKE_C_COMPILER": "gcc",
+				"CMAKE_CXX_COMPILER": "g++"
+			}
+		},
+		{
+			"name": "no-omp",
+			"hidden": true,
+			"cacheVariables": {
+				"USE_OPENMP": null
+			}
+		},
+
+		{
+			"name": "windows-x64-relwithsymbols",
+			"displayName": "Windows x64 RelWithSymbols",
+			"inherits": [ "base", "x64", "clang" ],
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
+				"BINARY_SUFFIX": "win64"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -34,17 +77,10 @@
 		{
 			"name": "windows-x64-release",
 			"displayName": "Windows x64 Release",
-			"generator": "Ninja",
-			"binaryDir": "${sourceDir}/out/build/${presetName}",
-			"installDir": "${sourceDir}/out/install/${presetName}",
-			"architecture": {
-				"value": "x64",
-				"strategy": "external"
-			},
+			"inherits": [ "base", "x64", "clang" ],
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
-				"CMAKE_C_COMPILER": "clang",
-				"CMAKE_CXX_COMPILER": "clang"
+				"BINARY_SUFFIX": "win64"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -57,21 +93,31 @@
 			}
 		},
 		{
+			"name": "windows-x64-relwithsymbols-no-omp",
+			"displayName": "Windows x64 RelWithSymbols - No OpenMP",
+			"inherits": [ "no-omp", "windows-x64-relwithsymbols" ],
+			"cacheVariables": {
+				"BINARY_SUFFIX": "win64.no-omp"
+			}
+		},
+		{
+			"name": "windows-x64-release-no-omp",
+			"displayName": "Windows x64 Release - No OpenMP",
+			"inherits": [ "no-omp", "windows-x64-release" ],
+			"cacheVariables": {
+				"BINARY_SUFFIX": "win64.no-omp"
+			}
+		},
+
+		{
 			"name": "windows-x86-relwithsymbols",
 			"displayName": "Windows x86 RelWithSymbols",
-			"generator": "Ninja",
-			"binaryDir": "${sourceDir}/out/build/${presetName}",
-			"installDir": "${sourceDir}/out/install/${presetName}",
-			"architecture": {
-				"value": "x86",
-				"strategy": "external"
-			},
+			"inherits": [ "base", "x86", "clang" ],
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
-				"CMAKE_C_COMPILER": "clang",
-				"CMAKE_CXX_COMPILER": "clang",
 				"CMAKE_C_FLAGS": "-m32",
-				"CMAKE_CXX_FLAGS": "-m32"
+				"CMAKE_CXX_FLAGS": "-m32",
+				"BINARY_SUFFIX": "win32"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -86,19 +132,12 @@
 		{
 			"name": "windows-x86-release",
 			"displayName": "Windows x86 Release",
-			"generator": "Ninja",
-			"binaryDir": "${sourceDir}/out/build/${presetName}",
-			"installDir": "${sourceDir}/out/install/${presetName}",
-			"architecture": {
-				"value": "x86",
-				"strategy": "external"
-			},
+			"inherits": [ "base", "x86", "clang" ],
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
-				"CMAKE_C_COMPILER": "clang",
-				"CMAKE_CXX_COMPILER": "clang",
 				"CMAKE_C_FLAGS": "-m32",
-				"CMAKE_CXX_FLAGS": "-m32"
+				"CMAKE_CXX_FLAGS": "-m32",
+				"BINARY_SUFFIX": "win32"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -111,19 +150,29 @@
 			}
 		},
 		{
+			"name": "windows-x86-relwithsymbols-no-omp",
+			"displayName": "Windows x86 RelWithSymbols - No OpenMP",
+			"inherits": [ "no-omp", "windows-x86-relwithsymbols" ],
+			"cacheVariables": {
+				"BINARY_SUFFIX": "win32.no-omp"
+			}
+		},
+		{
+			"name": "windows-x86-release-no-omp",
+			"displayName": "Windows x86 Release - No OpenMP",
+			"inherits": [ "no-omp", "windows-x86-release" ],
+			"cacheVariables": {
+				"BINARY_SUFFIX": "win32.no-omp"
+			}
+		},
+
+		{
 			"name": "linux-x64-relwithsymbols",
 			"displayName": "Linux x64 RelWithSymbols",
-			"generator": "Ninja",
-			"binaryDir": "${sourceDir}/out/build/${presetName}",
-			"installDir": "${sourceDir}/out/install/${presetName}",
-			"architecture": {
-				"value": "x64",
-				"strategy": "external"
-			},
+			"inherits": [ "base", "x64", "gcc" ],
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
-				"CMAKE_C_COMPILER": "gcc",
-				"CMAKE_CXX_COMPILER": "g++"
+				"BINARY_SUFFIX": "linux64"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -137,17 +186,10 @@
 		{
 			"name": "linux-x64-release",
 			"displayName": "Linux x64 Release",
-			"generator": "Ninja",
-			"binaryDir": "${sourceDir}/out/build/${presetName}",
-			"installDir": "${sourceDir}/out/install/${presetName}",
-			"architecture": {
-				"value": "x64",
-				"strategy": "external"
-			},
+			"inherits": [ "base", "x64", "gcc" ],
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
-				"CMAKE_C_COMPILER": "gcc",
-				"CMAKE_CXX_COMPILER": "g++"
+				"BINARY_SUFFIX": "linux64"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -159,19 +201,29 @@
 			}
 		},
 		{
+			"name": "linux-x64-relwithsymbols-no-omp",
+			"displayName": "Linux x64 RelWithSymbols - No OpenMP",
+			"inherits": [ "no-omp", "linux-x64-relwithsymbols" ],
+			"cacheVariables": {
+				"BINARY_SUFFIX": "linux64.no-omp"
+			}
+		},
+		{
+			"name": "linux-x64-release-no-omp",
+			"displayName": "Linux x64 Release - No OpenMP",
+			"inherits": [ "no-omp", "linux-x64-release" ],
+			"cacheVariables": {
+				"BINARY_SUFFIX": "linux64.no-omp"
+			}
+		},
+
+		{
 			"name": "linux-x86-relwithsymbols",
 			"displayName": "Linux x86 RelWithSymbols",
-			"generator": "Ninja",
-			"binaryDir": "${sourceDir}/out/build/${presetName}",
-			"installDir": "${sourceDir}/out/install/${presetName}",
-			"architecture": {
-				"value": "x86",
-				"strategy": "external"
-			},
+			"inherits": [ "base", "x86", "gcc" ],
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "RelWithDebInfo",
-				"CMAKE_C_COMPILER": "gcc",
-				"CMAKE_CXX_COMPILER": "g++"
+				"BINARY_SUFFIX": "linux"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -185,17 +237,10 @@
 		{
 			"name": "linux-x86-release",
 			"displayName": "Linux x86 Release",
-			"generator": "Ninja",
-			"binaryDir": "${sourceDir}/out/build/${presetName}",
-			"installDir": "${sourceDir}/out/install/${presetName}",
-			"architecture": {
-				"value": "x86",
-				"strategy": "external"
-			},
+			"inherits": [ "base", "x86", "gcc" ],
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
-				"CMAKE_C_COMPILER": "gcc",
-				"CMAKE_CXX_COMPILER": "g++"
+				"BINARY_SUFFIX": "linux"
 			},
 			"vendor": {
 				"microsoft.com/VisualStudioSettings/CMake/1.0": {
@@ -204,6 +249,22 @@
 					],
 					"intelliSenseMode": "linux-gcc-x86"
 				}
+			}
+		},
+		{
+			"name": "linux-x86-relwithsymbols-no-omp",
+			"displayName": "Linux x86 RelWithSymbols - No OpenMP",
+			"inherits": [ "no-omp", "linux-x86-relwithsymbols" ],
+			"cacheVariables": {
+				"BINARY_SUFFIX": "linux.no-omp"
+			}
+		},
+		{
+			"name": "linux-x86-release-no-omp",
+			"displayName": "Linux x86 Release - No OpenMP",
+			"inherits": [ "no-omp", "linux-x86-release" ],
+			"cacheVariables": {
+				"BINARY_SUFFIX": "linux.no-omp"
 			}
 		}
 	],
@@ -217,12 +278,29 @@
 			"configurePreset": "windows-x64-release"
 		},
 		{
+			"name": "windows-x64-relwithsymbols-no-omp",
+			"configurePreset": "windows-x64-relwithsymbols-no-omp"
+		},
+		{
+			"name": "windows-x64-release-no-omp",
+			"configurePreset": "windows-x64-release-no-omp"
+		},
+
+		{
 			"name": "windows-x86-relwithsymbols",
 			"configurePreset": "windows-x86-relwithsymbols"
 		},
 		{
 			"name": "windows-x86-release",
 			"configurePreset": "windows-x86-release"
+		},
+		{
+			"name": "windows-x86-relwithsymbols-no-omp",
+			"configurePreset": "windows-x86-relwithsymbols-no-omp"
+		},
+		{
+			"name": "windows-x86-release-no-omp",
+			"configurePreset": "windows-x86-release-no-omp"
 		},
 
 		{
@@ -234,12 +312,29 @@
 			"configurePreset": "linux-x64-release"
 		},
 		{
+			"name": "linux-x64-relwithsymbols-no-omp",
+			"configurePreset": "linux-x64-relwithsymbols-no-omp"
+		},
+		{
+			"name": "linux-x64-release-no-omp",
+			"configurePreset": "linux-x64-release-no-omp"
+		},
+
+		{
 			"name": "linux-x86-relwithsymbols",
 			"configurePreset": "linux-x86-relwithsymbols"
 		},
 		{
 			"name": "linux-x86-release",
 			"configurePreset": "linux-x86-release"
+		},
+		{
+			"name": "linux-x86-relwithsymbols-no-omp",
+			"configurePreset": "linux-x86-relwithsymbols-no-omp"
+		},
+		{
+			"name": "linux-x86-release-no-omp",
+			"configurePreset": "linux-x86-release-no-omp"
 		}
 	]
 }
