@@ -31,8 +31,11 @@ TOOL.ClientConVar.anisotropy = 0
 TOOL.ClientConVar.anisotropicrotation = 0
 
 TOOL.ClientConVar.ior = 1.5
+TOOL.ClientConVar.outsideior = 1
+
 TOOL.ClientConVar.difftrans = 0
 TOOL.ClientConVar.spectrans = 0
+
 TOOL.ClientConVar.thin = 0
 
 -- Dupe support
@@ -68,8 +71,11 @@ local function SetMaterial(plr, ent, materialTbl)
 		ent:SetNWFloat("BSDFMaterial.AnisotropicRotation", materialTbl.AnisotropicRotation)
 
 		ent:SetNWFloat("BSDFMaterial.IoR", materialTbl.IoR)
+		ent:SetNWFloat("BSDFMaterial.OutsideIoR", materialTbl.OutsideIoR)
+
 		ent:SetNWFloat("BSDFMaterial.DiffuseTransmission", materialTbl.DiffuseTransmission)
 		ent:SetNWFloat("BSDFMaterial.SpecularTransmission", materialTbl.SpecularTransmission)
+
 		ent:SetNWBool("BSDFMaterial.Thin", materialTbl.Thin)
 	else
 		duplicator.ClearEntityModifier(ent, "BSDFMaterial")
@@ -115,8 +121,11 @@ function TOOL:LeftClick(trace)
 	local anisotropicrotation = self:GetClientNumber("anisotropicrotation", 0)
 
 	local ior = self:GetClientNumber("ior", 1.5)
+	local outsideior = self:GetClientNumber("outsideior", 1)
+
 	local difftrans = self:GetClientNumber("difftrans", 0)
 	local spectrans = self:GetClientNumber("spectrans", 0)
+
 	local thin = self:GetClientNumber("thin", 0) ~= 0
 
 	SetMaterial(self:GetOwner(), ent, {
@@ -133,8 +142,11 @@ function TOOL:LeftClick(trace)
 		AnisotropicRotation = anisotropicrotation / 360,
 
 		IoR = ior,
+		OutsideIoR = outsideior,
+
 		DiffuseTransmission = difftrans,
 		SpecularTransmission = spectrans,
+
 		Thin = thin
 	})
 	return true
@@ -159,8 +171,11 @@ function TOOL:RightClick(trace)
 		AnisotropicRotation = 0,
 
 		IoR = 1.5,
+		OutsideIoR = 1,
+
 		DiffuseTransmission = 0,
 		SpecularTransmission = 0,
+
 		Thin = false
 	}
 
@@ -183,8 +198,11 @@ function TOOL:RightClick(trace)
 	self:GetOwner():ConCommand("bsdf_material_anisotropicrotation " .. mat.AnisotropicRotation * 360)
 
 	self:GetOwner():ConCommand("bsdf_material_ior "                 .. mat.IoR)
+	self:GetOwner():ConCommand("bsdf_material_outsideior "          .. mat.OutsideIoR)
+
 	self:GetOwner():ConCommand("bsdf_material_difftrans "           .. mat.DiffuseTransmission)
 	self:GetOwner():ConCommand("bsdf_material_spectrans "           .. mat.SpecularTransmission)
+
 	self:GetOwner():ConCommand("bsdf_material_thin "                .. (mat.Thin and "1" or "0"))
 
 	return true
@@ -236,8 +254,11 @@ if CLIENT then
 		mat:AnisotropicRotation(self:GetNWFloat("BSDFMaterial.AnisotropicRotation"))
 
 		mat:IoR(self:GetNWFloat("BSDFMaterial.IoR"))
+		mat:OutsideIoR(self:GetNWFloat("BSDFMaterial.OutsideIoR"))
+
 		mat:DiffuseTransmission(self:GetNWFloat("BSDFMaterial.DiffuseTransmission"))
 		mat:SpecularTransmission(self:GetNWFloat("BSDFMaterial.SpecularTransmission"))
+
 		mat:Thin(self:GetNWBool("BSDFMaterial.Thin"))
 
 		return mat
@@ -379,10 +400,13 @@ if CLIENT then
 		local anisotropy          = plr:GetInfoNum("bsdf_material_anisotropy", 0)
 		local anisotropicrotation = plr:GetInfoNum("bsdf_material_anisotropicrotation", 0) / 360
 
-		local ior       = plr:GetInfoNum("bsdf_material_ior", 1.5)
-		local difftrans = plr:GetInfoNum("bsdf_material_difftrans", 0)
-		local spectrans = plr:GetInfoNum("bsdf_material_spectrans", 0)
-		local thin      = plr:GetInfoNum("bsdf_material_thin", 0) ~= 0
+		local ior        = plr:GetInfoNum("bsdf_material_ior", 1.5)
+		local outsideior = plr:GetInfoNum("bsdf_material_outsideior", 1)
+
+		local difftrans  = plr:GetInfoNum("bsdf_material_difftrans", 0)
+		local spectrans  = plr:GetInfoNum("bsdf_material_spectrans", 0)
+
+		local thin       = plr:GetInfoNum("bsdf_material_thin", 0) ~= 0
 
 		local mat = vistrace.CreateMaterial()
 		mat:DielectricColour(dielectric)
@@ -398,8 +422,11 @@ if CLIENT then
 		mat:AnisotropicRotation(anisotropicrotation)
 
 		mat:IoR(ior)
+		mat:OutsideIoR(outsideior)
+
 		mat:DiffuseTransmission(difftrans)
 		mat:SpecularTransmission(spectrans)
+
 		mat:Thin(thin)
 
 		local delta = (roughness * roughness) < 0.0063 -- kMinGGXAlpha from the binary (slightly lower due what i assume are precision issues)
@@ -606,7 +633,9 @@ if CLIENT then
 		CPanel:NumSlider("Anisotropy", "bsdf_material_anisotropy", 0, 1, 2)
 		CPanel:NumSlider("Anisotropic Rotation", "bsdf_material_anisotropicrotation", 0, 360, 0)
 
-		CPanel:NumSlider("Index of Refraction", "bsdf_material_ior", 1, 5, 2)
+		CPanel:NumSlider("Index of Refraction", "bsdf_material_ior", 1, 3, 2)
+		CPanel:NumSlider("Outside Index of Refraction", "bsdf_material_outsideior", 1, 3, 2)
+
 		CPanel:NumSlider("Specular Transmission", "bsdf_material_spectrans", 0, 1, 2)
 		CPanel:NumSlider("Diffuse Transmission", "bsdf_material_difftrans", 0, 1, 2)
 
