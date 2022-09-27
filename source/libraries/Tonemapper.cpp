@@ -77,15 +77,9 @@ void Tonemap(IRenderTarget* pRt, const bool autoExposure, const float autoExposu
 	size_t size = width * height;
 
 	if (autoExposure) {
-		RenderTarget luminance(
-			width, height, RTFormat::RF,
-			floorf(log2f(max(width, height))) + 1
-		);
-
-		float* pLumData = reinterpret_cast<float*>(luminance.GetRawData());
 		double totalLuminance = 0.0;
 
-		#pragma omp parallel for
+		#pragma omp parallel for reduction (+:totalLuminance)
 		for (size_t ptr = 0; ptr < size; ptr++) {
 			totalLuminance += dot(pData[ptr], vec3(0.2126f, 0.7152f, 0.0722f));
 		}
