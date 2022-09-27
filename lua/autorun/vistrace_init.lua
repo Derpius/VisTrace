@@ -34,10 +34,6 @@ if not file.Exists(string.format("lua/bin/gmcl_VisTrace-v%s_%s.dll", VISTRACE_VE
 	return
 end
 
-if not system.IsWindows() then
-	error("VisTrace is currently only compatible with Windows, if you'd like a cross platform build to be worked on, please open an issue at https://github.com/Derpius/VisTrace/issues")
-end
-
 require("VisTrace-v" .. VISTRACE_VERSION)
 
 file.CreateDir("vistrace")
