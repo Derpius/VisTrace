@@ -983,6 +983,21 @@ return function(instance)
 			return uwrapMat(self):IoR()
 		end
 	end
+	--- Set the index of refraction of the space outside the material  
+	--- Use this to render nested dielectrics, including those underwater
+	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
+	-- @param number? ior Index of refraction to set
+	-- @return number? Index of refraction of the space outside the material
+	function bsdfmaterial_methods:outsideIoR(ior)
+		canRun()
+
+		if ior ~= nil then
+			checkLuaType(ior, TYPE_NUMBER)
+			uwrapMat(self):OutsideIoR(ior)
+		else
+			return uwrapMat(self):OutsideIoR()
+		end
+	end
 
 	--- Set the diffuse transmission amount
 	-- @src https://github.com/Derpius/VisTrace/blob/addon/lua/starfall/libs_cl/vistrace_sf.lua
