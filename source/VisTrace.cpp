@@ -997,7 +997,21 @@ LUA_FUNCTION(Material_IoR)
 	}
 
 	LUA->CheckType(2, Type::Number);
-	pMat->ior = LUA->GetNumber(2);
+	pMat->ior = glm::max(LUA->GetNumber(2), 1.);
+	return 0;
+}
+
+LUA_FUNCTION(Material_OutsideIoR)
+{
+	LUA->CheckType(1, BSDFMaterial::id);
+	BSDFMaterial* pMat = LUA->GetUserType<BSDFMaterial>(1, BSDFMaterial::id);
+	if (LUA->Top() == 1) {
+		LUA->PushNumber(pMat->outsideIoR);
+		return 1;
+	}
+
+	LUA->CheckType(2, Type::Number);
+	pMat->outsideIoR = glm::max(LUA->GetNumber(2), 1.);
 	return 0;
 }
 
@@ -1788,6 +1802,7 @@ GMOD_MODULE_OPEN()
 		PUSH_C_FUNC(Material, AnisotropicRotation);
 
 		PUSH_C_FUNC(Material, IoR);
+		PUSH_C_FUNC(Material, OutsideIoR);
 
 		PUSH_C_FUNC(Material, DiffuseTransmission);
 		PUSH_C_FUNC(Material, SpecularTransmission);

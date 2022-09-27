@@ -69,7 +69,8 @@ struct BSDFMaterial
 	glm::vec3 edgetint{ 1.f, 1.f, 1.f };
 	float     falloff = 0.2;
 
-	float ior = 1.5;
+	float ior = 1.5f;
+	float outsideIoR = 1.f;
 
 	bool roughnessOverridden = false;
 	float roughness = 1.f;

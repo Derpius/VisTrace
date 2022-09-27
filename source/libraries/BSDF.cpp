@@ -283,7 +283,7 @@ vec3 EvalSpecularReflection(const BSDFMaterial& data, const vec3& incident, cons
 	if (scattered.z < 0.f) return vec3(0.f, 0.f, 0.f);
 	if (data.roughness < kMinGGXAlpha) return vec3(0.f, 0.f, 0.f);
 
-	const float eta = data.ior; // TODO: user configurable incident IoR
+	const float eta = data.ior / data.outsideIoR;
 
 	const vec3 halfway = normalize(incident + scattered);
 	const float iDotN = incident.z;
@@ -329,7 +329,7 @@ bool SampleSpecularReflection(
 	LobeType& lobe, vec3& scattered, vec3& weight, float& pdf
 )
 {
-	const float eta = data.ior; // TODO: user configurable incident IoR
+	const float eta = data.ior / data.outsideIoR;
 
 	if (data.roughness < kMinGGXAlpha) {
 		lobe = LobeType::DeltaSpecularReflection;
@@ -510,8 +510,8 @@ vec3 EvalSpecularTransmission(
 	bool hasReflection = (data.activeLobes & (data.roughness < kMinGGXAlpha ? LobeType::DeltaSpecularReflection : LobeType::SpecularReflection)) != LobeType::None;
 	bool hasTransmission = (data.activeLobes & (data.roughness < kMinGGXAlpha ? LobeType::DeltaSpecularTransmission : LobeType::SpecularTransmission)) != LobeType::None;
 
-	const float iorI = (entering || data.thin) ? 1.f : data.ior;
-	const float iorS = (entering || data.thin) ? data.ior : 1.f;
+	const float iorI = (entering || data.thin) ? data.outsideIoR : data.ior;
+	const float iorS = (entering || data.thin) ? data.ior : data.outsideIoR;
 	const float eta = iorS / iorI;
 	const float invEta = 1.f / eta;
 
@@ -567,8 +567,8 @@ float EvalSpecularTransmissionPDF(
 	bool hasReflection = (data.activeLobes & (data.roughness < kMinGGXAlpha ? LobeType::DeltaSpecularReflection : LobeType::SpecularReflection)) != LobeType::None;
 	bool hasTransmission = (data.activeLobes & (data.roughness < kMinGGXAlpha ? LobeType::DeltaSpecularTransmission : LobeType::SpecularTransmission)) != LobeType::None;
 
-	const float iorI = (entering || data.thin) ? 1.f : data.ior;
-	const float iorS = (entering || data.thin) ? data.ior : 1.f;
+	const float iorI = (entering || data.thin) ? data.outsideIoR : data.ior;
+	const float iorS = (entering || data.thin) ? data.ior : data.outsideIoR;
 	const float eta = iorS / iorI;
 	const float invEta = 1.f / eta;
 
@@ -629,8 +629,8 @@ bool SampleSpecularTransmission(
 	LobeType& lobe, vec3& scattered, vec3& weight, float& pdf
 )
 {
-	const float iorI = (entering || data.thin) ? 1.f : data.ior;
-	const float iorS = (entering || data.thin) ? data.ior : 1.f;
+	const float iorI = (entering || data.thin) ? data.outsideIoR : data.ior;
+	const float iorS = (entering || data.thin) ? data.ior : data.outsideIoR;
 	const float eta = iorS / iorI;
 	const float invEta = 1.f / eta;
 
