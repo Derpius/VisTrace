@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <cstdlib>
 
 using namespace VisTrace;
 
@@ -281,30 +282,70 @@ bool RenderTarget::Save(const char* filename, uint8_t mip) const
 
 	const RTFormatInfo& format = RT_FORMAT_INFO[static_cast<size_t>(mFormat)];
 
-	if (format.hdr) {
-		if (out.extension() != ".hdr") out += ".hdr";
-		return stbi_write_hdr(
-			out.string().c_str(),
-			mMipDims[mip][0], mMipDims[mip][1], format.channels,
-			reinterpret_cast<const float*>(mpBuffer)
-		) != 0;
-	} else {
-		std::filesystem::path extension = out.extension();
-		if (extension == ".bmp")
-			return stbi_write_bmp(out.string().c_str(), mMipDims[mip][0], mMipDims[mip][1], format.channels, mpBuffer) != 0;
-		if (extension == ".tga")
-			return stbi_write_tga(out.string().c_str(), mMipDims[mip][0], mMipDims[mip][1], format.channels, mpBuffer) != 0;
-		if (extension == ".jpg")
-			return stbi_write_jpg(out.string().c_str(), mMipDims[mip][0], mMipDims[mip][1], format.channels, mpBuffer, 90) != 0;
-
-		if (out.extension() != ".png") out += ".png";
-		return stbi_write_png(
-			out.string().c_str(),
-			mMipDims[mip][0], mMipDims[mip][1], format.channels,
-			mpBuffer,
-			format.stride * format.channels * mMipDims[mip][0]
-		) != 0;
+	std::filesystem::path extension = out.extension();
+	if (
+		extension != ".png" &&
+		extension != ".hdr" &&
+		extension != ".jpg" &&
+		extension != ".bmp" &&
+		extension != ".tga"
+	) {
+		extension = format.hdr ? ".hdr" : ".png";
+		out += extension;
 	}
+
+	if (extension == ".hdr") {
+		float* buf = reinterpret_cast<float*>(mpBuffer + mMipOffsets[mip]);
+		if (!format.hdr) {
+			buf = static_cast<float*>(malloc(mMipDims[mip][0] * mMipDims[mip][1] * format.channels * sizeof(float)));
+			if (buf == nullptr) return false; // failed to allocate
+
+			#pragma omp parallel for
+			for (size_t ptr = 0; ptr < mMipDims[mip][0] * mMipDims[mip][1] * format.channels; ptr++) {
+				buf[ptr] = static_cast<float>(mpBuffer[mMipOffsets[mip] + ptr]) / 255.f;
+			}
+		}
+
+		bool success = stbi_write_hdr(
+			out.string().c_str(),
+			mMipDims[mip][0], mMipDims[mip][1], format.channels,
+			buf
+		) != 0;
+
+		if (!format.hdr) free(buf);
+		return success;
+	}
+
+	uint8_t* buf = mpBuffer + mMipOffsets[mip];
+	if (format.hdr) {
+		buf = static_cast<uint8_t*>(malloc(mMipDims[mip][0] * mMipDims[mip][1] * format.channels));
+		if (buf == nullptr) return false; // failed to allocate
+
+		const float* mpBufferFlt = reinterpret_cast<float*>(mpBuffer + mMipOffsets[mip]);
+
+		#pragma omp parallel for
+		for (size_t ptr = 0; ptr < mMipDims[mip][0] * mMipDims[mip][1] * format.channels; ptr++) {
+			buf[ptr] = std::clamp(mpBufferFlt[ptr] * 255.f, 0.f, 255.f);
+		}
+	}
+
+	bool success = false;
+	if (extension == ".bmp")
+		success = stbi_write_bmp(out.string().c_str(), mMipDims[mip][0], mMipDims[mip][1], format.channels, buf) != 0;
+	if (extension == ".tga")
+		success = stbi_write_tga(out.string().c_str(), mMipDims[mip][0], mMipDims[mip][1], format.channels, buf) != 0;
+	if (extension == ".jpg")
+		success = stbi_write_jpg(out.string().c_str(), mMipDims[mip][0], mMipDims[mip][1], format.channels, buf, 90) != 0;
+	else
+		success = stbi_write_png(
+			out.string().c_str(),
+			mMipDims[mip][0], mMipDims[mip][1], format.channels,
+			buf,
+			format.channels * mMipDims[mip][0]
+		) != 0;
+
+	if (format.hdr) free(buf);
+	return success;
 }
 
 bool RenderTarget::Load(const char* filename, bool createMips)
