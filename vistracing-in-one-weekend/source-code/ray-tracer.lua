@@ -17,7 +17,6 @@ hdri:SetAngles(Angle(0, -100, 0))
 local sampler = vistrace.CreateSampler()
 
 local hdr = vistrace.CreateRenderTarget(RESX, RESY, VisTraceRTFormat.RGBFFF)
-local srgb = vistrace.CreateRenderTarget(RESX, RESY, VisTraceRTFormat.RGB888)
 
 local camScaleVertical = 0.5 * SENSOR_HEIGHT / FOCAL_LENGTH
 local camScaleHorizontal = RESX / RESY * camScaleVertical
@@ -168,7 +167,6 @@ end
 
 local y = 0
 local setup = true
-local postprocess = false
 hook.Add("HUDPaint", "VisTracer", function()
 	if y < RESY then
 		render.PushRenderTarget(rt)
@@ -178,21 +176,8 @@ hook.Add("HUDPaint", "VisTracer", function()
 		end
 
 		for x = 0, RESX - 1 do
-			local rgb
-			if postprocess then
-				rgb = hdr:GetPixel(x, y)
-
-				-- Perform custom per-pixel post processing
-				local gamma = 1 / 2.2
-				for i = 1, 3 do
-					rgb[i] = math.pow(rgb[i], gamma)
-				end
-
-				srgb:SetPixel(x, y, rgb)
-			else
-				rgb = TracePixel(x, y)
-				hdr:SetPixel(x, y, rgb)
-			end
+			local rgb = TracePixel(x, y)
+			hdr:SetPixel(x, y, rgb)
 
 			render.SetViewPort(x, y, 1, 1)
 			render.Clear(
@@ -207,15 +192,8 @@ hook.Add("HUDPaint", "VisTracer", function()
 		y = y + 1
 
 		if y >= RESY then
-			if postprocess then
-				srgb:Save("render.png")
-			else
-				y = 0
-				postprocess = true
-
-				-- Call full image post processing methods
-				hdr:Tonemap()
-			end
+			hdr:Tonemap()
+			hdr:Save("render.png")
 		end
 	end
 

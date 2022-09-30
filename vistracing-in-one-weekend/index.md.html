@@ -1641,13 +1641,13 @@ Post Processing
 
 The last feature we'll add to our ray tracer is post processing. This is a good cooldown after the fairly maths heavy section on refraction.
 
-At the moment we're rendering our raw HDR render data out to the screen using a clamp, however the proper way to convert HDR to a standard monitor's sRGB colour space is to perform tonemapping and gamma correction.
+At the moment we're rendering our raw HDR render data out to the screen using a clamp, however the proper way to convert HDR to a standard monitor's sRGB colour space is to perform tonemapping and linear to sRGB conversion.
 
 These are both post processing steps as they're applied after we render the scene. A few other examples are FXAA, upscaling, and denoising.
 
-We could implement some of these with relative ease in Lua, however VisTrace provides a custom render target class that has various methods including ACES fitted tonemapping and saving to disk. In addition, VisTrace extensions can add more render target methods to provide extended functionality ([like denoising](https://github.com/yogwoggf/gmdenoiser)).
+We could implement some of these with relative ease in Lua, however VisTrace provides a custom render target class that has various methods including ACES fitted tonemapping (with simple auto exposure and linear to sRGB conversion) and saving to disk. In addition, VisTrace extensions can add more render target methods to provide extended functionality [like denoising](https://github.com/yogwoggf/gmdenoiser).
 
-To start we'll create two new render targets, one to store the HDR render data and one to store the final sRGB output for saving to PNG
+To start we'll create a VisTrace RT to write our linear HDR data to
 
 ~~~ lua
 ----------------
@@ -1660,19 +1660,16 @@ local sampler = vistrace.CreateSampler()
 
 ~~~ lua highlight
 local hdr = vistrace.CreateRenderTarget(RESX, RESY, VisTraceRTFormat.RGBFFF)
-local srgb = vistrace.CreateRenderTarget(RESX, RESY, VisTraceRTFormat.RGB888)
 ~~~ lua
 
 ...
 ~~~
 
-Then we'll add another flag to determine when to perform post processing, and switch between rendering and post processing in the pixel draw loop depending on that state
+Then we'll write the vector returned by `TracePixel` to our new RT, and save the RT to disk when we finish rendering the image
+
 ~~~ lua
 local y = 0
 local setup = true
-~~~ lua highlight
-local postprocess = false
-~~~ lua
 hook.Add("HUDPaint", "VisTracer", function()
 	if y < RESY then
 		render.PushRenderTarget(rt)
@@ -1682,20 +1679,9 @@ hook.Add("HUDPaint", "VisTracer", function()
 		end
 
 		for x = 0, RESX - 1 do
-			~~~ lua delete
 			local rgb = TracePixel(x, y)
 			~~~ lua highlight
-			local rgb
-			if postprocess then
-				rgb = hdr:GetPixel(x, y)
-
-				-- Perform custom per-pixel post processing
-
-				srgb:SetPixel(x, y, rgb)
-			else
-				rgb = TracePixel(x, y)
-				hdr:SetPixel(x, y, rgb)
-			end
+			hdr:SetPixel(x, y, rgb)
 			~~~ lua
 
 			render.SetViewPort(x, y, 1, 1)
@@ -1713,14 +1699,7 @@ hook.Add("HUDPaint", "VisTracer", function()
 
 		~~~ lua highlight
 		if y >= RESY then
-			if postprocess then
-				srgb:Save("render.png")
-			else
-				y = 0
-				postprocess = true
-
-				-- Call full image post processing methods
-			end
+			hdr:Save("render.png")
 		end
 		~~~ lua
 	end
@@ -1730,43 +1709,13 @@ hook.Add("HUDPaint", "VisTracer", function()
 end)
 ~~~
 
-This renders the image and displays the raw data as a preview, then switches to post processing at the end copying every pixel to the `RGB888` render target for saving to PNG, before finally saving the sRGB RT to disk as `render.png`.
-
-Now we can drop in both tonemapping and gamma correction with ease
-
-~~~ lua
-			local rgb
-			if postprocess then
-				rgb = hdr:GetPixel(x, y)
-
-				-- Perform custom per-pixel post processing
-				~~~ lua highlight
-				local gamma = 1 / 2.2
-				for i = 1, 3 do
-					rgb[i] = math.pow(rgb[i], gamma)
-				end
-				~~~ lua
-
-				srgb:SetPixel(x, y, rgb)
-			else
-				rgb = TracePixel(x, y)
-				hdr:SetPixel(x, y, rgb)
-			end
-~~~
+Now we can add a call to `Tonemap` before we save the image. I'm passing `true` to enable auto exposure here, and you can pass a number to the second parameter to set an exposure offset giving you some minimal level of control.
 
 ~~~ lua
 		if y >= RESY then
-			if postprocess then
-				srgb:Save("render.png")
-			else
-				y = 0
-				postprocess = true
-
-				-- Call full image post processing methods
-				~~~ lua highlight
-				hdr:Tonemap()
-				~~~ lua
-			end
+			~~~ lua highlight
+			hdr:Tonemap(true)
+			hdr:Save("render.png")
 		end
 ~~~
 
@@ -1775,7 +1724,7 @@ Now we can drop in both tonemapping and gamma correction with ease
 Conclusion
 ----------
 
-223 lines later and we have a fairly complete ray tracer showcasing conductive reflection and specular reflection transmission, in addition to sampled diffuse direct lighting that could be expanded to point, distant, and area lights with ease.
+200 lines later and we have a fairly complete ray tracer showcasing conductive specular reflection and specular reflection transmission, in addition to sampled diffuse direct lighting that could be expanded to point, distant, and area lights with ease.
 
 At this point you should have a grasp on the core concepts of light transport, as well as being more comfortable with implementing mathematical equations in code. You may also want to re-read everything up to this point to review anything you might not have understood on the first pass.
 
