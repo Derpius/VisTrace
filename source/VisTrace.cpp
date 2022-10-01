@@ -17,6 +17,8 @@
 #include "HDRI.h"
 #include "Tonemapper.h"
 
+#include "ResourceCache.h"
+
 using namespace GarrysMod::Lua;
 using namespace VisTrace;
 
@@ -1906,5 +1908,6 @@ GMOD_MODULE_OPEN()
 GMOD_MODULE_CLOSE()
 {
 	if (g_pWorld != nullptr) delete g_pWorld;
+	ResourceCache::Clear();
 	return 0;
 }

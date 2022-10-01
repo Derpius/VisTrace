@@ -40,6 +40,8 @@ add_library(
 
 	"source/libraries/BSDF.cpp"
 	"source/libraries/Tonemapper.cpp"
+
+	"source/libraries/ResourceCache.cpp"
 )
 
 target_include_directories(

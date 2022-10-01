@@ -317,8 +317,6 @@ public:
 
 	std::vector<Entity> entities;
 
-	std::unordered_map<std::string, const VisTrace::IVTFTexture*> textureCache;
-
 	std::unordered_map<std::string, size_t> materialIds;
 	std::vector<Material> materials;
 
@@ -341,8 +339,6 @@ private:
 	std::vector<Triangle> mTriangles;
 
 	std::vector<Entity> mEntities;
-
-	std::unordered_map<std::string, const VisTrace::IVTFTexture*> mTextureCache;
 
 	std::unordered_map<std::string, size_t> mMaterialIds;
 	std::vector<Material> mMaterials;

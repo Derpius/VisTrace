@@ -7,6 +7,8 @@
 
 #include "TraceResult.h"
 
+#include "ResourceCache.h"
+
 #include "bvh/locally_ordered_clustering_builder.hpp"
 #include "bvh/leaf_collapser.hpp"
 
@@ -51,26 +53,6 @@ glm::vec3 TransformToBone(
 	return glm::vec3(final);
 }
 
-const IVTFTexture* CacheTexture(
-	const std::string& path,
-	std::unordered_map<std::string, const IVTFTexture*>& cache,
-	const IVTFTexture* fallback = nullptr
-)
-{
-	if (cache.find(path) != cache.end()) return cache[path];
-
-	if (!path.empty()) {
-		const IVTFTexture* pTexture = new VTFTextureWrapper(path);
-		if (pTexture->IsValid()) {
-			cache.emplace(path, pTexture);
-			return pTexture;
-		}
-		delete pTexture;
-	}
-
-	return fallback;
-}
-
 World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 {
 	std::string path = "maps/" + mapName + ".bsp";
@@ -94,29 +76,19 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 	}
 
 	triangles = std::vector<Triangle>();
-
 	entities = std::vector<Entity>();
-
-	textureCache = std::unordered_map<std::string, const IVTFTexture*>();
-
 	materials = std::vector<Material>();
 
 	{
-		const IVTFTexture* pTexture = new VTFTextureWrapper(MISSING_TEXTURE);
-		if (!pTexture->IsValid()) {
+		const IVTFTexture* pTexture = ResourceCache::GetTexture(MISSING_TEXTURE);
+		if (pTexture == nullptr) {
 			delete pTexture;
 			delete pMap;
 			pMap = nullptr;
 			return;
 		}
-		textureCache.emplace(MISSING_TEXTURE, pTexture);
 
-		pTexture = new VTFTextureWrapper(WATER_BASE_TEXTURE);
-		if (pTexture->IsValid()) {
-			textureCache.emplace(WATER_BASE_TEXTURE, pTexture);
-		} else {
-			delete pTexture;
-		}
+		ResourceCache::GetTexture(WATER_BASE_TEXTURE);
 	}
 
 	const glm::vec3* vertices = reinterpret_cast<const glm::vec3*>(pMap->GetVertices());
@@ -156,9 +128,6 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 		} catch (std::out_of_range e) {
 			delete pMap;
 			pMap = nullptr;
-			for (auto& [key, element] : textureCache) {
-				delete element;
-			}
 			LUA->ThrowError(e.what());
 		}
 
@@ -170,9 +139,6 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			if (!LUA->IsType(-1, Type::Material)) {
 				delete pMap;
 				pMap = nullptr;
-				for (auto& [key, element] : textureCache) {
-					delete element;
-				}
 				LUA->ThrowError("Invalid material on world");
 			}
 
@@ -199,16 +165,16 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 				mat.detailPath = GetMaterialString(sourceMaterial, "$detail");
 
-				mat.baseTexture = CacheTexture(mat.baseTexPath, textureCache, textureCache[MISSING_TEXTURE]);
-				mat.normalMap = CacheTexture(mat.normalMapPath, textureCache);
-				if (!mat.baseTexPath.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + mat.baseTexPath + "_mrao", textureCache);
+				mat.baseTexture = ResourceCache::GetTexture(mat.baseTexPath, MISSING_TEXTURE);
+				mat.normalMap = ResourceCache::GetTexture(mat.normalMapPath);
+				if (!mat.baseTexPath.empty()) mat.mrao = ResourceCache::GetTexture("vistrace/pbr/" + mat.baseTexPath + "_mrao");
 
-				mat.baseTexture2 = CacheTexture(mat.baseTexPath2, textureCache);
-				mat.normalMap2 = CacheTexture(mat.normalMapPath2, textureCache);
-				if (!mat.baseTexPath2.empty()) mat.mrao2 = CacheTexture("vistrace/pbr/" + mat.baseTexPath2 + "_mrao", textureCache);
+				mat.baseTexture2 = ResourceCache::GetTexture(mat.baseTexPath2);
+				mat.normalMap2 = ResourceCache::GetTexture(mat.normalMapPath2);
+				if (!mat.baseTexPath2.empty()) mat.mrao2 = ResourceCache::GetTexture("vistrace/pbr/" + mat.baseTexPath2 + "_mrao");
 
-				mat.blendTexture = CacheTexture(mat.blendTexPath, textureCache);
-				mat.detail = CacheTexture(mat.detailPath, textureCache);
+				mat.blendTexture = ResourceCache::GetTexture(mat.blendTexPath);
+				mat.detail = ResourceCache::GetTexture(mat.detailPath);
 
 				IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
 				if (basetexturetransform) {
@@ -293,11 +259,9 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				// Or if it's even available in gmod's engine version, but here just in case
 				mat.baseTexPath = GetMaterialString(sourceMaterial, "$basetexture");
 
-				mat.baseTexture = CacheTexture(
-					mat.baseTexPath, textureCache,
-					(textureCache.find(WATER_BASE_TEXTURE) == textureCache.end()) ? textureCache[MISSING_TEXTURE] : textureCache[WATER_BASE_TEXTURE]
-				);
-				mat.normalMap = CacheTexture(mat.normalMapPath, textureCache);
+				mat.baseTexture = ResourceCache::GetTexture(mat.baseTexPath, WATER_BASE_TEXTURE);
+				if (mat.baseTexture == nullptr) mat.baseTexture = ResourceCache::GetTexture(MISSING_TEXTURE);
+				mat.normalMap = ResourceCache::GetTexture(mat.normalMapPath);
 			}
 
 			IMaterialVar* flags = GetMaterialVar(sourceMaterial, "$flags");
@@ -540,10 +504,10 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				mat.normalMapPath = GetMaterialString(sourceMaterial, "$bumpmap");
 				mat.detailPath = GetMaterialString(sourceMaterial, "$detail");
 
-				mat.baseTexture = CacheTexture(mat.baseTexPath, textureCache, textureCache[MISSING_TEXTURE]);
-				mat.normalMap = CacheTexture(mat.normalMapPath, textureCache);
-				mat.detail = CacheTexture(mat.detailPath, textureCache);
-				if (!mat.baseTexPath.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + mat.baseTexPath + "_mrao", textureCache);
+				mat.baseTexture = ResourceCache::GetTexture(mat.baseTexPath, MISSING_TEXTURE);
+				mat.normalMap = ResourceCache::GetTexture(mat.normalMapPath);
+				mat.detail = ResourceCache::GetTexture(mat.detailPath);
+				if (!mat.baseTexPath.empty()) mat.mrao = ResourceCache::GetTexture("vistrace/pbr/" + mat.baseTexPath + "_mrao");
 
 				IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
 				if (basetexturetransform) {
@@ -619,9 +583,6 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 World::~World()
 {
 	if (pMap != nullptr) delete pMap;
-	for (auto& [key, element] : textureCache) {
-		delete element;
-	}
 }
 
 bool World::IsValid() const
@@ -639,8 +600,6 @@ AccelStruct::AccelStruct()
 
 	mEntities = std::vector<Entity>();
 
-	mTextureCache = std::unordered_map<std::string, const IVTFTexture*>();
-
 	mMaterialIds = std::unordered_map<std::string, size_t>();
 	mMaterials = std::vector<Material>();
 }
@@ -650,10 +609,6 @@ AccelStruct::~AccelStruct()
 	if (mAccelBuilt) {
 		delete mpIntersector;
 		delete mpTraverser;
-	}
-	for (const auto& [key, val] : mTextureCache) {
-		if (mpWorld != nullptr && mpWorld->textureCache.find(key) != mpWorld->textureCache.end()) continue;
-		delete val;
 	}
 }
 
@@ -669,34 +624,19 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 	}
 
 	// Redefine containers
-	for (const auto& [key, val] : mTextureCache) {
-		if (mpWorld != nullptr && mpWorld->textureCache.find(key) != mpWorld->textureCache.end()) continue;
-		delete val;
-	}
+	mTriangles.clear();
 
-	mTriangles.erase(mTriangles.begin(), mTriangles.end());
+	mEntities.clear();
 
-	mEntities.erase(mEntities.begin(), mEntities.end());
-
-	mTextureCache.erase(mTextureCache.begin(), mTextureCache.end());
-
-	mMaterialIds.erase(mMaterialIds.begin(), mMaterialIds.end());
-	mMaterials.erase(mMaterials.begin(), mMaterials.end());
+	mMaterialIds.clear();
+	mMaterials.clear();
 
 	if (mpWorld != nullptr) {
 		mTriangles = mpWorld->triangles;
 		mEntities = mpWorld->entities;
-		mTextureCache = mpWorld->textureCache;
 		mMaterials = mpWorld->materials;
-	} else {
-		{
-			const IVTFTexture* pTexture = new VTFTextureWrapper(MISSING_TEXTURE);
-			if (!pTexture->IsValid()) {
-				delete pTexture;
-				LUA->ThrowError("Failed to read missing texture");
-			}
-			mTextureCache.emplace(MISSING_TEXTURE, pTexture);
-		}
+	} else if (ResourceCache::GetTexture(MISSING_TEXTURE) == nullptr) {
+		LUA->ThrowError("Failed to read missing texture");
 	}
 
 	// Iterate over entities
@@ -1022,10 +962,10 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				mat.normalMapPath = GetMaterialString(sourceMaterial, "$bumpmap");
 				mat.detailPath = GetMaterialString(sourceMaterial, "$detail");
 
-				mat.baseTexture = CacheTexture(mat.baseTexPath, mTextureCache, mTextureCache[MISSING_TEXTURE]);
-				mat.normalMap = CacheTexture(mat.normalMapPath, mTextureCache);
-				mat.detail = CacheTexture(mat.detailPath, mTextureCache);
-				if (!mat.baseTexPath.empty()) mat.mrao = CacheTexture("vistrace/pbr/" + mat.baseTexPath + "_mrao", mTextureCache);
+				mat.baseTexture = ResourceCache::GetTexture(mat.baseTexPath, MISSING_TEXTURE);
+				mat.normalMap = ResourceCache::GetTexture(mat.normalMapPath);
+				mat.detail = ResourceCache::GetTexture(mat.detailPath);
+				if (!mat.baseTexPath.empty()) mat.mrao = ResourceCache::GetTexture("vistrace/pbr/" + mat.baseTexPath + "_mrao");
 
 				IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
 				if (basetexturetransform) {
