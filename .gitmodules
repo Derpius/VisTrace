@@ -20,3 +20,6 @@
 [submodule "libs/GMFS"]
 	path = libs/GMFS
 	url = https://github.com/Derpius/GMFS.git
+[submodule "libs/MDLParser"]
+	path = libs/MDLParser
+	url = https://github.com/Derpius/MDLParser.git

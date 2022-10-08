@@ -20,6 +20,7 @@ endif()
 add_subdirectory("libs/glm")
 add_subdirectory("libs/BSPParser")
 add_subdirectory("libs/VTFParser")
+add_subdirectory("libs/MDLParser")
 add_subdirectory("libs/GMFS")
 
 set(BINARY_NAME gmcl_${PROJECT_NAME}-v${VISTRACE_API_VERSION}_${BINARY_SUFFIX})
@@ -34,6 +35,8 @@ add_library(
 	"source/objects/RenderTarget.cpp"
 	"source/objects/HDRI.cpp"
 	"source/objects/VTFTexture.cpp"
+
+	"source/objects/Model.cpp"
 
 	"source/objects/TraceResult.cpp"
 	"source/objects/AccelStruct.cpp"
@@ -54,6 +57,7 @@ target_include_directories(
 
 	"libs/BSPParser"
 	"libs/VTFParser"
+	"libs/MDLParser"
 	"libs/GMFS"
 
 	"libs/bvh/include"
@@ -73,10 +77,11 @@ endif()
 
 target_link_libraries(
 	${BINARY_NAME} PRIVATE
-	BSPParser
 	bvh
 	glm
+	BSPParser
 	VTFParser
+	MDLParser
 	GMFS
 )
 

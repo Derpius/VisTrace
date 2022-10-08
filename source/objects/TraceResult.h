@@ -74,7 +74,7 @@ public:
 	TraceResult(
 		const glm::vec3& direction, float distance,
 		float coneWidth, float coneAngle,
-		const Triangle& tri, const TriangleData& triData,
+		const Triangle& tri,
 		const glm::vec2& uv,
 		const Entity& ent, const Material mat
 	);

@@ -45,7 +45,7 @@ vec4 TextureCombine(
 TraceResult::TraceResult(
 	const vec3& direction, float distance,
 	float coneWidth, float coneAngle,
-	const Triangle& tri, const TriangleData& triData,
+	const Triangle& tri,
 	const vec2& uv,
 	const Entity& ent, const Material mat
 ) :
@@ -53,7 +53,7 @@ TraceResult::TraceResult(
 	coneWidth(coneWidth), coneAngle(coneAngle), lodOffset(tri.lod), mipOverride(coneWidth < 0.f || coneAngle <= 0.f),
 	material(mat)
 {
-	if (triData.ignoreNormalMap) {
+	if (tri.ignoreNormalMap) {
 		material.normalMap = nullptr;
 		material.normalMap2 = nullptr;
 	}
@@ -61,10 +61,10 @@ TraceResult::TraceResult(
 	wo = -direction;
 
 	for (int i = 0; i < 3; i++) {
-		vN[i] = triData.normals[i];
-		vT[i] = triData.tangents[i];
-		vB[i] = triData.binormals[i];
-		vUV[i] = triData.uvs[i];
+		vN[i] = tri.normals[i];
+		vT[i] = tri.tangents[i];
+		vB[i] = cross(vT[i], vN[i]);
+		vUV[i] = tri.uvs[i];
 	}
 
 	v[0] = vec3(tri.p0[0], tri.p0[1], tri.p0[2]);
@@ -75,12 +75,12 @@ TraceResult::TraceResult(
 	uvw = vec3(uv, 1.f - uv[0] - uv[1]);
 	geometricNormal = vec3(tri.nNorm[0], tri.nNorm[1], tri.nNorm[2]);
 
-	blendFactor = uvw.z * triData.alphas[0] + uvw.x * triData.alphas[1] + uvw.y * triData.alphas[2];
+	blendFactor = uvw.z * tri.alphas[0] + uvw.x * tri.alphas[1] + uvw.y * tri.alphas[2];
 	texUV = uvw[2] * vUV[0] + uvw[0] * vUV[1] + uvw[1] * vUV[2];
 
 	entIdx = ent.id;
 	rawEnt = ent.rawEntity;
-	submatIdx = triData.submatIdx;
+	submatIdx = tri.material;
 
 	albedo = ent.colour * material.colour;
 	alpha = ent.colour.a * material.colour.a;
