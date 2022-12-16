@@ -4,17 +4,14 @@ if SERVER then
 	AddCSLuaFile()
 
 	CreateConVar(
-		"vistrace_version", VISTRACE_VERSION, FCVAR_NOTIFY,
+		"vistrace_version",
+		VISTRACE_VERSION,
+		FCVAR_NOTIFY,
 		"The VisTrace addon's API version. This is used to find VisTrace servers from the master server and should not be edited"
 	)
 
 	return
 end
-
---[[
-	https://github.com/Derpius/VisTrace/issues/13
-	pcall(require, "VisTrace-v0.4") -- Don't throw an error if the module failed to load
-]]
 
 local suffix = "win" .. (jit.arch == "x86" and "32" or "64")
 if system.IsLinux() then
@@ -23,12 +20,18 @@ elseif system.IsOSX() then
 	suffix = "osx"
 end
 
-if not file.Exists(string.format("lua/bin/gmcl_VisTrace-v%s_%s.dll", VISTRACE_VERSION, suffix), "GAME") then
-	print("The VisTrace binary module is not installed for this GMod architecture or your operating system\nGet it here: https://www.github.com/Derpius/VisTrace")
-
-	notification.AddLegacy(
-		"The VisTrace binary module is not installed for this GMod architecture or your operating system\nGet it here: https://www.github.com/Derpius/VisTrace",
-		NOTIFY_ERROR, 10
+if
+	not file.Exists(
+		string.format(
+			"lua/bin/gmcl_VisTrace-v%s_%s.dll",
+			VISTRACE_VERSION,
+			suffix
+		),
+		"GAME"
+	)
+then
+	print(
+		"The VisTrace binary module is not installed for this GMod architecture or your operating system\nGet it here: https://www.github.com/Derpius/VisTrace"
 	)
 
 	return
