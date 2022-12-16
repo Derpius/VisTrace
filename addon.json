@@ -6,8 +6,12 @@
 		"*.git*",
 		"*.md",
 		"*LICENSE",
-		"*.gitignore",
+		".gitignore",
 		"*.bat",
-		"Release*"
+		"Release*",
+		".gitattributes",
+		"*.toml",
+		".editorconfig",
+		".gitmodules"
 	]
 }
