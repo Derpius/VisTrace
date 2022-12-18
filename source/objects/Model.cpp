@@ -6,6 +6,8 @@
 #include <new>
 #include <string>
 
+#include "glm/gtx/compatibility.hpp"
+
 Mesh::Mesh(
 	const BodyGroup* pBodygroup,
 	const MDLStructs::Model* pModel, const VTXStructs::Model* pVTXModel
@@ -82,8 +84,15 @@ Mesh::Mesh(
 						tri.alphas[0] = tri.alphas[1] = tri.alphas[2] = 0.f;
 
 						for (int j = 0; j < 3; j++) {
-							tri.normals[j] = glm::vec3(verts[j]->normal.x, verts[j]->normal.y, verts[j]->normal.z);
-							tri.tangents[j] = glm::vec3(tangents[j]->x, tangents[j]->y, tangents[j]->z);
+							tri.normals[j] = glm::normalize(glm::vec3(verts[j]->normal.x, verts[j]->normal.y, verts[j]->normal.z));
+							if (!glm::all(glm::isfinite(tri.tangents[j]))) {
+								tri.normals[j] = glm::vec3(tri.nNorm[0], tri.nNorm[1], tri.nNorm[2]);
+							}
+
+							tri.tangents[j] = glm::normalize(glm::vec3(tangents[j]->x, tangents[j]->y, tangents[j]->z));
+							if (!glm::all(glm::isfinite(tri.tangents[j]))) {
+								tri.tangents[j] = glm::normalize(glm::vec3(tri.e1[0], tri.e1[1], tri.e1[2]));
+							}
 
 							tri.uvs[j] = glm::vec2(verts[j]->texCoord.x, verts[j]->texCoord.y);
 
