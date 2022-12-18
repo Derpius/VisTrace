@@ -19,7 +19,7 @@ private:
 	int32_t mNumTris = 0U;
 	Triangle* mpTris = nullptr;
 
-	const BodyGroup* mpBodygroup;
+	const BodyGroup* mpBodygroup = nullptr;
 
 public:
 	Mesh(const BodyGroup* pBodygroup, const MDLStructs::Model* pModel, const VTXStructs::Model* pVTXModel);
@@ -42,7 +42,7 @@ private:
 	int32_t mNumMeshes = 0U;
 	Mesh** mpMeshes = nullptr;
 
-	const Model* mpModel;
+	const Model* mpModel = nullptr;
 
 public:
 	BodyGroup(const Model* pModel, const MDLStructs::BodyPart* pBodypart, const VTXStructs::BodyPart* pVTXBodypart);
@@ -61,8 +61,8 @@ class Model
 private:
 	struct MaterialPath
 	{
-		const char* directory;
-		const char* name;
+		const char* directory = nullptr;
+		const char* name = nullptr;
 	};
 
 	bool mIsValid = false;
@@ -73,7 +73,7 @@ private:
 	MDL mMDL;
 
 	MaterialPath* mpMaterialPaths = nullptr;
-	glm::mat4* mpBindMatrices;
+	glm::mat4* mpBindMatrices = nullptr;
 
 public:
 	Model(const std::string& path);

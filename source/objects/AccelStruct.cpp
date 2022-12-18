@@ -63,6 +63,123 @@ Vector3 TransformToBone(
 	return Vector3(tmp.x, tmp.y, tmp.z);
 }
 
+void SkinTriangle(Triangle& tri, const std::vector<glm::mat4>& bones, const std::vector<glm::mat4>& binds)
+{
+	Vector3 vertexPositions[3] = {
+					tri.p0,
+					tri.p0 - tri.e1,
+					tri.p0 + tri.e2
+	};
+
+	for (int vertIdx = 0; vertIdx < 3; vertIdx++) {
+		vertexPositions[vertIdx] = TransformToBone(
+			vertexPositions[vertIdx],
+			bones, binds,
+			tri.numBones[vertIdx], tri.weights[vertIdx], tri.boneIds[vertIdx]
+		);
+
+		tri.normals[vertIdx] = TransformToBone(
+			tri.normals[vertIdx],
+			bones, binds,
+			tri.numBones[vertIdx], tri.weights[vertIdx], tri.boneIds[vertIdx],
+			true
+		);
+
+		tri.tangents[vertIdx] = TransformToBone(
+			tri.tangents[vertIdx],
+			bones, binds,
+			tri.numBones[vertIdx], tri.weights[vertIdx], tri.boneIds[vertIdx],
+			true
+		);
+	}
+
+	tri.p0 = vertexPositions[0];
+	tri.e1 = vertexPositions[0] - vertexPositions[1];
+	tri.e2 = vertexPositions[2] - vertexPositions[0];
+
+	tri.ComputeNormalAndLoD();
+}
+
+void SkinTriangle(Triangle& tri, const glm::mat4 bone, glm::mat4 bind)
+{
+	std::vector<glm::mat4> bones{ bone };
+	std::vector<glm::mat4> binds{ bind };
+	SkinTriangle(tri, bones, binds);
+}
+
+Material ReadEntityMaterial(IMaterial* sourceMaterial, const std::string& materialPath)
+{
+	Material mat{};
+	mat.path = materialPath;
+	mat.maskedBlending = false;
+
+	mat.baseTexPath = GetMaterialString(sourceMaterial, "$basetexture");
+	mat.normalMapPath = GetMaterialString(sourceMaterial, "$bumpmap");
+	mat.detailPath = GetMaterialString(sourceMaterial, "$detail");
+
+	mat.baseTexture = ResourceCache::GetTexture(mat.baseTexPath, MISSING_TEXTURE);
+	mat.normalMap = ResourceCache::GetTexture(mat.normalMapPath);
+	mat.detail = ResourceCache::GetTexture(mat.detailPath);
+	if (!mat.baseTexPath.empty()) mat.mrao = ResourceCache::GetTexture("vistrace/pbr/" + mat.baseTexPath + "_mrao");
+
+	IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
+	if (basetexturetransform) {
+		const VMatrix pMat = basetexturetransform->GetMatrixValue();
+		mat.baseTexMat = pMat.To2x4();
+	}
+
+	IMaterialVar* bumptransform = GetMaterialVar(sourceMaterial, "$bumptransform");
+	if (bumptransform) {
+		const VMatrix pMat = bumptransform->GetMatrixValue();
+		mat.normalMapMat = pMat.To2x4();
+	}
+
+	IMaterialVar* detailtexturetransform = GetMaterialVar(sourceMaterial, "$detailtexturetransform");
+	if (detailtexturetransform) {
+		const VMatrix pMat = detailtexturetransform->GetMatrixValue();
+		mat.detailMat = pMat.To2x4();
+	}
+
+	IMaterialVar* detailscale = GetMaterialVar(sourceMaterial, "$detailscale");
+	if (detailscale) {
+		mat.detailScale = detailscale->GetFloatValue();
+	}
+
+	IMaterialVar* detailblendfactor = GetMaterialVar(sourceMaterial, "$detailblendfactor");
+	if (detailblendfactor) {
+		mat.detailBlendFactor = detailblendfactor->GetFloatValue();
+	}
+
+	IMaterialVar* detailblendmode = GetMaterialVar(sourceMaterial, "$detailblendmode");
+	if (detailblendmode) {
+		mat.detailBlendMode = static_cast<DetailBlendMode>(detailblendmode->GetIntValue());
+	}
+
+	IMaterialVar* detailtint = GetMaterialVar(sourceMaterial, "$detailtint");
+	if (detailtint) {
+		float values[3];
+		detailtint->GetVecValue(values, 3);
+		mat.detailTint = glm::vec3(values[0], values[1], values[2]);
+	}
+
+	IMaterialVar* detail_ambt = GetMaterialVar(sourceMaterial, "$detail_alpha_mask_base_texture");
+	if (detail_ambt) {
+		mat.detailAlphaMaskBaseTexture = detail_ambt->GetIntValue() != 0;
+	}
+
+	IMaterialVar* flags = GetMaterialVar(sourceMaterial, "$flags");
+	if (flags) {
+		mat.flags = static_cast<MaterialFlags>(flags->GetIntValue());
+	}
+
+	IMaterialVar* alphatestreference = GetMaterialVar(sourceMaterial, "$alphatestreference");
+	if (alphatestreference) {
+		mat.alphatestreference = alphatestreference->GetFloatValue();
+	}
+
+	return mat;
+}
+
 World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 {
 	std::string path = "maps/" + mapName + ".bsp";
@@ -114,7 +231,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 	world.colour = glm::vec4(1, 1, 1, 1);
 	world.materials = std::vector<size_t>();
 
-	LUA->PushSpecial(SPECIAL_GLOB);
+	LUA->PushSpecial(SPECIAL_GLOB); // _G
 	auto submatIds = std::unordered_map<std::string, size_t>();
 
 	triangles.reserve(pMap->GetNumTris());
@@ -134,9 +251,9 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 		const std::string strPath = tex.path;
 		if (materialIds.find(strPath) == materialIds.end()) {
-			LUA->GetField(-1, "Material");
-			LUA->PushString(tex.path);
-			LUA->Call(1, 1);
+			LUA->GetField(-1, "Material"); // _G Material
+			LUA->PushString(tex.path); // _G Material string
+			LUA->Call(1, 1); // _G IMaterial
 			if (!LUA->IsType(-1, Type::Material)) {
 				delete pMap;
 				pMap = nullptr;
@@ -270,7 +387,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 				mat.flags = static_cast<MaterialFlags>(flags->GetIntValue());
 			}
 
-			LUA->Pop();
+			LUA->Pop(); // _G
 
 			mat.surfFlags = tex.flags;
 
@@ -303,7 +420,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 	entities.push_back(world);
 
 	// Add static props
-	/*for (int i = 0; i < pMap->GetNumStaticProps(); i++) {
+	for (int i = 0; i < pMap->GetNumStaticProps(); i++) {
 		Entity entData{};
 		entData.id = world.id;
 		entData.rawEntity = world.rawEntity;
@@ -323,255 +440,30 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 		glm::mat4 angle = glm::eulerAngleZYX(glm::radians(prop.ang.y), glm::radians(prop.ang.x), glm::radians(prop.ang.z));
 		bone *= angle;
 
-		// Iterate over meshes
-		LUA->GetField(-1, "util"); // _G util
-		LUA->GetField(-1, "GetModelMeshes"); // _G util GetModelMeshes
-		LUA->PushString(prop.model); // _G util GetModelMeshes modelName
-		LUA->Call(1, 2); // _G util meshes binds
-
-		// Make sure both return values are present and valid
-		if (!LUA->IsType(-2, Type::Table)) {
-			LUA->Pop(2); // Pop the 2 nils (_G util)
-
-			LUA->GetField(-1, "GetModelMeshes"); // _G util GetModelMeshes
-			LUA->PushString("models/error.mdl"); // _G util GetModelMeshes modelName
-			LUA->Call(1, 2); // _G util meshes binds
-
-			if (!LUA->IsType(-2, Type::Table)) LUA->ThrowError("Entity model invalid and error model not available"); // This would only ever happen if the user's game is corrupt
-		}
-		if (!LUA->IsType(-1, Type::Table)) LUA->ThrowError("Entity bind pose not returned (this likely means you're running an older version of GMod)");
+		// Cache model
+		const Model* pModel = ResourceCache::GetModel(prop.model, MISSING_MODEL);
 
 		// Cache bind pose
-		auto bindBones = std::vector<glm::mat4>(1);
-		LUA->PushNumber(0); // _G util meshes binds idx
-		LUA->GetTable(-2);  // _G util meshes binds bind1
-		LUA->GetField(-1, "matrix"); // _G util meshes binds bind1 bindMatrix
+		glm::mat4 bind = pModel->GetBindMatrix(0);
 
-		glm::mat4 bind = glm::identity<glm::mat4>();
-		if (LUA->IsType(-1, Type::Matrix)) {
-			const VMatrix* pMat = LUA->GetUserType<VMatrix>(-1, Type::Matrix);
-			bind = pMat->To4x4();
-		}
-		LUA->Pop(3); // _G util meshes
-
-		size_t numSubmeshes = LUA->ObjLen();
-		for (size_t meshIndex = 1; meshIndex <= numSubmeshes; meshIndex++) {
-			// Get mesh
-			LUA->PushNumber(meshIndex); // _G util meshes meshIdx
-			LUA->GetTable(-2); // _G util meshes mesh
-
-			// Iterate over tris
-			LUA->GetField(-1, "triangles"); // _G util meshes mesh triangles
-			if (!LUA->IsType(-1, Type::Table)) LUA->ThrowError("Vertices tables must contain MeshVertex tables");
-			size_t numVerts = LUA->ObjLen();
-			if (numVerts % 3U != 0U) LUA->ThrowError("Number of vertices is not a multiple of 3");
-
-			glm::vec3 tri[3];
-			TriangleData triData{};
-			triData.entIdx = entities.size();
-			triData.submatIdx = meshIndex - 1;
-			triData.alphas[0] = triData.alphas[1] = triData.alphas[2] = 1.f;
-			for (size_t vertIndex = 0; vertIndex < numVerts; vertIndex++) {
-				// Get vertex
-				LUA->PushNumber(vertIndex + 1U); // _G util meshes mesh triangles vertIdx
-				LUA->GetTable(-2); // _G util meshes mesh triangles vertex
-
-				// Get and transform position
-				LUA->GetField(-1, "pos"); // _G util meshes mesh triangles vertex pos
-				if (!LUA->IsType(-1, Type::Vector)) LUA->ThrowError("Invalid vertex in model mesh");
-				Vector pos = LUA->GetVector();
-				LUA->Pop(); // _G util meshes mesh triangles vertex
-
-				size_t triIndex = vertIndex % 3U;
-				tri[triIndex] = TransformToBone(pos, bone, bind);
-
-				// Get and transform normal, tangent, and binormal
-				LUA->GetField(-1, "normal"); // _G util meshes mesh triangles vertex normal
-				if (LUA->IsType(-1, Type::Vector)) {
-					Vector v = LUA->GetVector();
-					triData.normals[triIndex] = TransformToBone(v, bone, bind, true);
-				} else {
-					triData.normals[triIndex] = glm::vec3(0, 0, 0);
-				}
-				LUA->Pop(); // _G util meshes mesh triangles vertex
-
-				LUA->GetField(-1, "tangent"); // _G util meshes mesh triangles vertex tangent
-				if (LUA->IsType(-1, Type::Vector)) {
-					Vector v = LUA->GetVector();
-					triData.tangents[triIndex] = TransformToBone(v, bone, bind, true);
-				} else {
-					triData.tangents[triIndex] = glm::vec3(0, 0, 0);
-				}
-				LUA->Pop(); // _G util meshes mesh triangles vertex
-
-				LUA->GetField(-1, "binormal"); // _G util meshes mesh triangles vertex binormal
-				if (LUA->IsType(-1, Type::Vector)) {
-					Vector v = LUA->GetVector();
-					triData.binormals[triIndex] = TransformToBone(v, bone, bind, true);
-				} else {
-					triData.binormals[triIndex] = glm::vec3(0, 0, 0);
-				}
-				LUA->Pop(); // _G util meshes mesh triangles vertex
-
-				// Get uvs
-				LUA->GetField(-1, "u"); // _G util meshes mesh triangles vertex u
-				LUA->GetField(-2, "v"); // _G util meshes mesh triangles vertex u v
-				float u = LUA->GetNumber(-2), v = LUA->GetNumber();
-				LUA->Pop(2); // _G util meshes mesh triangles vertex
-				triData.uvs[triIndex] = glm::vec2(u, v);
-
-				// Pop MeshVertex
-				LUA->Pop(); // _G util meshes mesh triangles
-
-				// If this was the last vert in the tri, push back and validate normals, tangents, and binormals
-				if (triIndex == 2U) {
-					Triangle builtTri(
-						Vector3{ tri[0].x, tri[0].y, tri[0].z },
-						Vector3{ tri[1].x, tri[1].y, tri[1].z },
-						Vector3{ tri[2].x, tri[2].y, tri[2].z },
-						triData
-					);
-
-					// Check if triangle is invalid and remove vertices if so
-					glm::vec3 geometricNormal{ builtTri.nNorm[0], builtTri.nNorm[1], builtTri.nNorm[2] };
-					if (!ValidVector(geometricNormal)) continue;
-
-					glm::vec3& n0 = builtTri.data.normals[0], & n1 = builtTri.data.normals[1], & n2 = builtTri.data.normals[2];
-					if (!ValidVector(n0) || glm::dot(n0, geometricNormal) < 0.01f) n0 = geometricNormal;
-					if (!ValidVector(n1) || glm::dot(n1, geometricNormal) < 0.01f) n1 = geometricNormal;
-					if (!ValidVector(n2) || glm::dot(n2, geometricNormal) < 0.01f) n2 = geometricNormal;
-
-					glm::vec3& t0 = builtTri.data.tangents[0], & t1 = builtTri.data.tangents[1], & t2 = builtTri.data.tangents[2];
-					if (
-						!(
-							ValidVector(t0) &&
-							ValidVector(t1) &&
-							ValidVector(t2)
-							) ||
-						fabsf(glm::dot(t0, n0)) > .9f ||
-						fabsf(glm::dot(t1, n1)) > .9f ||
-						fabsf(glm::dot(t2, n2)) > .9f
-						) {
-						glm::vec3 edge1 = tri[1] - tri[0];
-						glm::vec3 edge2 = tri[2] - tri[0];
-
-						glm::vec2 uv0 = builtTri.data.uvs[0], uv1 = builtTri.data.uvs[1], uv2 = builtTri.data.uvs[2];
-						glm::vec2 dUV1 = uv1 - uv0;
-						glm::vec2 dUV2 = uv2 - uv0;
-
-						float f = 1.f / (dUV1.x * dUV2.y - dUV2.x * dUV1.y);
-
-						glm::vec3 geometricTangent{
-							f * (dUV2.y * edge1.x - dUV1.y * edge2.x),
-							f * (dUV2.y * edge1.y - dUV1.y * edge2.y),
-							f * (dUV2.y * edge1.z - dUV1.y * edge2.z)
-						};
-						if (!ValidVector(geometricTangent)) {
-							// Set the tangent to one of the edges as a guess on the plane (this will only be reached if the uvs overlap)
-							geometricTangent = glm::normalize(edge1);
-							builtTri.data.ignoreNormalMap = true;
-						}
-
-						// Assign orthogonalised geometric tangent to vertices
-						t0 = glm::normalize(geometricTangent - n0 * glm::dot(geometricTangent, n0));
-						t1 = glm::normalize(geometricTangent - n1 * glm::dot(geometricTangent, n1));
-						t2 = glm::normalize(geometricTangent - n2 * glm::dot(geometricTangent, n2));
-					}
-
-					glm::vec3& b0 = builtTri.data.binormals[0], & b1 = builtTri.data.binormals[1], & b2 = builtTri.data.binormals[2];
-					if (!ValidVector(b0)) b0 = -glm::cross(n0, t0);
-					if (!ValidVector(b1)) b1 = -glm::cross(n1, t1);
-					if (!ValidVector(b2)) b2 = -glm::cross(n2, t2);
-
-					triangles.push_back(builtTri);
-				}
-			}
-
-			// Pop triangle table
-			LUA->Pop(); // _G util meshes mesh
-
-			// Get material
-			LUA->GetField(-1, "material"); // _G util meshes mesh material
-			if (!LUA->IsType(-1, Type::String)) LUA->ThrowError("Submesh has no material");
-			std::string materialPath = LUA->GetString();
-			LUA->Pop(2); // _G util meshes
+		// Get materials
+		entData.materials.reserve(pModel->GetNumMaterials());
+		for (int materialId = 0; materialId < pModel->GetNumMaterials(); materialId++) {
+			std::string materialPath = pModel->GetMaterial(materialId);
 
 			if (materialIds.find(materialPath) == materialIds.end()) {
-				LUA->GetField(-3, "Material"); // _G util meshes Material
-				LUA->PushString(materialPath.c_str()); // _G util meshes Material materialPath
-				LUA->Call(1, 1); // _G util meshes IMaterial
+				LUA->GetField(-1, "Material");
+				LUA->PushString(materialPath.c_str());
+				LUA->Call(1, 1);
 				if (!LUA->IsType(-1, Type::Material)) LUA->ThrowError("Invalid material on entity");
 
+				// Grab the source material
 				IMaterial* sourceMaterial = LUA->GetUserType<IMaterial>(-1, Type::Material);
-				Material mat{};
-				mat.path = materialPath;
-				mat.maskedBlending = false;
 
-				mat.baseTexPath = GetMaterialString(sourceMaterial, "$basetexture");
-				mat.normalMapPath = GetMaterialString(sourceMaterial, "$bumpmap");
-				mat.detailPath = GetMaterialString(sourceMaterial, "$detail");
+				// Read props
+				Material mat = ReadEntityMaterial(sourceMaterial, materialPath);
 
-				mat.baseTexture = ResourceCache::GetTexture(mat.baseTexPath, MISSING_TEXTURE);
-				mat.normalMap = ResourceCache::GetTexture(mat.normalMapPath);
-				mat.detail = ResourceCache::GetTexture(mat.detailPath);
-				if (!mat.baseTexPath.empty()) mat.mrao = ResourceCache::GetTexture("vistrace/pbr/" + mat.baseTexPath + "_mrao");
-
-				IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
-				if (basetexturetransform) {
-					const VMatrix pMat = basetexturetransform->GetMatrixValue();
-					mat.baseTexMat = pMat.To2x4();
-				}
-
-				IMaterialVar* bumptransform = GetMaterialVar(sourceMaterial, "$bumptransform");
-				if (bumptransform) {
-					const VMatrix pMat = bumptransform->GetMatrixValue();
-					mat.normalMapMat = pMat.To2x4();
-				}
-
-				IMaterialVar* detailtexturetransform = GetMaterialVar(sourceMaterial, "$detailtexturetransform");
-				if (detailtexturetransform) {
-					const VMatrix pMat = detailtexturetransform->GetMatrixValue();
-					mat.detailMat = pMat.To2x4();
-				}
-
-				IMaterialVar* detailscale = GetMaterialVar(sourceMaterial, "$detailscale");
-				if (detailscale) {
-					mat.detailScale = detailscale->GetFloatValue();
-				}
-
-				IMaterialVar* detailblendfactor = GetMaterialVar(sourceMaterial, "$detailblendfactor");
-				if (detailblendfactor) {
-					mat.detailBlendFactor = detailblendfactor->GetFloatValue();
-				}
-
-				IMaterialVar* detailblendmode = GetMaterialVar(sourceMaterial, "$detailblendmode");
-				if (detailblendmode) {
-					mat.detailBlendMode = static_cast<DetailBlendMode>(detailblendmode->GetIntValue());
-				}
-
-				IMaterialVar* detailtint = GetMaterialVar(sourceMaterial, "$detailtint");
-				if (detailtint) {
-					float values[3];
-					detailtint->GetVecValue(values, 3);
-					mat.detailTint = glm::vec3(values[0], values[1], values[2]);
-				}
-
-				IMaterialVar* detail_ambt = GetMaterialVar(sourceMaterial, "$detail_alpha_mask_base_texture");
-				if (detail_ambt) {
-					mat.detailAlphaMaskBaseTexture = detail_ambt->GetIntValue() != 0;
-				}
-
-				IMaterialVar* flags = GetMaterialVar(sourceMaterial, "$flags");
-				if (flags) {
-					mat.flags = static_cast<MaterialFlags>(flags->GetIntValue());
-				}
-
-				IMaterialVar* alphatestreference = GetMaterialVar(sourceMaterial, "$alphatestreference");
-				if (alphatestreference) {
-					mat.alphatestreference = alphatestreference->GetFloatValue();
-				}
-
-				LUA->Pop(); // _G util meshes
+				LUA->Pop(); // _G
 
 				materialIds.emplace(materialPath, materials.size());
 				materials.push_back(mat);
@@ -580,10 +472,28 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			entData.materials.push_back(materialIds[materialPath]);
 		}
 
-		LUA->Pop(2); // _G
+		for (size_t bodygroupIdx = 0; bodygroupIdx < pModel->GetNumBodyGroups(); bodygroupIdx++) {
+			const Mesh* pMesh = pModel->GetMesh(bodygroupIdx, 0);
+
+			size_t triStart = triangles.size();
+			triangles.insert(
+				triangles.end(),
+				pMesh->GetTriangles(),
+				pMesh->GetTriangles() + pMesh->GetNumTriangles()
+			);
+
+			for (int triIdx = triStart; triIdx < pMesh->GetNumTriangles() + triStart; triIdx++) {
+				Triangle& tri = triangles[triIdx];
+
+				tri.entIdx = entities.size();
+				tri.material = entData.materials[pModel->GetMaterialIdx(prop.skin, tri.material)];
+
+				SkinTriangle(tri, bone, bind);
+			}
+		}
+
 		entities.push_back(entData);
 	}
-	*/
 
 	LUA->Pop(); // Pop _G
 }
@@ -758,7 +668,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 			binds[boneIndex] = pModel->GetBindMatrix(boneIndex);
 		}
 
-		// Get material
+		// Get materials
 		entData.materials.reserve(pModel->GetNumMaterials());
 		for (int materialId = 0; materialId < pModel->GetNumMaterials(); materialId++) {
 			std::string materialPath = "";
@@ -790,73 +700,8 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				// Grab the source material
 				IMaterial* sourceMaterial = LUA->GetUserType<IMaterial>(-1, Type::Material);
 
-				Material mat{};
-				mat.path = materialPath;
-				mat.maskedBlending = false;
-
-				mat.baseTexPath = GetMaterialString(sourceMaterial, "$basetexture");
-				mat.normalMapPath = GetMaterialString(sourceMaterial, "$bumpmap");
-				mat.detailPath = GetMaterialString(sourceMaterial, "$detail");
-
-				mat.baseTexture = ResourceCache::GetTexture(mat.baseTexPath, MISSING_TEXTURE);
-				mat.normalMap = ResourceCache::GetTexture(mat.normalMapPath);
-				mat.detail = ResourceCache::GetTexture(mat.detailPath);
-				if (!mat.baseTexPath.empty()) mat.mrao = ResourceCache::GetTexture("vistrace/pbr/" + mat.baseTexPath + "_mrao");
-
-				IMaterialVar* basetexturetransform = GetMaterialVar(sourceMaterial, "$basetexturetransform");
-				if (basetexturetransform) {
-					const VMatrix pMat = basetexturetransform->GetMatrixValue();
-					mat.baseTexMat = pMat.To2x4();
-				}
-
-				IMaterialVar* bumptransform = GetMaterialVar(sourceMaterial, "$bumptransform");
-				if (bumptransform) {
-					const VMatrix pMat = bumptransform->GetMatrixValue();
-					mat.normalMapMat = pMat.To2x4();
-				}
-
-				IMaterialVar* detailtexturetransform = GetMaterialVar(sourceMaterial, "$detailtexturetransform");
-				if (detailtexturetransform) {
-					const VMatrix pMat = detailtexturetransform->GetMatrixValue();
-					mat.detailMat = pMat.To2x4();
-				}
-
-				IMaterialVar* detailscale = GetMaterialVar(sourceMaterial, "$detailscale");
-				if (detailscale) {
-					mat.detailScale = detailscale->GetFloatValue();
-				}
-
-				IMaterialVar* detailblendfactor = GetMaterialVar(sourceMaterial, "$detailblendfactor");
-				if (detailblendfactor) {
-					mat.detailBlendFactor = detailblendfactor->GetFloatValue();
-				}
-
-				IMaterialVar* detailblendmode = GetMaterialVar(sourceMaterial, "$detailblendmode");
-				if (detailblendmode) {
-					mat.detailBlendMode = static_cast<DetailBlendMode>(detailblendmode->GetIntValue());
-				}
-
-				IMaterialVar* detailtint = GetMaterialVar(sourceMaterial, "$detailtint");
-				if (detailtint) {
-					float values[3];
-					detailtint->GetVecValue(values, 3);
-					mat.detailTint = glm::vec3(values[0], values[1], values[2]);
-				}
-
-				IMaterialVar* detail_ambt = GetMaterialVar(sourceMaterial, "$detail_alpha_mask_base_texture");
-				if (detail_ambt) {
-					mat.detailAlphaMaskBaseTexture = detail_ambt->GetIntValue() != 0;
-				}
-
-				IMaterialVar* flags = GetMaterialVar(sourceMaterial, "$flags");
-				if (flags) {
-					mat.flags = static_cast<MaterialFlags>(flags->GetIntValue());
-				}
-
-				IMaterialVar* alphatestreference = GetMaterialVar(sourceMaterial, "$alphatestreference");
-				if (alphatestreference) {
-					mat.alphatestreference = alphatestreference->GetFloatValue();
-				}
+				// Read props
+				Material mat = ReadEntityMaterial(sourceMaterial, materialPath);
 
 				// Pop the material
 				LUA->Pop();
@@ -901,48 +746,7 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				tri.entIdx = mEntities.size();
 				tri.material = entData.materials[pModel->GetMaterialIdx(skin, tri.material)];
 
-				Vector3 vertexPositions[3] = {
-					tri.p0,
-					tri.p0 - tri.e1,
-					tri.p0 + tri.e2
-				};
-
-				for (int vertIdx = 0; vertIdx < 3; vertIdx++) {
-					vertexPositions[vertIdx] = TransformToBone(
-						vertexPositions[vertIdx],
-						bones, binds,
-						tri.numBones[vertIdx], tri.weights[vertIdx], tri.boneIds[vertIdx]
-					);
-
-					tri.normals[vertIdx] = TransformToBone(
-						tri.normals[vertIdx],
-						bones, binds,
-						tri.numBones[vertIdx], tri.weights[vertIdx], tri.boneIds[vertIdx],
-						true
-					);
-
-					tri.tangents[vertIdx] = TransformToBone(
-						tri.tangents[vertIdx],
-						bones, binds,
-						tri.numBones[vertIdx], tri.weights[vertIdx], tri.boneIds[vertIdx],
-						true
-					);
-				}
-
-				tri.p0 = vertexPositions[0];
-				tri.e1 = vertexPositions[0] - vertexPositions[1];
-				tri.e2 = vertexPositions[2] - vertexPositions[0];
-
-				// Recompute geometric normal and lod
-				tri.n = cross(tri.e1, tri.e2);
-
-				glm::vec2 uv10 = tri.uvs[1] - tri.uvs[0];
-				glm::vec2 uv20 = tri.uvs[2] - tri.uvs[0];
-				float triUVArea = abs(uv10.x * uv20.y - uv20.x * uv10.y);
-
-				float len = length(tri.n);
-				tri.lod = 0.5f * log2(triUVArea / len);
-				tri.nNorm = Vector3(tri.n[0] / len, tri.n[1] / len, tri.n[2] / len);
+				SkinTriangle(tri, bones, binds);
 			}
 		}
 

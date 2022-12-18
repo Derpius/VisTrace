@@ -78,6 +78,11 @@ struct TriangleBackfaceCull
 		const bool oneSided = false
 	) : p0(p0), e1(p0 - p1), e2(p2 - p0), material(material), oneSided(oneSided)
 	{
+		ComputeNormalAndLoD();
+	}
+
+	void ComputeNormalAndLoD()
+	{
 		n = LeftHandedNormal ? cross(e1, e2) : cross(e2, e1);
 
 		glm::vec2 uv10 = uvs[1] - uvs[0];
