@@ -40,6 +40,8 @@ Mesh::Mesh(
 		return;
 	}
 
+	size_t triIndex = 0;
+
 	for (int mshIdx = 0; mshIdx < pModel->meshesCount; mshIdx++) {
 		const MDLStructs::Mesh* mesh = pModel->GetMesh(mshIdx);
 		const VTXStructs::Mesh* vtxMesh = modelLod->GetMesh(mshIdx);
@@ -99,7 +101,7 @@ Mesh::Mesh(
 							}
 						}
 
-						mpTris[i / 3] = tri;
+						mpTris[triIndex++] = tri;
 					}
 				} else if ((strip->flags & VTXEnums::StripFlags::IS_TRISTRIP) != VTXEnums::StripFlags::NONE) {
 					// nyi

@@ -53,7 +53,6 @@ struct TriangleBackfaceCull
 
 	bvh::Vector3<Scalar> p0, e1, e2, n, nNorm;
 	bool oneSided = false;
-	bool ignoreNormalMap = false;
 
 	size_t material;
 	uint16_t entIdx = 0;

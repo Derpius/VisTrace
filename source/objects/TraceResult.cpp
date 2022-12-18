@@ -53,11 +53,6 @@ TraceResult::TraceResult(
 	coneWidth(coneWidth), coneAngle(coneAngle), lodOffset(tri.lod), mipOverride(coneWidth < 0.f || coneAngle <= 0.f),
 	material(mat)
 {
-	if (tri.ignoreNormalMap) {
-		material.normalMap = nullptr;
-		material.normalMap2 = nullptr;
-	}
-
 	wo = -direction;
 
 	for (int i = 0; i < 3; i++) {
@@ -164,15 +159,18 @@ void TraceResult::CalcTBN()
 			mappedNormal = normalize(lerp(mappedNormal, mappedNormal2, blendFactor));
 		}
 
-		normal = mat3{
+		vec3 worldspaceMappedNormal = mat3{
 			tangent[0],  tangent[1],  tangent[2],
 			binormal[0], binormal[1], binormal[2],
 			normal[0],   normal[1],   normal[2]
 		} * mappedNormal;
-		normal = normalize(normal);
+		worldspaceMappedNormal = normalize(worldspaceMappedNormal);
 
-		tangent = normalize(tangent - normal * dot(tangent, normal));
-		binormal = cross(tangent, normal);
+		if (glm::all(glm::isfinite(worldspaceMappedNormal))) {
+			normal = worldspaceMappedNormal;
+			tangent = normalize(tangent - normal * dot(tangent, normal));
+			binormal = cross(tangent, normal);
+		}
 	}
 
 	const float kCosThetaThreshold = 0.1f;
