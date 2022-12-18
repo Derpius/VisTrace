@@ -3,7 +3,7 @@
 		<img alt="Banner" src="https://github.com/Derpius/VisTrace/blob/branding/banner.png?raw=true" />
 	</a><br>
 	<a href="https://github.com/Derpius/VisTrace/actions/workflows/build.yml" style="text-decoration: none;">
-		<img alt="GitHub Workflow Status" src="https://img.shields.io/github/workflow/status/Derpius/VisTrace/CI%20Build?logo=c%2B%2B&style=for-the-badge" />
+		<img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/Derpius/VisTrace/build.yml?branch=master&logo=c%2B%2B&style=for-the-badge" />
 	</a>
 	<a href="https://github.com/Derpius/VisTrace/issues" style="text-decoration: none;">
 		<img alt="GitHub Open Issues" src="https://img.shields.io/github/issues/Derpius/VisTrace?logo=github&style=for-the-badge" />
