@@ -88,9 +88,9 @@ Mesh::Mesh(
 							if (vtxVerts[j]->numBones > 0) {
 								tri.numBones[j] = vtxVerts[j]->numBones;
 
-								for (int boneIdx = 0; boneIdx < tri.numBones[j]; boneIdx++) {
-									tri.weights[j][boneIdx] = verts[j]->boneWeights.weight[vtxVerts[j]->boneWeightIndex[boneIdx]];
-									tri.boneIds[j][boneIdx] = verts[j]->boneWeights.bone[vtxVerts[j]->boneWeightIndex[boneIdx]];
+								for (int boneIdx = 0; boneIdx < 3; boneIdx++) {
+									tri.weights[j][boneIdx] = verts[j]->boneWeights.weight[boneIdx];
+									tri.boneIds[j][boneIdx] = verts[j]->boneWeights.bone[boneIdx];
 								}
 							} else {
 								tri.numBones[j] = 1;
@@ -226,7 +226,7 @@ Model::Model(const std::string& path)
 		const VTXStructs::BodyPart* vtxBodypart;
 		mMDL.GetBodyPart(bdyIdx, &bodypart, &vtxBodypart);
 
-		mpBodygroups[bdyIdx] = new BodyGroup(this, bodypart, vtxBodypart);
+		mpBodygroups[bdyIdx] = new (std::nothrow) BodyGroup(this, bodypart, vtxBodypart);
 		if (mpBodygroups[bdyIdx] == nullptr || !mpBodygroups[bdyIdx]->IsValid()) return;
 	}
 
@@ -240,12 +240,6 @@ Model::Model(const std::string& path)
 			m[0][2], m[1][2], m[2][2], 0,
 			m[0][3], m[1][3], m[2][3], 1
 		);
-
-		/*glm::vec3 tmp(m[0][3], m[1][3], m[2][3]);
-
-		bind[3][0] = -glm::dot(tmp, glm::vec3(bind[0]));
-		bind[3][1] = -glm::dot(tmp, glm::vec3(bind[1]));
-		bind[3][2] = -glm::dot(tmp, glm::vec3(bind[2]));*/
 
 		mpBindMatrices[i] = bind;
 	}

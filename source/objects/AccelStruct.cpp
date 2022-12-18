@@ -901,37 +901,19 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 				tri.entIdx = mEntities.size();
 				tri.material = entData.materials[pModel->GetMaterialIdx(skin, tri.material)];
 
-				tri.p0 = TransformToBone(
+				Vector3 vertexPositions[3] = {
 					tri.p0,
-					bones, binds,
-					tri.numBones[0], tri.weights[0], tri.boneIds[0]
-				);
-				tri.e1 = TransformToBone(
-					tri.e1,
-					bones, binds,
-					tri.numBones[1], tri.weights[1], tri.boneIds[1],
-					true
-				);
-				tri.e2 = TransformToBone(
-					tri.e2,
-					bones, binds,
-					tri.numBones[2], tri.weights[2], tri.boneIds[2],
-					true
-				);
-
-				// Recompute geometric normal
-				tri.n = cross(tri.e1, tri.e2);
-				{
-					glm::vec2 uv10 = tri.uvs[1] - tri.uvs[0];
-					glm::vec2 uv20 = tri.uvs[2] - tri.uvs[0];
-					float triUVArea = abs(uv10.x * uv20.y - uv20.x * uv10.y);
-
-					float len = length(tri.n);
-					tri.lod = 0.5f * log2(triUVArea / len);
-					tri.nNorm = Vector3(tri.n[0] / len, tri.n[1] / len, tri.n[2] / len);
-				}
+					tri.p0 - tri.e1,
+					tri.p0 + tri.e2
+				};
 
 				for (int vertIdx = 0; vertIdx < 3; vertIdx++) {
+					vertexPositions[vertIdx] = TransformToBone(
+						vertexPositions[vertIdx],
+						bones, binds,
+						tri.numBones[vertIdx], tri.weights[vertIdx], tri.boneIds[vertIdx]
+					);
+
 					tri.normals[vertIdx] = TransformToBone(
 						tri.normals[vertIdx],
 						bones, binds,
@@ -946,6 +928,21 @@ void AccelStruct::PopulateAccel(ILuaBase* LUA, const World* pWorld)
 						true
 					);
 				}
+
+				tri.p0 = vertexPositions[0];
+				tri.e1 = vertexPositions[0] - vertexPositions[1];
+				tri.e2 = vertexPositions[2] - vertexPositions[0];
+
+				// Recompute geometric normal and lod
+				tri.n = cross(tri.e1, tri.e2);
+
+				glm::vec2 uv10 = tri.uvs[1] - tri.uvs[0];
+				glm::vec2 uv20 = tri.uvs[2] - tri.uvs[0];
+				float triUVArea = abs(uv10.x * uv20.y - uv20.x * uv10.y);
+
+				float len = length(tri.n);
+				tri.lod = 0.5f * log2(triUVArea / len);
+				tri.nNorm = Vector3(tri.n[0] / len, tri.n[1] / len, tri.n[2] / len);
 			}
 		}
 
