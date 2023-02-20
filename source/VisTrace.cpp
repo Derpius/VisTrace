@@ -478,7 +478,7 @@ LUA_FUNCTION(TraceResult_Pos)
 LUA_FUNCTION(TraceResult_Incident)
 {
 	LUA->CheckType(1, TraceResult::id);
-	TraceResult* pResult = LUA->GetUserType<TraceResult>(1, TraceResult::id);
+	TraceResult* pResult = *LUA->GetUserType<TraceResult*>(1, TraceResult::id);
 
 	LUA->PushVector(MakeVector(pResult->wo.x, pResult->wo.y, pResult->wo.z));
 	return 1;
