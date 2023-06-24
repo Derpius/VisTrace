@@ -2381,6 +2381,8 @@ Then we'll add a slight modification of our diffuse lighting from the ray tracer
 Multiple Importance Sampling
 ----------------------------
 
+_[Source code for this section](source-code/3.5.lua)_
+
 So importance sampling is good for smooth specular surfaces, and next event estimation is good for rough diffuse, surely there's a way to combine both strategies into one universally low variance integrator?
 
 There is indeed, multiple importance sampling is a technique to combine any number of importance sampling strategies (hence the name) into a single low variance integrator, by weighting the contribution of each strategy by its probability relative to the other strategies. It's basically importance sampling importance samplers.
