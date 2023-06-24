@@ -1781,6 +1781,7 @@ Now we can add a call to `Tonemap` before we save the image. I'm passing `true` 
 		if y >= RESY then
 			~~~ lua highlight
 			hdr:Tonemap(true)
+			~~~ lua
 			hdr:Save("render.png")
 		end
 ~~~
