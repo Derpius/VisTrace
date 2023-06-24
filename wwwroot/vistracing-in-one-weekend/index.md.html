@@ -2464,7 +2464,7 @@ We can then weight both our direct lighting and indirect lighting by the heurist
 
 ![From top left to bottom right: 1spp next event estimation, 1spp multiple importance sampling, 512spp next event estimation, 512spp multiple importance sampling](images/multiple-importance-sampling.png)
 
-You may notice that the next event estimation only renders are slightly brighter, this is because we're double counting light by just adding together. You could of course solve this by dividing each contribution by $2$, however this would technically make it multiple importance sampling.
+You may notice that the next event estimation only renders above are slightly brighter than with MIS, this is because we were double counting light by just adding together. You could of course solve this by dividing each contribution by $2$, but that would technically be multiple importance sampling.
 
 Russian Roulette and Texture Filtering
 --------------------------------------
