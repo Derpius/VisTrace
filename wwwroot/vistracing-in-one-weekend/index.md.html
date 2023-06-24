@@ -1427,6 +1427,8 @@ Then we can replace our prototype transmission with our new refraction function.
 						colour = Vector(1, 0, 0)
 						break
 					end
+
+
 					~~~ lua
 					result = accel:Traverse(origin, direction)
 				end
@@ -1434,7 +1436,8 @@ Then we can replace our prototype transmission with our new refraction function.
 
 ![This still looks wrong as it's missing reflection, but the hard part is done](images/delta-refraction.png)
 
-We have a problem though, we need to trace both a reflection and refraction ray but our iterative algorithm only allows exploring a single path (although it's most likely possible, it would be difficult compared to a recursive algorithm).
+We have a problem though, we need to trace both a reflection and refraction ray but our iterative algorithm only allows exploring a single path
+(although it's most likely possible to trace branching paths iteratively, it would be difficult compared to a recursive algorithm).
 
 Tracing both a reflection and refraction path has an additional flaw though, in a scene with many refractive objects close together, each ray will split in half again and again creating an exponentially increasing number of paths.
 
@@ -1545,6 +1548,7 @@ local function TracePixel(x, y)
 							~~~ lua
 							break
 						end
+
 						result = accel:Traverse(origin, direction)
 					end
 
@@ -1611,12 +1615,14 @@ Now we can stochastically sample reflection and refraction in our transmissive m
 						direction = reflection and
 							Reflect(direction, upNormal) or
 							Refract(direction, upNormal, 1 / eta)
-						~~~ lua
 
+
+						~~~ lua
 						if direction == Vector(0, 0, 0) then
 							colour = colour + Vector(1, 0, 0)
 							break
 						end
+
 						result = accel:Traverse(origin, direction)
 					end
 ~~~
@@ -1674,10 +1680,7 @@ We can then replace our hardcoded reflection probability with this function like
 						~~~ lua delete
 						local reflection = sampler:GetFloat() < 0.2
 						~~~ lua highlight
-						local reflection = sampler:GetFloat() < FresnelDielectric(
-							direction, upNormal,
-							eta
-						)
+						local reflection = sampler:GetFloat() < FresnelDielectric(direction, upNormal, eta)
 						~~~ lua
 						origin = reflection == result:FrontFacing() and
 							origin or
@@ -1962,6 +1965,7 @@ local function TracePixel(x, y)
 							colour = colour + Vector(1, 0, 0)
 							break
 						end
+
 						result = accel:Traverse(origin, direction)
 					end
 
