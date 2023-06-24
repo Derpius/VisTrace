@@ -835,6 +835,8 @@ One last improvement we can make is discarding invalid samples. The HDRI sampler
 Reflection
 ----------
 
+_[Source code for this section](source-code/2.4.lua)_
+
 Our diffuse shading looks nice, but could be replicated by a decent rasteriser. To truly showcase the power of ray tracing lets do something that can't be done accurately with rasterising, *specular reflection*.
 
 Specular reflection differs from diffuse reflection in that it's view dependent, it's also one of the two types of light interactions we'll fully explore in our ray tracer (diffuse interreflection is ignored as it's part of path tracing).
@@ -1165,6 +1167,7 @@ Then simply multiply throughput by the Fresnel coefficient when we reflect, and 
 						validSamples = validSamples - 1
 					end
 				end
+
 
 				~~~ lua delete
 				colour = colour / validSamples
