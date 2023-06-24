@@ -2469,6 +2469,8 @@ You may notice that the next event estimation only renders above are slightly br
 Russian Roulette and Texture Filtering
 --------------------------------------
 
+_[Source code for this section](source-code/3.6.lua)_
+
 One last subtle improvement to render times we can make is randomly terminating paths when their contribution is too low, a technique called russian roulette. This allows us to set our depth high to avoid biasing, while not increasing render times as much
 
 ~~~ lua
@@ -2530,6 +2532,7 @@ We then pass our cone angle into `accel:Traverse(...)`, and use an initial cone 
 	local camDir = Vector(FOCAL_LENGTH_MM, camX, camY)
 	camDir:Rotate(camAng)
 	camDir:Normalize()
+
 
 	~~~ lua delete
 	local camRay = accel:Traverse(camPos, camDir)
