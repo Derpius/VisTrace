@@ -50,7 +50,6 @@ local function SampleHemisphere(result, r1, r2)
 	)
 end
 
-
 local camPos, camAng = LocalPlayer():EyePos(), LocalPlayer():EyeAngles()
 local function TracePixel(x, y)
 	local camX = halfSensorWidth - sensorWidthDivRes * (x + 0.5)
