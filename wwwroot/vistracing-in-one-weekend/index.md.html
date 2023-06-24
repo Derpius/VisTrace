@@ -222,6 +222,8 @@ Running our script now should produce a nice gradient from black to red on the x
 Tracing a Ray
 -------------
 
+_[Source code for this section](source-code/1.2.lua)_
+
 Before we dig into the meat of ray tracing, we need to know how to trace a ray, and to know that we need to know what a "ray" even is.
 
 While it makes sense to think of a ray as a single "ray" of light (light is far more complicated than that in reality), it's actually the total of *all* light that follows a specific line defined by our ray.
@@ -350,6 +352,8 @@ We'll be simulating three kinds of light interactions in our ray tracer:
 Generating Camera Rays
 ----------------------
 
+_[Source code for this section](source-code/2.1.lua)_
+
 Before we start lighting our scene, we should replace the orthographic projection we did earlier with a perspective projection, specifically the [pinhole camera model](https://en.wikipedia.org/wiki/Pinhole_camera_model).
 
 There are a number of ways we can parameterise our pinhole camera model, with some examples being:
@@ -428,7 +432,7 @@ but this wont really have an affect on the code's performance as we'll be precom
 
 That was a lot of maths, but it should hopefully help you understand what our code is doing. Speaking of code, lets implement this.
 
-We'll first precompute the values that wont change over the course of a trace. The `MM_TO_HAMMER_UNITS` constant is to convert our image plane position (which is in millimetres) to Source's units.
+We'll first precompute the values that wont change over the course of a trace
 
 ~~~ lua
 ----------------
@@ -438,8 +442,6 @@ local accel = vistrace.CreateAccel(ents.FindByClass("prop_*"), false)
 
 
 ~~~ lua highlight
-local MM_TO_HAMMER_UNITS = 0.00328084 * 16 -- millimetres to feet multiplied by feet to hammer units to get a more accurate conversion
-
 local sensorWidth = SENSOR_HEIGHT_MM * RESX / RESY
 
 local halfSensorWidth = sensorWidth / 2
@@ -461,7 +463,7 @@ local function TracePixel(x, y)
 	local camX = halfSensorWidth - sensorWidthDivRes * (x + 0.5)
 	local camY = halfSensorHeight - sensorHeightDivRes * (y + 0.5)
 
-	local camDir = Vector(FOCAL_LENGTH_MM, camX, camY) * Vector(MM_TO_HAMMER_UNITS)
+	local camDir = Vector(FOCAL_LENGTH_MM, camX, camY)
 	camDir:Rotate(camAng)
 	camDir:Normalize()
 	~~~ lua
@@ -495,6 +497,8 @@ This should work just fine, but lets replace our boring black and white view wit
 ~~~
 
 ![The fruits of our labour](images/pinhole-camera.png)
+
+If you're wondering why we don't convert from millimetres to hammer units above, it's because we'd scale all coordinates equally just to normalise them which removes that scaling.
 
 The Rendering Equation
 ----------------------
