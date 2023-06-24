@@ -691,7 +691,7 @@ Turning that into code is extremely simple
 				local Li = envCol / envPdf
 				~~~ lua highlight
 				local bsdf = result:Albedo() / math.pi
-				colour = bsdf * li * math.max(envDir:Dot(result:Normal()), 0)
+				colour = bsdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 				~~~ lua
 			end
 ~~~
