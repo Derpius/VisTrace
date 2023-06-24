@@ -1204,6 +1204,8 @@ We can't use `result:Albedo()` to get the entity's colour as the debug cubemap m
 Refraction
 ----------
 
+_[Source code for this section](source-code/2.5.lua)_
+
 Refraction, or specular transmission, is quite a different beast than specular reflection. In fact you need to both reflect and refract to produce a realistic refractive material with effects like total internal reflection.
 
 We'll need to handle two separate ray paths, front and back surface interactions, a more complex Fresnel, and indices of refraction.
