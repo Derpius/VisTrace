@@ -2176,7 +2176,7 @@ Now we can add in evaluation of the integral. This is the exact same equation th
 We will once again use the Lambert BRDF $\frac{\text{albedo}}{\pi}$, and the $PDF$ of our uniform sampling function is simply $1$ divided by the surface area of a unit hemisphere, $2 \pi$
 
 \begin{equation}
-\frac{\frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n})}{\frac{1}{2 \pi}} = \frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n}) * 2 \pi = 2 \text{albedo} (\omega_i \cdot \mathbf{n})
+\frac{\frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n})}{\frac{1}{2 \pi}} = \frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n}) * 2 \pi = 2 * \text{albedo} * (\omega_i \cdot \mathbf{n})
 \end{equation}
 
 ~~~ lua
