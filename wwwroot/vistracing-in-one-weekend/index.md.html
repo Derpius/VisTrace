@@ -47,6 +47,8 @@ You'll be implementing the tracer as a simple GLua script run with `lua_openscri
 Drawing an Image
 ----------------
 
+_[Source code for this section](source-code/1.1.lua)_
+
 Before we get into the nitty gritty of light transport, we need to actually be able to draw pixels to our screen. While there are *many* ways to do this ranging from drawing to a physical screen in the world, to a VGUI frame you can use like a mini application, I've opted for the simplest and most efficient for this step (however you can ignore this and use whatever method you prefer if you're already familiar with rendering in GMod).  
 
 To start with we need a script to work in, and an addon to place that script in. Create a new folder in your `garrysmod/addons` folder with any name you like, then create a subfolder called `lua` and a file in that folder called `vistracer.lua` (you can of course use whatever name you want, however the book assumes this is what you called it). You should now have the file `garrysmod/addons/youraddonname/lua/vistracer.lua`.  
