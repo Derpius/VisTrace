@@ -2297,6 +2297,8 @@ They both converge to the same solution as they're both unbiased, however import
 Next Event Estimation
 ---------------------
 
+_[Source code for this section](source-code/3.4.lua)_
+
 While importance sampling only makes a big improvement to specular surfaces, next event estimation is the opposite.
 
 Despite the seemingly complicated name, next event estimation is just an application of the direct light sampling we did when ray tracing to path tracing.
@@ -2379,6 +2381,8 @@ Then we'll add a slight modification of our diffuse lighting from the ray tracer
 Multiple Importance Sampling
 ----------------------------
 
+_[Source code for this section](source-code/3.5.lua)_
+
 So importance sampling is good for smooth specular surfaces, and next event estimation is good for rough diffuse, surely there's a way to combine both strategies into one universally low variance integrator?
 
 There is indeed, multiple importance sampling is a technique to combine any number of importance sampling strategies (hence the name) into a single low variance integrator, by weighting the contribution of each strategy by its probability relative to the other strategies. It's basically importance sampling importance samplers.
@@ -2460,7 +2464,7 @@ We can then weight both our direct lighting and indirect lighting by the heurist
 
 ![From top left to bottom right: 1spp next event estimation, 1spp multiple importance sampling, 512spp next event estimation, 512spp multiple importance sampling](images/multiple-importance-sampling.png)
 
-You may notice that the next event estimation only renders are slightly brighter, this is because we're double counting light by just adding together. You could of course solve this by dividing each contribution by $2$, however this would technically make it multiple importance sampling.
+You may notice that the next event estimation only renders above are slightly brighter than with MIS, this is because we were double counting light by just adding together. You could of course solve this by dividing each contribution by $2$, but that would technically be multiple importance sampling.
 
 Russian Roulette and Texture Filtering
 --------------------------------------
