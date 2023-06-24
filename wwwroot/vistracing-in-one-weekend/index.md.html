@@ -908,7 +908,7 @@ Then we'll wrap our shading code in a loop and our diffuse shading code in an if
 
 Now we need a way to determine when a surface is diffuse, and when it's specular.
 
-We'll do this using a very rudementry method of checking if the material on an entity is `debug/env_cubemap_model`, which is the equivalent of a perfectly reflective surface in Source. This will be replaced with a more advanced system later on
+We'll do this using a very rudimentary method of checking if the material on an entity is `debug/env_cubemap_model`, which is the equivalent of a perfectly reflective surface in Source. This will be replaced with a more advanced system later on
 
 ~~~ lua
 		for depth = 1, MAX_DEPTH do
@@ -979,11 +979,11 @@ We only have a couple things to add now to have conductive reflection, the first
 
 As the following images from Scratchapixel show, the angle between the incident vector and the surface normal is equal to the angle between the reflected vector and the surface normal
 
-![The angle of incidence and the angle of reflection are equal](https://www.scratchapixel.com/images/upload/shading-intro/shad-reflection.png)
+![The angle of incidence and the angle of reflection are equal](https://www.scratchapixel.com/images/shading-intro/shad-reflection.png)
 
 Additionally, we can express the incident and reflected vectors using $A$ and $B$ like so
 
-![The component vectors A and B of the reflection](https://www.scratchapixel.com/images/upload/shading-intro/shad-reflection2.png)
+![The component vectors A and B of the reflection](https://www.scratchapixel.com/images/shading-intro/shad-reflection2.png)
 
 The equations for the incident vector $I$ and reflected vector $R$ are therefore
 
@@ -1294,7 +1294,7 @@ Unfortunately the vector refraction function isn't quite as simple as reflection
 
 Where $\theta_I$ and $\theta_T$ are the angles between each vector and the normal (inverse of the normal in the case of the transmitted vector), and $\eta_I$ and $\eta_T$ are the indices of refraction for the mediums that the incident and transmitted vectors reside in.
 
-![Illustration of the plane of incidence with reflection and transmission](https://www.scratchapixel.com/images/upload/shading-intro/shad-refraction6.png)
+![Illustration of the plane of incidence with reflection and transmission](https://www.scratchapixel.com/images/shading-intro/shad-refraction6.png)
 
 We can then express the transmitted vector $T$ as the sum of vectors $A$ and $B$
 
@@ -1304,7 +1304,7 @@ A &= M\sin\theta_T \\
 B &= -N\cos\theta_T
 \end{align}
 
-![The basis vectors illustrated on a unit circle](https://www.scratchapixel.com/images/upload/shading-intro/shad-refraction7.png)
+![The basis vectors illustrated on a unit circle](https://www.scratchapixel.com/images/shading-intro/shad-refraction7.png)
 
 $N$ is simply the surface normal pointing in the incident direction, and $M$ can be calculated by normalising the vector produced by adding the incident vector $I$ and the height of the indicent vector in the normal direction $C$
 
