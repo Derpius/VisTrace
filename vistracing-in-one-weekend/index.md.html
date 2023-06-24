@@ -2207,9 +2207,11 @@ Well that was surprisingly easy, other than the more in depth theory, but it doe
 Importance Sampling
 -------------------
 
-At the moment we're uniformly selecting a point on the hemisphere, however if we look at our evaluation, the throughput is higher when the dot product between the sampled vector and surface normal is higher.
+_[Source code for this section](source-code/3.3.lua)_
 
-Importance sampling is taking this inherent difference in the importance of samples and choosing them accordingly. In simple terms, we want to choose rays that are closer to the normal more often than rays on the equator.
+At the moment we're uniformly selecting a point on the hemisphere, but if we look at our evaluation the throughput is higher when the dot product between the sampled vector and surface normal is higher.
+
+Importance sampling is choosing samples based on how much they'll contribute to the image, i.e. the relative contribution of each sample should be its probability. To put it into context, we want to choose rays that are closer to the surface normal more often than rays on the equator.
 
 This sampling strategy is called cosine weighted hemisphere sampling and is very easy to implement, requiring only a minor adjustment to the sampling function and evaluation
 
@@ -2219,7 +2221,7 @@ z &= \sqrt{\xi_1} \\
 x &= \sqrt{1 - z^{2}} \cos\phi \\
 y &= \sqrt{1 - z^{2}} \sin\phi \\
 PDF(z) &= \frac{z}{\pi} \\
-\frac{\frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n})}{\frac{\omega_i \cdot \mathbf{n}}{\pi}} &= \frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n}) * \frac{\pi}{\omega_i \cdot \mathbf{n}} = \text{albedo}
+\frac{\frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n})}{\frac{\omega_i \cdot \mathbf{n}}{\pi}} &= \frac{\text{albedo}}{\pi}(\omega_i \cdot \mathbf{n})\frac{\pi}{\omega_i \cdot \mathbf{n}} = \text{albedo}
 \end{align}
 
 The derivation for the PDF and the square root in $z$ are outside of the scope of this book, but you can find them [here](https://alexanderameye.github.io/notes/sampling-the-hemisphere).
