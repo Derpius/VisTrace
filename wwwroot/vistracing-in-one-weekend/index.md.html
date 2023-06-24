@@ -784,6 +784,7 @@ Then wrap our hdri sampling in a for loop and divide the final colour by the num
 			end
 		~~~ lua highlight
 		end
+
 		colour = colour / SAMPLES
 		~~~ lua
 
@@ -813,6 +814,8 @@ One last improvement we can make is discarding invalid samples. The HDRI sampler
 			~~~ lua
 			end
 		end
+
+
 		~~~ lua delete
 		colour = colour / SAMPLES
 		~~~ lua highlight
