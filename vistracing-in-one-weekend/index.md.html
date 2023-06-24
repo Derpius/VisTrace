@@ -1705,6 +1705,8 @@ This may not make intuitive sense if you're not already familiar with statistics
 Post Processing
 ---------------
 
+_[Source code for this section](source-code/2.6.lua)_
+
 The last feature we'll add to our ray tracer is post processing. This is a good cooldown after the fairly maths heavy section on refraction.
 
 At the moment we're rendering our raw HDR render data out to the screen using a clamp, however the proper way to convert HDR to a standard monitor's sRGB colour space is to perform tonemapping and linear to sRGB conversion.
@@ -1781,6 +1783,7 @@ Now we can add a call to `Tonemap` before we save the image. I'm passing `true` 
 		if y >= RESY then
 			~~~ lua highlight
 			hdr:Tonemap(true)
+			~~~ lua
 			hdr:Save("render.png")
 		end
 ~~~
