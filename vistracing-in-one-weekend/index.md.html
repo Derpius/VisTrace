@@ -543,6 +543,8 @@ Armed with this simplified rendering equation, we can now move on to implementin
 Lighting
 --------
 
+_[Source code for this section](source-code/2.3.lua)_
+
 Before we can light our scene, we need a source of light. There are many types of lights available to use and we can implement any that we want, but here's a few of the easiest
 
 * Point lights are defined by a single point in space (hence the name) and are a good option for simple and versatile lights
@@ -669,6 +671,8 @@ That's $L_i$ done, next is $(\omega_i \cdot \mathbf{n})$ which is just the dot p
 ~~~ lua
 			if not shadowRay then
 				local Li = envCol / envPdf
+				~~~ lua delete
+				colour = Li
 				~~~ lua highlight
 				colour = Li * math.max(envDir:Dot(result:Normal()), 0)
 				~~~ lua
@@ -688,10 +692,14 @@ Turning that into code is extremely simple
 
 ~~~ lua
 			if not shadowRay then
-				local Li = envCol / envPdf
 				~~~ lua highlight
-				local bsdf = result:Albedo() / math.pi
-				colour = bsdf * li * math.max(envDir:Dot(result:Normal()), 0)
+				local brdf = result:Albedo() / math.pi
+				~~~ lua
+				local Li = envCol / envPdf
+				~~~ lua delete
+				colour = Li * math.max(envDir:Dot(result:Normal()), 0)
+				~~~ lua highlight
+				colour = brdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 				~~~ lua
 			end
 ~~~
@@ -720,9 +728,9 @@ Shadow acne is an issue caused by floating point precision where the shadow ray 
 			local shadowRay = accel:Traverse(origin, envDir)
 			~~~ lua
 			if not shadowRay then
+				local brdf = result:Albedo() / math.pi
 				local Li = envCol / envPdf
-				local bsdf = result:Albedo() / math.pi
-				colour = bsdf * Li * math.max(envDir:Dot(result:Normal()), 0)
+				colour = brdf * Li * math.max(envDir:Dot(result:Normal()), 0)
 			end
 		end
 
@@ -784,6 +792,7 @@ Then wrap our hdri sampling in a for loop and divide the final colour by the num
 			end
 		~~~ lua highlight
 		end
+
 		colour = colour / SAMPLES
 		~~~ lua
 
@@ -813,6 +822,8 @@ One last improvement we can make is discarding invalid samples. The HDRI sampler
 			~~~ lua
 			end
 		end
+
+
 		~~~ lua delete
 		colour = colour / SAMPLES
 		~~~ lua highlight
