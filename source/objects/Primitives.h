@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Utils.h>
+
 #include "Material.h"
 
 class AccelStruct;
@@ -75,9 +77,14 @@ struct TriangleBackfaceCull
 		const bvh::Vector3<Scalar> p1,
 		const bvh::Vector3<Scalar> p2,
 		const int16_t material,
+		const glm::vec2 uvs[3],
 		const bool oneSided = false
-	) : p0(p0), e1(p0 - p1), e2(p2 - p0), material(material), oneSided(oneSided)
+	) : p0(p0), e1(p0 - p1), e2(p2 - p0), material(material), uvs(), oneSided(oneSided)
 	{
+		this->uvs[0] = uvs[0];
+		this->uvs[1] = uvs[1];
+		this->uvs[2] = uvs[2];
+
 		ComputeNormalAndLoD();
 	}
 

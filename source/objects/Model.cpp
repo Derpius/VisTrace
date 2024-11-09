@@ -73,11 +73,18 @@ Mesh::Mesh(
 							tangents[j] = GetModel()->GetTangent(mesh->GetTangentIndex(vtxVerts[j]));
 						}
 
+						const glm::vec2 uvs[3] = {
+							glm::vec2(verts[0]->texCoord.x, verts[0]->texCoord.y),
+							glm::vec2(verts[1]->texCoord.x, verts[1]->texCoord.y),
+							glm::vec2(verts[2]->texCoord.x, verts[2]->texCoord.y)
+						};
+
 						Triangle tri(
 							Vector3(verts[0]->pos.x, verts[0]->pos.y, verts[0]->pos.z),
 							Vector3(verts[1]->pos.x, verts[1]->pos.y, verts[1]->pos.z),
 							Vector3(verts[2]->pos.x, verts[2]->pos.y, verts[2]->pos.z),
 							mesh->material,
+							uvs,
 							false
 						);
 
@@ -94,7 +101,7 @@ Mesh::Mesh(
 								tri.tangents[j] = glm::normalize(glm::vec3(tri.e1[0], tri.e1[1], tri.e1[2]));
 							}
 
-							tri.uvs[j] = glm::vec2(verts[j]->texCoord.x, verts[j]->texCoord.y);
+							tri.uvs[j] = uvs[j];
 
 							if (vtxVerts[j]->numBones > 0) {
 								tri.numBones[j] = vtxVerts[j]->numBones;
