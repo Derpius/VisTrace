@@ -101,8 +101,6 @@ Mesh::Mesh(
 								tri.tangents[j] = glm::normalize(glm::vec3(tri.e1[0], tri.e1[1], tri.e1[2]));
 							}
 
-							tri.uvs[j] = uvs[j];
-
 							if (vtxVerts[j]->numBones > 0) {
 								tri.numBones[j] = vtxVerts[j]->numBones;
 

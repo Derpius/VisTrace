@@ -79,7 +79,7 @@ struct TriangleBackfaceCull
 		const int16_t material,
 		const glm::vec2 uvs[3],
 		const bool oneSided = false
-	) : p0(p0), e1(p0 - p1), e2(p2 - p0), material(material), uvs(), oneSided(oneSided)
+	) : p0(p0), e1(p0 - p1), e2(p2 - p0), material(material), oneSided(oneSided)
 	{
 		this->uvs[0] = uvs[0];
 		this->uvs[1] = uvs[1];
