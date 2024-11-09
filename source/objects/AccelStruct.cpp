@@ -403,6 +403,7 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 			Vector3{ vertices[vi1].x, vertices[vi1].y, vertices[vi1].z },
 			Vector3{ vertices[vi2].x, vertices[vi2].y, vertices[vi2].z },
 			world.materials[submatIds[strPath]],
+			uvs + vi0,
 
 			// Backface cull on the world to prevent z fighting on 2 sided water surfaces
 			// (given you shouldnt be refracting through any other brushes this should be fine)
@@ -411,7 +412,6 @@ World::World(GarrysMod::Lua::ILuaBase* LUA, const std::string& mapName)
 
 		memcpy(tri.normals, normals + vi0, sizeof(glm::vec3) * 3);
 		memcpy(tri.tangents, tangents + vi0, sizeof(glm::vec3) * 3);
-		memcpy(tri.uvs, uvs + vi0, sizeof(glm::vec2) * 3);
 		memcpy(tri.alphas, alphas + vi0, sizeof(float) * 3);
 
 		triangles.push_back(tri);
